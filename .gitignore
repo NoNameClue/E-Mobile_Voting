@@ -1,0 +1,51 @@
+# =========================
+# Operating System Files
+# =========================
+.DS_Store
+Thumbs.db
+ehthumbs.db
+
+# =========================
+# IDEs and Editors
+# =========================
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# =========================
+# Python / Backend
+# =========================
+# Virtual Environments
+backend/venv/
+venv/
+env/
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment variables (NEVER push your secret keys!)
+.env
+backend/.env
+
+# Local databases (if you test with SQLite locally)
+*.db
+*.sqlite3
+
+# =========================
+# Flutter / Frontend
+# =========================
+# Note: Flutter usually creates its own .gitignore inside the frontend/ folder, 
+# but adding these here acts as a perfect global safety net.
+frontend/.dart_tool/
+frontend/.flutter-plugins
+frontend/.flutter-plugins-dependencies
+frontend/.packages
+frontend/build/
+
+# Android/iOS specific local secrets
+frontend/android/local.properties
+frontend/android/key.properties
+frontend/ios/.generated/
