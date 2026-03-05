@@ -1,14 +1,13 @@
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from sqlalchemy import create_engine, Column, Integer, String, Boolean, Enum as SQLEnum
+from sqlalchemy import create_engine, Column, Integer, String, Boolean, DateTime, Enum as SQLEnum
 from sqlalchemy.orm import sessionmaker, Session, declarative_base
 from passlib.context import CryptContext
 import jwt
 import enum
 from datetime import datetime, timedelta
-from sqlalchemy import DateTime # Ensure DateTime is in your sqlalchemy imports at the top
-from typing import Optional # Add this to your imports at the top
+from typing import Optional
 
 # ==========================================
 # 1. SETUP & CONFIGURATION
@@ -24,16 +23,12 @@ Base = declarative_base()
 
 app = FastAPI()
 
-# ==========================================
-# ADD THIS MISSING FUNCTION HERE:
-# ==========================================
 def get_db():
     db = SessionLocal()
     try:
         yield db
     finally:
         db.close()
-# ==========================================
 
 # Crucial for Flutter Web: Allows your frontend to talk to this API
 app.add_middleware(
@@ -51,7 +46,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 # ==========================================
 # 2. DATABASE MODELS & SCHEMAS
 # ==========================================
-# Tells Python what your MySQL users table looks like
+# --- USER MODELS ---
 class UserRole(str, enum.Enum):
     Admin = "Admin"
     Student = "Student"
@@ -59,20 +54,29 @@ class UserRole(str, enum.Enum):
 class User(Base):
     __tablename__ = "users"
     user_id = Column(Integer, primary_key=True, index=True)
-    student_number = Column(String(50), unique=True, nullable=False) # Added for registration
-    full_name = Column(String(100), nullable=False)                  # Added for registration
+    student_number = Column(String(50), unique=True, nullable=False)
+    full_name = Column(String(100), nullable=False)
     email = Column(String(100), unique=True, index=True)
-    course = Column(String(50), nullable=False)                      # Added for registration
+    course = Column(String(50), nullable=False)
     password_hash = Column(String(255), nullable=False)
     role = Column(SQLEnum('Admin', 'Student'), default='Student')
     is_active = Column(Boolean, default=False)
 
-# Defines the JSON payload Flutter will send for Login
+# --- POLL MODEL (UPDATED FOR PUBLISHING) ---
+class Poll(Base):
+    __tablename__ = "polls"
+    poll_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    title = Column(String(255), nullable=False)
+    start_time = Column(DateTime, nullable=False)
+    end_time = Column(DateTime, nullable=False)
+    status = Column(String(50), default="Draft")          # Changed to Draft
+    is_published = Column(Boolean, default=False)         # <--- NEW FIELD
+
+# --- PYDANTIC SCHEMAS ---
 class LoginRequest(BaseModel):
     email: str
     password: str
 
-# Defines the JSON payload Flutter will send for Registration
 class RegisterRequest(BaseModel):
     student_number: str
     full_name: str
@@ -80,29 +84,11 @@ class RegisterRequest(BaseModel):
     course: str
     password: str
 
-# --- ADD THESE MODELS & SCHEMAS ---
-from typing import Optional
-
-from pydantic import BaseModel
-from sqlalchemy import Column, Integer, String, DateTime
-from typing import Optional
-from datetime import datetime
-
-# --- 1. DATABASE MODEL ---
-class Poll(Base): # Assuming Base is your SQLAlchemy declarative_base
-    __tablename__ = "polls"
-    poll_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    title = Column(String(255), nullable=False)
-    start_time = Column(DateTime, nullable=False)
-    end_time = Column(DateTime, nullable=False)
-    status = Column(String(50), default="Upcoming")
-
-# --- 2. PYDANTIC SCHEMAS ---
 class PollCreate(BaseModel):
     title: str
     start_time: datetime
     end_time: datetime
-    status: Optional[str] = "Upcoming"
+    status: Optional[str] = "Draft"                       # Changed to Draft
 
 class PollUpdate(BaseModel):
     title: Optional[str] = None
@@ -110,7 +96,11 @@ class PollUpdate(BaseModel):
     end_time: Optional[datetime] = None
     status: Optional[str] = None
 
-# --- 3. API ENDPOINTS ---
+# ==========================================
+# 3. API ENDPOINTS
+# ==========================================
+
+# --- POLL ENDPOINTS ---
 @app.get("/api/polls")
 def get_polls(db: Session = Depends(get_db)):
     return db.query(Poll).all()
@@ -142,6 +132,20 @@ def update_poll(poll_id: int, poll_update: PollUpdate, db: Session = Depends(get
     db.refresh(db_poll)
     return {"message": "Poll updated successfully", "poll": db_poll}
 
+# <--- NEW PUBLISH ENDPOINT --->
+@app.put("/api/polls/{poll_id}/publish")
+def publish_poll(poll_id: int, db: Session = Depends(get_db)):
+    db_poll = db.query(Poll).filter(Poll.poll_id == poll_id).first()
+    if not db_poll:
+        raise HTTPException(status_code=404, detail="Poll not found")
+    
+    # Mark it as published
+    db_poll.is_published = True
+    db_poll.status = "Published"
+    db.commit()
+    
+    return {"message": "Poll published successfully and is now visible to students."}
+
 @app.delete("/api/polls/{poll_id}")
 def delete_poll(poll_id: int, db: Session = Depends(get_db)):
     db_poll = db.query(Poll).filter(Poll.poll_id == poll_id).first()
@@ -152,11 +156,10 @@ def delete_poll(poll_id: int, db: Session = Depends(get_db)):
     db.commit()
     return {"message": "Poll deleted successfully"}
 
+# --- USER & ADMIN ENDPOINTS ---
 @app.get("/api/admin/students")
 def get_students(db: Session = Depends(get_db)):
-
     students = db.query(User).filter(User.role == UserRole.Student).all()
-
     return [
         {
             "user_id": student.user_id,
@@ -168,17 +171,14 @@ def get_students(db: Session = Depends(get_db)):
 
 @app.put("/api/admin/students/{student_id}/toggle")
 def toggle_student(student_id: str, db: Session = Depends(get_db)):
-
     student = db.query(User).filter(User.user_id == student_id).first()
 
     if not student:
         raise HTTPException(status_code=404, detail="Student not found")
-
     if student.role != UserRole.Student:
         raise HTTPException(status_code=400, detail="Cannot modify admin account")
 
     student.is_active = not student.is_active
-
     db.commit()
 
     return {
@@ -186,6 +186,37 @@ def toggle_student(student_id: str, db: Session = Depends(get_db)):
         "user_id": student.user_id,
         "is_active": student.is_active
     }
+
+@app.post("/api/register")
+def register(request: RegisterRequest, db: Session = Depends(get_db)):
+    # 1. Check if email or student number already exists
+    if db.query(User).filter(User.email == request.email).first():
+        raise HTTPException(status_code=400, detail="Email is already registered")
+    
+    if db.query(User).filter(User.student_number == request.student_number).first():
+        raise HTTPException(status_code=400, detail="Student number is already registered")
+    
+    raw_password = request.password
+    if len(raw_password.encode('utf-8')) > 72:
+        raw_password = raw_password[:72]
+    
+    # 2. Securely hash the password
+    hashed_password = pwd_context.hash(request.password)
+    
+    # 3. Create the new user object
+    new_user = User(
+        student_number=request.student_number,
+        full_name=request.full_name,
+        email=request.email,
+        course=request.course,
+        password_hash=hashed_password
+    )
+    
+    # 4. Save to the database
+    db.add(new_user)
+    db.commit()
+    
+    return {"message": "Registration successful! You can now log in."}
 
 @app.post("/api/login")
 def login(request: LoginRequest, db: Session = Depends(get_db)):
@@ -220,4 +251,3 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
         "role": user.role,
         "message": "Login successful"
     }
-

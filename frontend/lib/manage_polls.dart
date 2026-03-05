@@ -44,7 +44,7 @@ class _ManagePollsState extends State<ManagePolls> {
       'title': title,
       'start_time': start.toIso8601String(),
       'end_time': end.toIso8601String(),
-      'status': 'Upcoming' 
+      'status': 'Draft' // Always default to draft when saving/editing
     });
 
     try {
@@ -58,6 +58,20 @@ class _ManagePollsState extends State<ManagePolls> {
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Server error')));
+    }
+  }
+
+  // --- NEW PUBLISH FUNCTION ---
+  Future<void> _publishPoll(int pollId) async {
+    // Optional: You could add a confirmation dialog here before publishing
+    try {
+      final response = await http.put(Uri.parse('${ApiConfig.baseUrl}/api/polls/$pollId/publish'));
+      if (response.statusCode == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Poll officially published!')));
+        _fetchPolls();
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error publishing poll')));
     }
   }
 
@@ -99,7 +113,7 @@ class _ManagePollsState extends State<ManagePolls> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              title: Text(existingPoll == null ? 'Create New Poll' : 'Edit Poll'),
+              title: Text(existingPoll == null ? 'Create New Poll (Draft)' : 'Edit Poll'),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -181,6 +195,8 @@ class _ManagePollsState extends State<ManagePolls> {
                       itemCount: _polls.length,
                       itemBuilder: (context, index) {
                         final poll = _polls[index];
+                        final bool isPublished = poll['is_published'] == true || poll['is_published'] == 1;
+
                         return Card(
                           margin: const EdgeInsets.only(bottom: 15),
                           child: ListTile(
@@ -189,6 +205,30 @@ class _ManagePollsState extends State<ManagePolls> {
                             trailing: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
+                                // If it is not published yet, show the Publish button
+                                if (!isPublished)
+                                  ElevatedButton.icon(
+                                    icon: const Icon(Icons.campaign, size: 18),
+                                    label: const Text("Publish"),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.green, 
+                                      foregroundColor: Colors.white,
+                                    ),
+                                    onPressed: () => _publishPoll(poll['poll_id']),
+                                  )
+                                // If published, show a simple badge
+                                else
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: Colors.green.withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: Colors.green)
+                                    ),
+                                    child: const Text("PUBLISHED", style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 12)),
+                                  ),
+                                  
+                                const SizedBox(width: 10),
                                 IconButton(icon: const Icon(Icons.edit, color: Colors.blue), onPressed: () => _showPollDialog(existingPoll: poll)),
                                 IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: () => _deletePoll(poll['poll_id'])),
                               ],
