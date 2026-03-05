@@ -7,6 +7,8 @@ from passlib.context import CryptContext
 import jwt
 import enum
 from datetime import datetime, timedelta
+from sqlalchemy import DateTime # Ensure DateTime is in your sqlalchemy imports at the top
+from typing import Optional # Add this to your imports at the top
 
 # ==========================================
 # 1. SETUP & CONFIGURATION
@@ -21,6 +23,17 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 app = FastAPI()
+
+# ==========================================
+# ADD THIS MISSING FUNCTION HERE:
+# ==========================================
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+# ==========================================
 
 # Crucial for Flutter Web: Allows your frontend to talk to this API
 app.add_middleware(
@@ -67,55 +80,77 @@ class RegisterRequest(BaseModel):
     course: str
     password: str
 
-Base.metadata.create_all(bind=engine)
+# --- ADD THESE MODELS & SCHEMAS ---
+from typing import Optional
 
-# Dependency to get DB session securely
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+from pydantic import BaseModel
+from sqlalchemy import Column, Integer, String, DateTime
+from typing import Optional
+from datetime import datetime
 
-class UserCreate(BaseModel):
-    user_id: str
-    password: str
+# --- 1. DATABASE MODEL ---
+class Poll(Base): # Assuming Base is your SQLAlchemy declarative_base
+    __tablename__ = "polls"
+    poll_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    title = Column(String(255), nullable=False)
+    start_time = Column(DateTime, nullable=False)
+    end_time = Column(DateTime, nullable=False)
+    status = Column(String(50), default="Upcoming")
 
-# ==========================================
-# 3. API ENDPOINTS
-# ==========================================
+# --- 2. PYDANTIC SCHEMAS ---
+class PollCreate(BaseModel):
+    title: str
+    start_time: datetime
+    end_time: datetime
+    status: Optional[str] = "Upcoming"
 
-@app.post("/api/register")
-def register(request: RegisterRequest, db: Session = Depends(get_db)):
-    # 1. Check if email or student number already exists to prevent crashes
-    if db.query(User).filter(User.email == request.email).first():
-        raise HTTPException(status_code=400, detail="Email is already registered")
-    
-    if db.query(User).filter(User.student_number == request.student_number).first():
-        raise HTTPException(status_code=400, detail="Student number is already registered")
-    
-    raw_password = request.password
-    if len(raw_password.encode('utf-8')) > 72:
-        raw_password = raw_password[:72]
-    
-    # 2. Securely hash the password (Never save plain text!)
-    hashed_password = pwd_context.hash(request.password)
-    
-    # 3. Create the new user object
-    # Notice we don't pass 'user_id', 'role', or 'is_active' because MySQL handles defaults!
-    new_user = User(
-        student_number=request.student_number,
-        full_name=request.full_name,
-        email=request.email,
-        course=request.course,
-        password_hash=hashed_password
+class PollUpdate(BaseModel):
+    title: Optional[str] = None
+    start_time: Optional[datetime] = None
+    end_time: Optional[datetime] = None
+    status: Optional[str] = None
+
+# --- 3. API ENDPOINTS ---
+@app.get("/api/polls")
+def get_polls(db: Session = Depends(get_db)):
+    return db.query(Poll).all()
+
+@app.post("/api/polls")
+def create_poll(poll: PollCreate, db: Session = Depends(get_db)):
+    new_poll = Poll(
+        title=poll.title,
+        start_time=poll.start_time,
+        end_time=poll.end_time,
+        status=poll.status
     )
-    
-    # 4. Save to the database
-    db.add(new_user)
+    db.add(new_poll)
     db.commit()
+    db.refresh(new_poll)
+    return {"message": "Poll created successfully", "poll": new_poll}
+
+@app.put("/api/polls/{poll_id}")
+def update_poll(poll_id: int, poll_update: PollUpdate, db: Session = Depends(get_db)):
+    db_poll = db.query(Poll).filter(Poll.poll_id == poll_id).first()
+    if not db_poll:
+        raise HTTPException(status_code=404, detail="Poll not found")
+
+    update_data = poll_update.dict(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(db_poll, key, value)
+
+    db.commit()
+    db.refresh(db_poll)
+    return {"message": "Poll updated successfully", "poll": db_poll}
+
+@app.delete("/api/polls/{poll_id}")
+def delete_poll(poll_id: int, db: Session = Depends(get_db)):
+    db_poll = db.query(Poll).filter(Poll.poll_id == poll_id).first()
+    if not db_poll:
+        raise HTTPException(status_code=404, detail="Poll not found")
     
-    return {"message": "Registration successful! You can now log in."}
+    db.delete(db_poll)
+    db.commit()
+    return {"message": "Poll deleted successfully"}
 
 @app.get("/api/admin/students")
 def get_students(db: Session = Depends(get_db)):
@@ -185,3 +220,4 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
         "role": user.role,
         "message": "Login successful"
     }
+

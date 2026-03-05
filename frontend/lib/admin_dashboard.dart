@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'manage_polls.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -13,15 +14,16 @@ class _AdminDashboardState extends State<AdminDashboard> {
   // Temporary mock values (replace later with API)
   final int totalStudents = 1200;
   final int pendingApprovals = 5;
-  final int activePolls = 0;
 
   final List<String> menuItems = [
     "Dashboard",
     "Users / Account Control",
     "Manage Polls",
     "Manage Candidates",
+    "Registered Parties",
+    "Registration for Candidates",
     "Live Scoreboard",
-    "Reports & Data",
+    "Election Result",
   ];
 
   void logout() {
@@ -133,42 +135,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
               buildStatCard(
                   "Pending Account Approvals",
                   pendingApprovals.toString()),
-              buildStatCard(
-                  "Active Polls",
-                  activePolls.toString()),
             ],
           ),
-
-          const SizedBox(height: 40),
-
-          if (activePolls == 0)
-            Expanded(
-              child: Center(
-                child: Column(
-                  mainAxisAlignment:
-                      MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.how_to_vote,
-                        size: 80, color: Colors.grey),
-                    const SizedBox(height: 20),
-                    const Text(
-                      "No Active Elections",
-                      style: TextStyle(fontSize: 20),
-                    ),
-                    const SizedBox(height: 10),
-                    ElevatedButton(
-                      onPressed: () {
-                        setState(() {
-                          selectedIndex = 2; // Go to Polls
-                        });
-                      },
-                      child:
-                          const Text("Create Your First Poll"),
-                    )
-                  ],
-                ),
-              ),
-            ),
         ],
       ),
     );
@@ -179,20 +147,19 @@ class _AdminDashboardState extends State<AdminDashboard> {
       case 0:
         return buildDashboardHome();
       case 1:
-        return const Center(
-            child: Text("Users / Account Control"));
+        return const Center(child: Text("Users / Account Control"));
       case 2:
-        return const Center(
-            child: Text("Manage Polls"));
+        return const ManagePolls(); // <--- This now displays your real Poll Management screen
       case 3:
-        return const Center(
-            child: Text("Manage Candidates"));
+        return const Center(child: Text("Manage Candidates"));
       case 4:
-        return const Center(
-            child: Text("Live Scoreboard"));
+        return const Center(child: Text("Registered Parties"));
       case 5:
-        return const Center(
-            child: Text("Reports & Data"));
+        return const Center(child: Text("Registration for Candidates"));
+      case 6:
+        return const Center(child: Text("Live Scoreboard"));
+      case 7:
+        return const Center(child: Text("Election Result"));
       default:
         return buildDashboardHome();
     }
