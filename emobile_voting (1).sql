@@ -62,7 +62,7 @@ CREATE TABLE `users` (
   `user_id` int(11) NOT NULL,
   `student_number` varchar(50) NOT NULL,
   `full_name` varchar(150) NOT NULL,
-  `email` varchar(150) NOT NULL,
+  `email` varchar(150) NOT NULL,  
   `course` varchar(100) NOT NULL,
   `password_hash` varchar(255) NOT NULL,
   `role` enum('Admin','Student') NOT NULL DEFAULT 'Student',

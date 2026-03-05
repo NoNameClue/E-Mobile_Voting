@@ -174,7 +174,7 @@ class _SignupPageState extends State<SignupPage> {
                     child: DropdownButtonFormField<String>(
                       isExpanded: true, 
                       menuMaxHeight: 300, 
-                      value: _selectedCourse,
+                      initialValue: _selectedCourse,
                       hint: const Text('Course', style: TextStyle(color: Colors.black54, fontSize: 13)),
                       icon: const Icon(Icons.arrow_drop_down, color: Colors.black54),
                       dropdownColor: const Color(0xFFE2E2E2),

@@ -5,6 +5,7 @@ from sqlalchemy import create_engine, Column, Integer, String, Boolean, Enum as 
 from sqlalchemy.orm import sessionmaker, Session, declarative_base
 from passlib.context import CryptContext
 import jwt
+import enum
 from datetime import datetime, timedelta
 
 # ==========================================
@@ -38,6 +39,10 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 # 2. DATABASE MODELS & SCHEMAS
 # ==========================================
 # Tells Python what your MySQL users table looks like
+class UserRole(str, enum.Enum):
+    Admin = "Admin"
+    Student = "Student"
+
 class User(Base):
     __tablename__ = "users"
     user_id = Column(Integer, primary_key=True, index=True)
@@ -47,7 +52,7 @@ class User(Base):
     course = Column(String(50), nullable=False)                      # Added for registration
     password_hash = Column(String(255), nullable=False)
     role = Column(SQLEnum('Admin', 'Student'), default='Student')
-    is_active = Column(Boolean, default=True)
+    is_active = Column(Boolean, default=False)
 
 # Defines the JSON payload Flutter will send for Login
 class LoginRequest(BaseModel):
@@ -62,6 +67,8 @@ class RegisterRequest(BaseModel):
     course: str
     password: str
 
+Base.metadata.create_all(bind=engine)
+
 # Dependency to get DB session securely
 def get_db():
     db = SessionLocal()
@@ -69,6 +76,10 @@ def get_db():
         yield db
     finally:
         db.close()
+
+class UserCreate(BaseModel):
+    user_id: str
+    password: str
 
 # ==========================================
 # 3. API ENDPOINTS
@@ -106,6 +117,40 @@ def register(request: RegisterRequest, db: Session = Depends(get_db)):
     
     return {"message": "Registration successful! You can now log in."}
 
+@app.get("/api/admin/students")
+def get_students(db: Session = Depends(get_db)):
+
+    students = db.query(User).filter(User.role == UserRole.Student).all()
+
+    return [
+        {
+            "user_id": student.user_id,
+            "role": student.role.value,
+            "is_active": student.is_active
+        }
+        for student in students
+    ]
+
+@app.put("/api/admin/students/{student_id}/toggle")
+def toggle_student(student_id: str, db: Session = Depends(get_db)):
+
+    student = db.query(User).filter(User.user_id == student_id).first()
+
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+
+    if student.role != UserRole.Student:
+        raise HTTPException(status_code=400, detail="Cannot modify admin account")
+
+    student.is_active = not student.is_active
+
+    db.commit()
+
+    return {
+        "message": "Student status updated",
+        "user_id": student.user_id,
+        "is_active": student.is_active
+    }
 
 @app.post("/api/login")
 def login(request: LoginRequest, db: Session = Depends(get_db)):
