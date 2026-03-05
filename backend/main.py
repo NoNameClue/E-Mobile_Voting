@@ -97,6 +97,19 @@ class PollUpdate(BaseModel):
     end_time: Optional[datetime] = None
     status: Optional[str] = None
 
+class CandidateCreate(BaseModel):
+    poll_id: int
+    name: str
+    description: str
+
+class Candidate(Base):
+    __tablename__ = "candidates"
+
+    candidate_id = Column(Integer, primary_key=True, index=True)
+    poll_id = Column(Integer, nullable=False)
+    name = Column(String(255), nullable=False)
+    description = Column(String(500), nullable=True)
+
 # ==========================================
 # 3. API ENDPOINTS
 # ==========================================
@@ -260,3 +273,45 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
         "role": user.role,
         "message": "Login successful"
     }
+
+@app.post("/api/candidates")
+def create_candidate(candidate: CandidateCreate, db: Session = Depends(get_db)):
+
+    new_candidate = Candidate(
+        poll_id=candidate.poll_id,
+        name=candidate.name,
+        description=candidate.description
+    )
+
+    db.add(new_candidate)
+    db.commit()
+    db.refresh(new_candidate)
+
+    return {
+        "message": "Candidate added successfully",
+        "candidate": new_candidate
+    }
+
+@app.get("/api/candidates/{poll_id}")
+def get_candidates(poll_id: int, db: Session = Depends(get_db)):
+
+    candidates = db.query(Candidate).filter(
+        Candidate.poll_id == poll_id
+    ).all()
+
+    return candidates
+
+@app.delete("/api/candidates/{candidate_id}")
+def delete_candidate(candidate_id: int, db: Session = Depends(get_db)):
+
+    candidate = db.query(Candidate).filter(
+        Candidate.candidate_id == candidate_id
+    ).first()
+
+    if not candidate:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+
+    db.delete(candidate)
+    db.commit()
+
+    return {"message": "Candidate deleted successfully"}
