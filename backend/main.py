@@ -97,18 +97,33 @@ class PollUpdate(BaseModel):
     end_time: Optional[datetime] = None
     status: Optional[str] = None
 
+# --- CANDIDATE MODELS & SCHEMAS ---
 class CandidateCreate(BaseModel):
     poll_id: int
     name: str
-    description: str
+    position: str
+    party_name: Optional[str] = "Independent"
+    course_year: str
+    description_platform: Optional[str] = None
+
+class CandidateUpdate(BaseModel):
+    name: Optional[str] = None
+    position: Optional[str] = None
+    party_name: Optional[str] = None
+    course_year: Optional[str] = None
+    description_platform: Optional[str] = None
 
 class Candidate(Base):
     __tablename__ = "candidates"
 
     candidate_id = Column(Integer, primary_key=True, index=True)
     poll_id = Column(Integer, nullable=False)
-    name = Column(String(255), nullable=False)
-    description = Column(String(500), nullable=True)
+    name = Column(String(100), nullable=False)
+    position = Column(String(50), nullable=False)
+    party_name = Column(String(50), default='Independent')
+    course_year = Column(String(50), nullable=False)
+    description_platform = Column(String(500), nullable=True)
+    photo_url = Column(String(255), nullable=True)
 
 # ==========================================
 # 3. API ENDPOINTS
@@ -276,11 +291,13 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
 
 @app.post("/api/candidates")
 def create_candidate(candidate: CandidateCreate, db: Session = Depends(get_db)):
-
     new_candidate = Candidate(
         poll_id=candidate.poll_id,
         name=candidate.name,
-        description=candidate.description
+        position=candidate.position,
+        party_name=candidate.party_name or "Independent",
+        course_year=candidate.course_year,
+        description_platform=candidate.description_platform
     )
 
     db.add(new_candidate)
@@ -291,19 +308,33 @@ def create_candidate(candidate: CandidateCreate, db: Session = Depends(get_db)):
         "message": "Candidate added successfully",
         "candidate": new_candidate
     }
+    
+@app.put("/api/candidates/{candidate_id}")
+def update_candidate(candidate_id: int, candidate_update: CandidateUpdate, db: Session = Depends(get_db)):
+    db_candidate = db.query(Candidate).filter(Candidate.candidate_id == candidate_id).first()
+    
+    if not db_candidate:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+
+    # Update only the fields that were provided
+    update_data = candidate_update.dict(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(db_candidate, key, value)
+
+    db.commit()
+    db.refresh(db_candidate)
+    
+    return {"message": "Candidate updated successfully"}
 
 @app.get("/api/candidates/{poll_id}")
 def get_candidates(poll_id: int, db: Session = Depends(get_db)):
-
     candidates = db.query(Candidate).filter(
         Candidate.poll_id == poll_id
     ).all()
-
     return candidates
 
 @app.delete("/api/candidates/{candidate_id}")
 def delete_candidate(candidate_id: int, db: Session = Depends(get_db)):
-
     candidate = db.query(Candidate).filter(
         Candidate.candidate_id == candidate_id
     ).first()
