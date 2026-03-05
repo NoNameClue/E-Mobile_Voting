@@ -1,0 +1,453 @@
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'api_config.dart'; // Make sure you have this import!
+
+// ========================================================================
+// 1. DATA MODELS 
+// ========================================================================
+class CandidateResult {
+  final int id;
+  final String name;
+  final String party;
+  final String? photoUrl;
+  final int votes;
+  final double percentage; 
+
+  CandidateResult({
+    required this.id,
+    required this.name,
+    required this.party,
+    this.photoUrl,
+    required this.votes,
+    required this.percentage,
+  });
+}
+
+class PositionRanking {
+  final String positionName;
+  final List<CandidateResult> candidates; 
+
+  PositionRanking({
+    required this.positionName,
+    required this.candidates,
+  });
+}
+
+// ========================================================================
+// 2. MAIN STUDENT DASHBOARD SHELL 
+// ========================================================================
+class StudentDashboard extends StatefulWidget {
+  const StudentDashboard({super.key});
+
+  @override
+  State<StudentDashboard> createState() => _StudentDashboardState();
+}
+
+class _StudentDashboardState extends State<StudentDashboard> {
+  int selectedIndex = 0;
+  final Color primaryColor = const Color(0xFF000B6B);
+
+  final List<String> menuItems = [
+    "Dashboard",
+    "Vote",
+    "Registered Party",
+    "My Votes",
+    "FAQs",
+    "About Us",
+  ];
+
+  void logout() {
+    Navigator.pushReplacementNamed(context, '/login');
+  }
+
+  Widget buildSidebar(bool isDesktop) {
+    return Container(
+      width: 250,
+      color: primaryColor,
+      child: Column(
+        children: [
+          const SizedBox(height: 20),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 15),
+            child: Row(
+              children: [
+                CircleAvatar(backgroundColor: Colors.white, radius: 20, child: Text('Logo', style: TextStyle(color: Colors.black, fontSize: 10))),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text('Leyte Normal University\n(System Name)', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 40),
+          const CircleAvatar(radius: 30, backgroundColor: Colors.white, child: Icon(Icons.person, size: 40, color: Colors.grey)),
+          const SizedBox(height: 10),
+          const Text("Student Name\nID: 1234567", textAlign: TextAlign.center, style: TextStyle(color: Colors.white)),
+          const SizedBox(height: 40),
+
+          for (int i = 0; i < menuItems.length; i++)
+            ListTile(
+              title: Text(
+                menuItems[i],
+                style: TextStyle(color: selectedIndex == i ? Colors.amber : Colors.white),
+              ),
+              onTap: () {
+                setState(() => selectedIndex = i);
+                if (!isDesktop) Navigator.pop(context); 
+              },
+            ),
+
+          const Spacer(),
+          ListTile(
+            leading: const Icon(Icons.logout, color: Colors.white),
+            title: const Text("Logout", style: TextStyle(color: Colors.white)),
+            onTap: logout,
+          ),
+          const Padding(
+            padding: EdgeInsets.all(15.0),
+            child: Text('V1.2026.03126 | LNUVotingSystem', style: TextStyle(color: Colors.grey, fontSize: 10)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget buildContent() {
+    switch (selectedIndex) {
+      case 0:
+        return const LiveScoreboardView(); 
+      case 1:
+        return const Center(child: Text("Voting Feature Coming Soon", style: TextStyle(fontSize: 24)));
+      case 2:
+        return const Center(child: Text("Registered Parties Coming Soon", style: TextStyle(fontSize: 24)));
+      case 3:
+        return const Center(child: Text("My Votes History Coming Soon", style: TextStyle(fontSize: 24)));
+      case 4:
+        return const Center(child: Text("FAQs", style: TextStyle(fontSize: 24)));
+      case 5:
+        return const Center(child: Text("About Us", style: TextStyle(fontSize: 24)));
+      default:
+        return const LiveScoreboardView();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    bool isDesktop = MediaQuery.of(context).size.width > 900;
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFE5E5E5),
+      appBar: isDesktop 
+          ? null 
+          : AppBar(backgroundColor: primaryColor, title: const Text("Student Portal")),
+      drawer: isDesktop ? null : Drawer(child: buildSidebar(false)),
+      body: Row(
+        children: [
+          if (isDesktop) buildSidebar(true),
+          Expanded(child: buildContent()),
+        ],
+      ),
+    );
+  }
+}
+
+// ========================================================================
+// 3. LIVE SCOREBOARD WIDGET 
+// ========================================================================
+class LiveScoreboardView extends StatefulWidget {
+  const LiveScoreboardView({super.key});
+
+  @override
+  State<LiveScoreboardView> createState() => _LiveScoreboardViewState();
+}
+
+class _LiveScoreboardViewState extends State<LiveScoreboardView> {
+  int _currentPositionIndex = 0; 
+  List<PositionRanking> _rankingsData = []; 
+  bool _isLoading = true;
+  String _errorMessage = '';
+
+  final Color primaryColor = const Color(0xFF000B6B);
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchLiveResults(); 
+  }
+
+  // --- THE MAGIC: FETCHING FROM MYSQL ---
+  Future<void> _fetchLiveResults() async {
+    try {
+      // 1. Get all polls
+      final pollResponse = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/polls'));
+      if (pollResponse.statusCode != 200) throw Exception("Failed to fetch polls");
+      
+      final List<dynamic> polls = jsonDecode(pollResponse.body);
+      
+      // 2. Find the published one
+      final publishedPoll = polls.firstWhere(
+        (p) => p['is_published'] == true || p['is_published'] == 1,
+        orElse: () => null,
+      );
+
+      if (publishedPoll == null) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = "No active elections right now.";
+        });
+        return;
+      }
+
+      int activePollId = publishedPoll['poll_id'];
+
+      // 3. Fetch Candidates for this poll
+      final candResponse = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/candidates/$activePollId'));
+      if (candResponse.statusCode != 200) throw Exception("Failed to fetch candidates");
+      
+      final List<dynamic> rawCandidates = jsonDecode(candResponse.body);
+
+      // 4. Group candidates by position
+      Map<String, List<CandidateResult>> groupedData = {
+        "President": [],
+        "Vice President": [],
+        "Secretary": [],
+        "Treasurer": [],
+        "Auditor": [],
+        "PIO": [],
+      };
+
+      for (var c in rawCandidates) {
+        String pos = c['position'];
+        if (groupedData.containsKey(pos)) {
+          groupedData[pos]!.add(
+            CandidateResult(
+              id: c['candidate_id'],
+              name: c['name'],
+              party: c['party_name'] ?? 'Independent',
+              votes: 0,       // Defaulting to 0 until voting feature is built
+              percentage: 0.0 // Defaulting to 0% until voting feature is built
+            )
+          );
+        }
+      }
+
+      // 5. Convert Map to List of PositionRanking
+      List<PositionRanking> formattedRankings = [];
+      groupedData.forEach((position, candidatesList) {
+        // Sort by votes (even though they are all 0 right now)
+        candidatesList.sort((a, b) => b.votes.compareTo(a.votes));
+        formattedRankings.add(PositionRanking(positionName: position, candidates: candidatesList));
+      });
+
+      setState(() {
+        _rankingsData = formattedRankings;
+        _isLoading = false;
+      });
+
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = "Could not connect to the server.";
+      });
+    }
+  }
+
+  void _goToPreviousPosition() {
+    if (_currentPositionIndex > 0) {
+      setState(() => _currentPositionIndex--);
+    }
+  }
+
+  void _goToNextPosition() {
+    if (_currentPositionIndex < _rankingsData.length - 1) {
+      setState(() => _currentPositionIndex++);
+    }
+  }
+
+  void _showPercentagePopup(CandidateResult candidate) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          title: Text(candidate.name, textAlign: TextAlign.center),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                "${candidate.percentage.toStringAsFixed(1)}%",
+                style: TextStyle(fontSize: 48, fontWeight: FontWeight.bold, color: primaryColor),
+              ),
+              const SizedBox(height: 10),
+              Text("Current vote share in ${_rankingsData[_currentPositionIndex].positionName} race.", textAlign: TextAlign.center),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text("Close")),
+          ],
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) return Center(child: CircularProgressIndicator(color: primaryColor));
+    
+    if (_errorMessage.isNotEmpty) {
+      return Center(child: Text(_errorMessage, style: const TextStyle(fontSize: 20, color: Colors.grey)));
+    }
+
+    final currentRanking = _rankingsData[_currentPositionIndex];
+    final candidates = currentRanking.candidates;
+
+    return Padding(
+      padding: const EdgeInsets.all(30.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text("Dashboard", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 20),
+          
+          Center(
+            child: Container(
+              width: 350,
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.grey.shade300)),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_left),
+                    onPressed: _currentPositionIndex == 0 ? null : _goToPreviousPosition,
+                  ),
+                  Text(currentRanking.positionName.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  IconButton(
+                    icon: const Icon(Icons.arrow_right),
+                    onPressed: _currentPositionIndex == _rankingsData.length - 1 ? null : _goToNextPosition,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 30),
+
+          Expanded(
+            child: candidates.isEmpty
+                ? const Center(
+                    child: Text("No candidates assigned to this position yet.", style: TextStyle(fontSize: 18, color: Colors.grey)),
+                  )
+                : Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // --- LEFT SIDE: TOP 3 PODIUM ---
+                      Expanded(
+                        flex: 2,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                if (candidates.length >= 2) _buildPodiumPerson(candidates[1], 2),
+                                _buildPodiumPerson(candidates[0], 1),
+                                if (candidates.length >= 3) _buildPodiumPerson(candidates[2], 3),
+                              ],
+                            ),
+                            const SizedBox(height: 20),
+                            const Text("top 3 candidates for the\nposition", textAlign: TextAlign.center, style: TextStyle(fontSize: 16, color: Colors.grey)),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(width: 40),
+
+                      // --- RIGHT SIDE: OTHER CANDIDATES ---
+                      Expanded(
+                        flex: 1,
+                        child: Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text("other candidates for the position", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                              const SizedBox(height: 20),
+                              Expanded(
+                                child: ListView.builder(
+                                  itemCount: candidates.length > 3 ? candidates.length - 3 : 0,
+                                  itemBuilder: (context, index) {
+                                    final candidate = candidates[index + 3];
+                                    return _buildOtherCandidateListTile(candidate);
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPodiumPerson(CandidateResult candidate, int rank) {
+    return GestureDetector(
+      onTap: () => _showPercentagePopup(candidate),
+      child: Column(
+        children: [
+          CircleAvatar(
+            radius: rank == 1 ? 60 : 50, 
+            backgroundColor: Colors.white,
+            child: Icon(Icons.person, size: rank == 1 ? 80 : 60, color: Colors.grey),
+          ),
+          const SizedBox(height: 15),
+          Text(candidate.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          Text(candidate.party, style: const TextStyle(color: Colors.black54, fontSize: 12)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOtherCandidateListTile(CandidateResult candidate) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20.0),
+      child: Row(
+        children: [
+          const CircleAvatar(radius: 25, backgroundColor: Colors.grey),
+          const SizedBox(width: 15),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text("${candidate.name.toUpperCase()} AND ${candidate.party.toUpperCase()}", style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 5),
+                Container(
+                  height: 20,
+                  width: double.infinity,
+                  decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(10)),
+                  alignment: Alignment.centerLeft,
+                  child: Container(
+                    height: 20,
+                    // Prevent rendering error if percentage is 0
+                    width: candidate.percentage > 0 ? (candidate.percentage / 100) * 200 : 0, 
+                    decoration: BoxDecoration(color: Colors.green, borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    alignment: Alignment.centerLeft,
+                    child: candidate.percentage > 0 
+                      ? Text("${candidate.percentage.toStringAsFixed(1)}%", style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold))
+                      : null,
+                  ),
+                )
+              ],
+            ),
+          )
+        ],
+      ),
+    );
+  }
+}

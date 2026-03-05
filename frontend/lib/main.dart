@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'login_page.dart';
 import 'signup_page.dart';
-import 'student_home.dart';
+import 'student_dashboard.dart';
 import 'admin_dashboard.dart';
 
 void main() {
@@ -24,7 +24,7 @@ class LnuVotingApp extends StatelessWidget {
       routes: {
         '/login': (context) => const LoginPage(),
         '/signup': (context) => const SignupPage(),
-        '/student_home': (context) => const StudentHome(),     
+        '/student_home': (context) => const StudentDashboard(),     
         '/admin_dashboard': (context) => const AdminDashboard(), 
       },
       debugShowCheckedModeBanner: false,
