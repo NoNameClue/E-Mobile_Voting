@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'manage_polls.dart';
+import 'manage_users.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -147,7 +148,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       case 0:
         return buildDashboardHome();
       case 1:
-        return const Center(child: Text("Users / Account Control"));
+        return const ManageUsers();
       case 2:
         return const ManagePolls(); // <--- This now displays your real Poll Management screen
       case 3:

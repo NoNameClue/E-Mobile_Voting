@@ -60,7 +60,8 @@ class User(Base):
     course = Column(String(50), nullable=False)
     password_hash = Column(String(255), nullable=False)
     role = Column(SQLEnum('Admin', 'Student'), default='Student')
-    is_active = Column(Boolean, default=False)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow) # <--- ADD THIS LINE
 
 # --- POLL MODEL (UPDATED FOR PUBLISHING) ---
 class Poll(Base):
@@ -159,11 +160,16 @@ def delete_poll(poll_id: int, db: Session = Depends(get_db)):
 # --- USER & ADMIN ENDPOINTS ---
 @app.get("/api/admin/students")
 def get_students(db: Session = Depends(get_db)):
-    students = db.query(User).filter(User.role == UserRole.Student).all()
+    students = db.query(User).filter(User.role == "Student").all()
     return [
         {
             "user_id": student.user_id,
-            "role": student.role.value,
+            "student_number": student.student_number, # Added
+            "full_name": student.full_name,           # Added
+            "email": student.email,                   # Added
+            "course": student.course,                 # Added
+            "created_at": student.created_at.isoformat() if student.created_at else None, # Added
+            "role": student.role, 
             "is_active": student.is_active
         }
         for student in students
@@ -175,7 +181,9 @@ def toggle_student(student_id: str, db: Session = Depends(get_db)):
 
     if not student:
         raise HTTPException(status_code=404, detail="Student not found")
-    if student.role != UserRole.Student:
+        
+    # FIX: Use simple string comparison here
+    if student.role != "Student":
         raise HTTPException(status_code=400, detail="Cannot modify admin account")
 
     student.is_active = not student.is_active
@@ -209,7 +217,8 @@ def register(request: RegisterRequest, db: Session = Depends(get_db)):
         full_name=request.full_name,
         email=request.email,
         course=request.course,
-        password_hash=hashed_password
+        password_hash=hashed_password,
+        is_active=True
     )
     
     # 4. Save to the database
