@@ -146,7 +146,7 @@ class Vote(Base):
     user_id = Column(Integer, nullable=False)
     poll_id = Column(Integer, nullable=False)
     candidate_id = Column(Integer, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    cast_at = Column(DateTime, default=datetime.utcnow)
 
 class VoteRequest(BaseModel):
     poll_id: int
@@ -382,7 +382,7 @@ def submit_vote(vote: VoteRequest, db: Session = Depends(get_db)):
     except:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-    existing_vote = get_db.query(Vote).filter(
+    existing_vote = db.query(Vote).filter(
         Vote.user_id == user_id,
         Vote.poll_id == vote.poll_id
     ).first()
@@ -398,16 +398,16 @@ def submit_vote(vote: VoteRequest, db: Session = Depends(get_db)):
             candidate_id=candidate_id
         )
 
-        get_db.add(new_vote)
+        db.add(new_vote)
 
-    get_db.commit()
+    db.commit()
 
     return {"message": "Vote recorded successfully"}
 
 @app.get("/api/polls/{poll_id}/candidates")
 def get_candidates_by_poll(poll_id: int, db: Session = Depends(get_db)):
 
-    candidates = get_db.query(Candidate).filter(
+    candidates = db.query(Candidate).filter(
         Candidate.poll_id == poll_id
     ).all()
 
