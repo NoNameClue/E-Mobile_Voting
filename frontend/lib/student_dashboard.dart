@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'api_config.dart'; // Make sure you have this import!
+import 'voting_page.dart';
 
 // ========================================================================
 // 1. DATA MODELS 
@@ -98,6 +99,19 @@ class _StudentDashboardState extends State<StudentDashboard> {
               },
             ),
 
+            // ListTile(
+            //   leading: const Icon(Icons.how_to_vote),
+            //   title: const Text("Vote"),
+            //   onTap: () {
+            //     Navigator.push(
+            //       context,
+            //       MaterialPageRoute(
+            //         builder: (_) => const VotingPage(),
+            //       ),
+            //     );
+            //   },
+            // ),
+
           const Spacer(),
           ListTile(
             leading: const Icon(Icons.logout, color: Colors.white),
@@ -118,7 +132,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
       case 0:
         return const LiveScoreboardView(); 
       case 1:
-        return const Center(child: Text("Voting Feature Coming Soon", style: TextStyle(fontSize: 24)));
+        return const VotingPage();
       case 2:
         return const Center(child: Text("Registered Parties Coming Soon", style: TextStyle(fontSize: 24)));
       case 3:

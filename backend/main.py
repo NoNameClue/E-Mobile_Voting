@@ -1,4 +1,5 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import Security, FastAPI, HTTPException, Depends
+from fastapi.security import HTTPBearer
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, DateTime, Enum as SQLEnum
@@ -22,6 +23,7 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 app = FastAPI()
+security = HTTPBearer()
 
 def get_db():
     db = SessionLocal()
@@ -29,6 +31,18 @@ def get_db():
         yield db
     finally:
         db.close()
+
+def get_current_user_id(credentials = Security(security)):
+
+    token = credentials.credentials
+
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id = payload.get("sub")
+        return int(user_id)
+
+    except:
+        raise HTTPException(status_code=401, detail="Invalid token")
 
 # Crucial for Flutter Web: Allows your frontend to talk to this API
 app.add_middleware(
@@ -124,6 +138,19 @@ class Candidate(Base):
     course_year = Column(String(50), nullable=False)
     description_platform = Column(String(500), nullable=True)
     photo_url = Column(String(255), nullable=True)
+
+class Vote(Base):
+    __tablename__ = "votes"
+
+    vote_id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, nullable=False)
+    poll_id = Column(Integer, nullable=False)
+    candidate_id = Column(Integer, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class VoteRequest(BaseModel):
+    poll_id: int
+    candidate_ids: list[int]
 
 # ==========================================
 # 3. API ENDPOINTS
@@ -289,25 +316,24 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
         "message": "Login successful"
     }
 
-@app.post("/api/candidates")
-def create_candidate(candidate: CandidateCreate, db: Session = Depends(get_db)):
-    new_candidate = Candidate(
-        poll_id=candidate.poll_id,
-        name=candidate.name,
-        position=candidate.position,
-        party_name=candidate.party_name or "Independent",
-        course_year=candidate.course_year,
-        description_platform=candidate.description_platform
-    )
+@app.get("/api/candidates")
+def get_candidates(db: Session = Depends(get_db)):
 
-    db.add(new_candidate)
-    db.commit()
-    db.refresh(new_candidate)
+    candidates = db.query(Candidate).all()
 
-    return {
-        "message": "Candidate added successfully",
-        "candidate": new_candidate
-    }
+    return [
+        {
+            "candidate_id": c.candidate_id,
+            "poll_id": c.poll_id,
+            "name": c.name,
+            "position": c.position,
+            "party_name": c.party_name,
+            "course_year": c.course_year,
+            "description_platform": c.description_platform,
+            "photo_url": c.photo_url
+        }
+        for c in candidates
+    ]
     
 @app.put("/api/candidates/{candidate_id}")
 def update_candidate(candidate_id: int, candidate_update: CandidateUpdate, db: Session = Depends(get_db)):
@@ -346,3 +372,59 @@ def delete_candidate(candidate_id: int, db: Session = Depends(get_db)):
     db.commit()
 
     return {"message": "Candidate deleted successfully"}
+
+@app.post("/api/vote")
+def submit_vote(vote: VoteRequest, db: Session = Depends(get_db)):
+
+    try:
+        payload = jwt.decode(vote.token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id = payload.get("sub")
+    except:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    existing_vote = get_db.query(Vote).filter(
+        Vote.user_id == user_id,
+        Vote.poll_id == vote.poll_id
+    ).first()
+
+    if existing_vote:
+        raise HTTPException(status_code=403, detail="User already voted")
+
+    for candidate_id in vote.candidate_ids:
+
+        new_vote = Vote(
+            user_id=user_id,
+            poll_id=vote.poll_id,
+            candidate_id=candidate_id
+        )
+
+        get_db.add(new_vote)
+
+    get_db.commit()
+
+    return {"message": "Vote recorded successfully"}
+
+@app.get("/api/polls/{poll_id}/candidates")
+def get_candidates_by_poll(poll_id: int, db: Session = Depends(get_db)):
+
+    candidates = get_db.query(Candidate).filter(
+        Candidate.poll_id == poll_id
+    ).all()
+
+    positions = {}
+
+    for c in candidates:
+
+        if c.position not in positions:
+            positions[c.position] = []
+
+        positions[c.position].append({
+            "candidate_id": c.candidate_id,
+            "name": c.name,
+            "party": c.party,
+            "bio": c.bio,
+            "photo": c.photo_url
+        })
+
+    return positions
+
