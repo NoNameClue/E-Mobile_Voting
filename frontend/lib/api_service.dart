@@ -1,39 +1,62 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'api_config.dart'; // Using your dynamic config
 
 class ApiService {
 
-  static const String baseUrl = "http://127.0.0.1:8000";
+  // 1. NEW: Check if user already voted
+  static Future<bool> checkVoteStatus(int pollId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('jwt_token') ?? '';
 
-  static Future submitVote(Map selections) async {
+    final response = await http.get(
+      Uri.parse("${ApiConfig.baseUrl}/api/vote/status/$pollId"),
+      headers: {
+        "Authorization": "Bearer $token",
+      },
+    );
 
-  final response = await http.post(
-    Uri.parse("$baseUrl/api/vote"),
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: jsonEncode({
-      "poll_id": 1,
-      "candidate_ids": selections.values.toList()
-    }),
-  );
-
-  if (response.statusCode != 200) {
-    throw Exception("Vote failed");  
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body)['has_voted'];
+    }
+    return false;
   }
 
-}
+  // 2. UPDATED: Accepts dynamic pollId
+  static Future submitVote(int pollId, Map selections) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('jwt_token') ?? '';
 
-  static Future<List<dynamic>> fetchCandidates() async {
+    final response = await http.post(
+      Uri.parse("${ApiConfig.baseUrl}/api/vote"),
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $token",
+      },
+      body: jsonEncode({
+        "poll_id": pollId, 
+        "candidate_ids": selections.values.toList()
+      }),
+    );
 
-  final response = await http.get(
-    Uri.parse("$baseUrl/api/candidates")
-  );
-
-  if (response.statusCode == 200) {
-    return jsonDecode(response.body);
-  } else {
-    throw Exception("Failed to load candidates");
+    if (response.statusCode == 403) {
+      throw Exception("ALREADY_VOTED");
+    } else if (response.statusCode != 200) {
+      throw Exception("Server Error");  
+    }
   }
-}
+
+  // 3. UPDATED: Accepts dynamic pollId
+  static Future<List<dynamic>> fetchCandidates(int pollId) async {
+    final response = await http.get(
+      Uri.parse("${ApiConfig.baseUrl}/api/candidates/$pollId")
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception("Failed to load candidates");
+    }
+  }
 }

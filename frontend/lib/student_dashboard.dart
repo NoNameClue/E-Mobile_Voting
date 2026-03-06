@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'api_config.dart'; // Make sure you have this import!
+import 'api_config.dart'; 
 import 'voting_page.dart';
 
 // ========================================================================
@@ -99,19 +99,6 @@ class _StudentDashboardState extends State<StudentDashboard> {
               },
             ),
 
-            // ListTile(
-            //   leading: const Icon(Icons.how_to_vote),
-            //   title: const Text("Vote"),
-            //   onTap: () {
-            //     Navigator.push(
-            //       context,
-            //       MaterialPageRoute(
-            //         builder: (_) => const VotingPage(),
-            //       ),
-            //     );
-            //   },
-            // ),
-
           const Spacer(),
           ListTile(
             leading: const Icon(Icons.logout, color: Colors.white),
@@ -132,7 +119,14 @@ class _StudentDashboardState extends State<StudentDashboard> {
       case 0:
         return const LiveScoreboardView(); 
       case 1:
-        return const VotingPage();
+        // Pass the function to VotingPage so it can switch the view back to the scoreboard!
+        return VotingPage(
+          onReturnToDashboard: () {
+            setState(() {
+              selectedIndex = 0; // 0 is the Dashboard/Scoreboard index
+            });
+          },
+        );
       case 2:
         return const Center(child: Text("Registered Parties Coming Soon", style: TextStyle(fontSize: 24)));
       case 3:
@@ -190,7 +184,7 @@ class _LiveScoreboardViewState extends State<LiveScoreboardView> {
     _fetchLiveResults(); 
   }
 
-  // --- THE MAGIC: FETCHING FROM MYSQL ---
+  // --- FETCHING REAL LIVE DATA FROM MYSQL ---
   Future<void> _fetchLiveResults() async {
     try {
       // 1. Get all polls
@@ -215,11 +209,11 @@ class _LiveScoreboardViewState extends State<LiveScoreboardView> {
 
       int activePollId = publishedPoll['poll_id'];
 
-      // 3. Fetch Candidates for this poll
-      final candResponse = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/candidates/$activePollId'));
-      if (candResponse.statusCode != 200) throw Exception("Failed to fetch candidates");
+      // 3. Fetch LIVE RESULTS for this poll (Instead of just candidates)
+      final resultsResponse = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/polls/$activePollId/results'));
+      if (resultsResponse.statusCode != 200) throw Exception("Failed to fetch results");
       
-      final List<dynamic> rawCandidates = jsonDecode(candResponse.body);
+      final List<dynamic> liveResults = jsonDecode(resultsResponse.body);
 
       // 4. Group candidates by position
       Map<String, List<CandidateResult>> groupedData = {
@@ -231,7 +225,7 @@ class _LiveScoreboardViewState extends State<LiveScoreboardView> {
         "PIO": [],
       };
 
-      for (var c in rawCandidates) {
+      for (var c in liveResults) {
         String pos = c['position'];
         if (groupedData.containsKey(pos)) {
           groupedData[pos]!.add(
@@ -239,8 +233,8 @@ class _LiveScoreboardViewState extends State<LiveScoreboardView> {
               id: c['candidate_id'],
               name: c['name'],
               party: c['party_name'] ?? 'Independent',
-              votes: 0,       // Defaulting to 0 until voting feature is built
-              percentage: 0.0 // Defaulting to 0% until voting feature is built
+              votes: c['votes'],           // <--- REAL DATA FROM API
+              percentage: c['percentage']  // <--- REAL DATA FROM API
             )
           );
         }
@@ -249,7 +243,7 @@ class _LiveScoreboardViewState extends State<LiveScoreboardView> {
       // 5. Convert Map to List of PositionRanking
       List<PositionRanking> formattedRankings = [];
       groupedData.forEach((position, candidatesList) {
-        // Sort by votes (even though they are all 0 right now)
+        // Sort by votes from highest to lowest
         candidatesList.sort((a, b) => b.votes.compareTo(a.votes));
         formattedRankings.add(PositionRanking(positionName: position, candidates: candidatesList));
       });
@@ -422,6 +416,16 @@ class _LiveScoreboardViewState extends State<LiveScoreboardView> {
           const SizedBox(height: 15),
           Text(candidate.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           Text(candidate.party, style: const TextStyle(color: Colors.black54, fontSize: 12)),
+          const SizedBox(height: 5),
+          // Added a small label to easily see the vote count on the podiums
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: primaryColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text("${candidate.votes} Votes", style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold, fontSize: 12)),
+          )
         ],
       ),
     );

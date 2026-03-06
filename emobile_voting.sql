@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Mar 05, 2026 at 04:57 PM
+-- Generation Time: Mar 06, 2026 at 04:24 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -115,7 +115,8 @@ CREATE TABLE `users` (
 
 INSERT INTO `users` (`user_id`, `student_number`, `full_name`, `email`, `course`, `password_hash`, `role`, `is_active`, `created_at`) VALUES
 (1, '1234567', 'admin', 'admin@gmail.com', 'Bachelor of Science in Information Technology', '$2b$12$vA6OiFcyAsubvvWXREDwH.HqtAsUiT5vSY4mhz8Qjqp3ZbIW/Bi6O', 'Admin', 1, '2026-03-05 05:05:42'),
-(2, '1234569', 'John Doe', 'john@gmail.com', 'Bachelor of Entrepreneurship', '$2b$12$360IOqztfaCmmocJV0/h9.4BM35A9z7fNkKuelUq5wf2256LTFmBS', 'Student', 1, '2026-03-05 06:13:25');
+(2, '1234569', 'John Doe', 'john@gmail.com', 'Bachelor of Entrepreneurship', '$2b$12$360IOqztfaCmmocJV0/h9.4BM35A9z7fNkKuelUq5wf2256LTFmBS', 'Student', 1, '2026-03-05 06:13:25'),
+(3, '8765431', 'jane', 'jane@gmail.com', 'Bachelor of Arts in English Language', '$2b$12$h0pCbjD.508PV/JF8aUNQOVWoh0nY.7lQIsAfrfCtK6XlFe5EsMIW', 'Student', 1, '2026-03-06 07:15:50');
 
 -- --------------------------------------------------------
 
@@ -130,6 +131,24 @@ CREATE TABLE `votes` (
   `candidate_id` int(11) NOT NULL,
   `cast_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `votes`
+--
+
+INSERT INTO `votes` (`vote_id`, `user_id`, `poll_id`, `candidate_id`, `cast_at`) VALUES
+(9, 2, 1, 1, '2026-03-06 06:50:19'),
+(10, 2, 1, 14, '2026-03-06 06:50:19'),
+(11, 2, 1, 21, '2026-03-06 06:50:19'),
+(12, 2, 1, 4, '2026-03-06 06:50:19'),
+(13, 2, 1, 11, '2026-03-06 06:50:19'),
+(14, 2, 1, 12, '2026-03-06 06:50:19'),
+(15, 3, 1, 19, '2026-03-06 07:16:45'),
+(16, 3, 1, 8, '2026-03-06 07:16:45'),
+(17, 3, 1, 21, '2026-03-06 07:16:45'),
+(18, 3, 1, 4, '2026-03-06 07:16:45'),
+(19, 3, 1, 11, '2026-03-06 07:16:45'),
+(20, 3, 1, 24, '2026-03-06 07:16:45');
 
 --
 -- Indexes for dumped tables
@@ -161,7 +180,6 @@ ALTER TABLE `users`
 --
 ALTER TABLE `votes`
   ADD PRIMARY KEY (`vote_id`),
-  ADD UNIQUE KEY `unique_vote_per_poll` (`user_id`,`poll_id`),
   ADD KEY `poll_id` (`poll_id`),
   ADD KEY `candidate_id` (`candidate_id`);
 
@@ -185,13 +203,13 @@ ALTER TABLE `polls`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `votes`
 --
 ALTER TABLE `votes`
-  MODIFY `vote_id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `vote_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
 
 --
 -- Constraints for dumped tables

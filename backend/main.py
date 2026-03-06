@@ -9,6 +9,7 @@ import jwt
 import enum
 from datetime import datetime, timedelta
 from typing import Optional
+from sqlalchemy import func
 
 # ==========================================
 # 1. SETUP & CONFIGURATION
@@ -212,6 +213,43 @@ def delete_poll(poll_id: int, db: Session = Depends(get_db)):
     db.commit()
     return {"message": "Poll deleted successfully"}
 
+@app.get("/api/polls/{poll_id}/results")
+def get_poll_results(poll_id: int, db: Session = Depends(get_db)):
+    # 1. Join candidates and votes to get the count for each candidate
+    results = db.query(
+        Candidate,
+        func.count(Vote.vote_id).label('vote_count')
+    ).outerjoin(
+        Vote, Candidate.candidate_id == Vote.candidate_id
+    ).filter(
+        Candidate.poll_id == poll_id
+    ).group_by(
+        Candidate.candidate_id
+    ).all()
+
+    # 2. Calculate the total votes cast per position (for accurate percentages)
+    position_totals = {}
+    for cand, count in results:
+        position_totals[cand.position] = position_totals.get(cand.position, 0) + count
+
+    # 3. Format the data for the Flutter frontend
+    response = []
+    for cand, count in results:
+        pos_total = position_totals.get(cand.position, 0)
+        percentage = (count / pos_total * 100) if pos_total > 0 else 0.0
+        
+        response.append({
+            "candidate_id": cand.candidate_id,
+            "name": cand.name,
+            "party_name": cand.party_name,
+            "position": cand.position,
+            "photo_url": cand.photo_url,
+            "votes": count,
+            "percentage": round(percentage, 1) # Example: 45.5
+        })
+
+    return response
+
 # --- USER & ADMIN ENDPOINTS ---
 @app.get("/api/admin/students")
 def get_students(db: Session = Depends(get_db)):
@@ -374,14 +412,8 @@ def delete_candidate(candidate_id: int, db: Session = Depends(get_db)):
     return {"message": "Candidate deleted successfully"}
 
 @app.post("/api/vote")
-def submit_vote(vote: VoteRequest, db: Session = Depends(get_db)):
-
-    try:
-        payload = jwt.decode(vote.token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id = payload.get("sub")
-    except:
-        raise HTTPException(status_code=401, detail="Invalid token")
-
+def submit_vote(vote: VoteRequest, user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    # 1. Securely check if the user already voted in this specific poll
     existing_vote = db.query(Vote).filter(
         Vote.user_id == user_id,
         Vote.poll_id == vote.poll_id
@@ -390,19 +422,27 @@ def submit_vote(vote: VoteRequest, db: Session = Depends(get_db)):
     if existing_vote:
         raise HTTPException(status_code=403, detail="User already voted")
 
+    # 2. If no duplicate found, insert the votes
     for candidate_id in vote.candidate_ids:
-
         new_vote = Vote(
             user_id=user_id,
             poll_id=vote.poll_id,
             candidate_id=candidate_id
         )
-
         db.add(new_vote)
 
     db.commit()
-
     return {"message": "Vote recorded successfully"}
+
+@app.get("/api/vote/status/{poll_id}")
+def check_vote_status(poll_id: int, user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    # Check if a vote record already exists for this user in this poll
+    existing_vote = db.query(Vote).filter(
+        Vote.user_id == user_id,
+        Vote.poll_id == poll_id
+    ).first()
+    
+    return {"has_voted": existing_vote is not None}
 
 @app.get("/api/polls/{poll_id}/candidates")
 def get_candidates_by_poll(poll_id: int, db: Session = Depends(get_db)):
