@@ -21,6 +21,8 @@ class _VotingPageState extends State<VotingPage> {
 
   bool isLoading = true;
 
+  String? errorMessage;
+
   @override
   void initState() {
     super.initState();
@@ -62,6 +64,7 @@ class _VotingPageState extends State<VotingPage> {
 
       setState(() {
         isLoading = false;
+        errorMessage = "Failed to load candidates.";
       });
 
     }
@@ -132,6 +135,18 @@ class _VotingPageState extends State<VotingPage> {
       );
     }
 
+    if (errorMessage != null) {
+      return Scaffold(
+        body: Center(child: Text(errorMessage!)),
+      );
+    }
+
+    if (positions.isEmpty) {
+      return const Scaffold(
+        body: Center(child: Text("No candidates available.")),
+      );
+    }
+
     String currentPosition = positions[currentPositionIndex];
 
     List candidates = candidatesByPosition[currentPosition]!;
@@ -156,25 +171,83 @@ class _VotingPageState extends State<VotingPage> {
 
                 var candidate = candidates[index];
 
-                return RadioListTile<int>(
+                return Card(
 
-                  title: Text(candidate["name"]),
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
 
-                  subtitle: Text(candidate["party"] ?? ""),
+                  child: RadioListTile<int>(
 
-                  value: candidate["candidate_id"],
+                    contentPadding: const EdgeInsets.all(12),
 
-                  groupValue: selections[currentPosition],
+                    title: Row(
+                      children: [
 
-                  onChanged: (value) {
+                        // Candidate Photo
+                        CircleAvatar(
+                          radius: 25,
+                          backgroundImage: candidate["photo"] != null
+                              ? NetworkImage(candidate["photo"])
+                              : null,
+                          child: candidate["photo"] == null
+                              ? const Icon(Icons.person)
+                              : null,
+                        ),
 
-                    setState(() {
+                        const SizedBox(width: 12),
 
-                      selections[currentPosition] = value;
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
 
-                    });
+                              Text(
+                                candidate["name"],
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
 
-                  },
+                              Text(
+                                candidate["party"] ?? "",
+                                style: const TextStyle(
+                                  color: Colors.grey,
+                                ),
+                              ),
+
+                              if (candidate["bio"] != null)
+                                Text(
+                                  candidate["bio"],
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                  ),
+                                ),
+
+                            ],
+                          ),
+                        ),
+
+                      ],
+                    ),
+
+                    value: candidate["candidate_id"],
+
+                    groupValue: selections[currentPosition],
+
+                    onChanged: (value) {
+
+                      setState(() {
+
+                        selections[currentPosition] = value;
+
+                      });
+
+                    },
+
+                  ),
 
                 );
 
@@ -188,16 +261,22 @@ class _VotingPageState extends State<VotingPage> {
 
             padding: const EdgeInsets.all(16),
 
-            child: ElevatedButton(
+            child: SizedBox(
 
-              onPressed: selections[currentPosition] == null
-                  ? null
-                  : nextPosition,
+              width: double.infinity,
 
-              child: Text(
-                currentPositionIndex == positions.length - 1
-                    ? "Submit Ballot"
-                    : "Next",
+              child: ElevatedButton(
+
+                onPressed: selections[currentPosition] == null
+                    ? null
+                    : nextPosition,
+
+                child: Text(
+                  currentPositionIndex == positions.length - 1
+                      ? "Submit Ballot"
+                      : "Next",
+                ),
+
               ),
 
             ),

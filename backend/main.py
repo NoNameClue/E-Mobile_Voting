@@ -428,3 +428,31 @@ def get_candidates_by_poll(poll_id: int, db: Session = Depends(get_db)):
 
     return positions
 
+@app.route('/api/candidates', methods=['GET'])
+def get_candidates():
+
+    cursor = get_db.connection.cursor()
+
+    cursor.execute("""
+        SELECT candidate_id, name, position
+        FROM candidates
+        ORDER BY position
+    """)
+
+    rows = cursor.fetchall()
+
+    candidates = {}
+
+    for row in rows:
+        candidate_id, name, position = row
+
+        if position not in candidates:
+            candidates[position] = []
+
+        candidates[position].append({
+            "id": candidate_id,
+            "name": name
+        })
+
+    return jsonify(candidates)
+
