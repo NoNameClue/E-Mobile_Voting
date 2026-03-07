@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'manage_polls.dart';
 import 'manage_users.dart';
 import 'manage_candidates.dart';
+import 'election_result.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -161,7 +162,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       case 6:
         return const Center(child: Text("Live Scoreboard"));
       case 7:
-        return const Center(child: Text("Election Result"));
+        return const ElectionResultPage();
       default:
         return buildDashboardHome();
     }

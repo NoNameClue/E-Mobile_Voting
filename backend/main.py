@@ -496,3 +496,95 @@ def get_candidates():
 
     return jsonify(candidates)
 
+@app.get("/api/polls/{poll_id}/report")
+def get_poll_report(poll_id: int, db: Session = Depends(get_db)):
+    # 1. Total Active Students (Eligible Voters base)
+    total_active_students = db.query(User).filter(
+        User.role == "Student", 
+        User.is_active == True
+    ).count()
+
+    # 2. Total Turnout (STRICTLY counts ONLY votes from currently active users)
+    total_voters = db.query(Vote.user_id).join(
+        User, Vote.user_id == User.user_id
+    ).filter(
+        Vote.poll_id == poll_id,
+        User.is_active == True  # <--- Strips out deactivated accounts' votes
+    ).distinct().count()
+
+    turnout_percentage = (total_voters / total_active_students * 100) if total_active_students > 0 else 0.0
+
+    # 3. Get Vote Counts per candidate (STRICTLY from active users only)
+    active_votes = db.query(
+        Vote.candidate_id, 
+        func.count(Vote.vote_id).label('count')
+    ).join(
+        User, Vote.user_id == User.user_id
+    ).filter(
+        Vote.poll_id == poll_id,
+        User.is_active == True  # <--- Prevents deactivated users from inflating candidate scores
+    ).group_by(Vote.candidate_id).all()
+    
+    # Create a quick dictionary to map candidate_id -> total active votes
+    vote_dict = {cand_id: count for cand_id, count in active_votes}
+
+    # Fetch all candidates assigned to this poll
+    candidates = db.query(Candidate).filter(Candidate.poll_id == poll_id).all()
+
+    # 4. Group by Position
+    positions_data = {}
+    for cand in candidates:
+        if cand.position not in positions_data:
+            positions_data[cand.position] = []
+        
+        # If they have no active votes, it defaults to 0
+        c_votes = vote_dict.get(cand.candidate_id, 0)
+        
+        positions_data[cand.position].append({
+            "candidate_id": cand.candidate_id,
+            "name": cand.name,
+            "party_name": cand.party_name,
+            "votes": c_votes
+        })
+
+    # 5. Process math for each position (Winner, Margin, Percentages)
+    report_details = []
+    for pos, cands in positions_data.items():
+        # Sort descending by votes
+        cands.sort(key=lambda x: x["votes"], reverse=True)
+        total_pos_votes = sum(c["votes"] for c in cands)
+        
+        processed_cands = []
+        for i, c in enumerate(cands):
+            pct = (c["votes"] / total_pos_votes * 100) if total_pos_votes > 0 else 0.0
+            
+            # Margin calculation (Winner vs 2nd place)
+            margin = 0.0
+            if i == 0 and len(cands) > 1: # If this is the winner
+                runner_up_pct = (cands[1]["votes"] / total_pos_votes * 100) if total_pos_votes > 0 else 0.0
+                margin = pct - runner_up_pct
+
+            processed_cands.append({
+                "rank": i + 1,
+                "name": c["name"],
+                "party_name": c["party_name"],
+                "votes": c["votes"],
+                "percentage": round(pct, 2),
+                "is_winner": i == 0 and c["votes"] > 0, # Winner if they have at least 1 vote
+                "margin": round(margin, 2) if i == 0 else None
+            })
+        
+        report_details.append({
+            "position": pos,
+            "total_votes": total_pos_votes,
+            "candidates": processed_cands
+        })
+
+    return {
+        "summary": {
+            "total_active_students": total_active_students,
+            "total_voters": total_voters,
+            "turnout_percentage": round(turnout_percentage, 2)
+        },
+        "results": report_details
+    }
