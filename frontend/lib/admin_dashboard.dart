@@ -3,6 +3,7 @@ import 'manage_polls.dart';
 import 'manage_users.dart';
 import 'manage_candidates.dart';
 import 'election_result.dart';
+import 'admin_live_scoreboard.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -160,7 +161,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       case 5:
         return const Center(child: Text("Registration for Candidates"));
       case 6:
-        return const Center(child: Text("Live Scoreboard"));
+        return const AdminLiveScoreboard();
       case 7:
         return const ElectionResultPage();
       default:

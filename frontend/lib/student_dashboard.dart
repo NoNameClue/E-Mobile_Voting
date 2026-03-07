@@ -119,11 +119,10 @@ class _StudentDashboardState extends State<StudentDashboard> {
       case 0:
         return const LiveScoreboardView(); 
       case 1:
-        // Pass the function to VotingPage so it can switch the view back to the scoreboard!
         return VotingPage(
           onReturnToDashboard: () {
             setState(() {
-              selectedIndex = 0; // 0 is the Dashboard/Scoreboard index
+              selectedIndex = 0; 
             });
           },
         );
@@ -184,16 +183,13 @@ class _LiveScoreboardViewState extends State<LiveScoreboardView> {
     _fetchLiveResults(); 
   }
 
-  // --- FETCHING REAL LIVE DATA FROM MYSQL ---
   Future<void> _fetchLiveResults() async {
     try {
-      // 1. Get all polls
       final pollResponse = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/polls'));
       if (pollResponse.statusCode != 200) throw Exception("Failed to fetch polls");
       
       final List<dynamic> polls = jsonDecode(pollResponse.body);
       
-      // 2. Find the published one
       final publishedPoll = polls.firstWhere(
         (p) => p['is_published'] == true || p['is_published'] == 1,
         orElse: () => null,
@@ -209,13 +205,11 @@ class _LiveScoreboardViewState extends State<LiveScoreboardView> {
 
       int activePollId = publishedPoll['poll_id'];
 
-      // 3. Fetch LIVE RESULTS for this poll (Instead of just candidates)
       final resultsResponse = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/polls/$activePollId/results'));
       if (resultsResponse.statusCode != 200) throw Exception("Failed to fetch results");
       
       final List<dynamic> liveResults = jsonDecode(resultsResponse.body);
 
-      // 4. Group candidates by position
       Map<String, List<CandidateResult>> groupedData = {
         "President": [],
         "Vice President": [],
@@ -233,17 +227,15 @@ class _LiveScoreboardViewState extends State<LiveScoreboardView> {
               id: c['candidate_id'],
               name: c['name'],
               party: c['party_name'] ?? 'Independent',
-              votes: c['votes'],           // <--- REAL DATA FROM API
-              percentage: c['percentage']  // <--- REAL DATA FROM API
+              votes: c['votes'], 
+              percentage: c['percentage'] 
             )
           );
         }
       }
 
-      // 5. Convert Map to List of PositionRanking
       List<PositionRanking> formattedRankings = [];
       groupedData.forEach((position, candidatesList) {
-        // Sort by votes from highest to lowest
         candidatesList.sort((a, b) => b.votes.compareTo(a.votes));
         formattedRankings.add(PositionRanking(positionName: position, candidates: candidatesList));
       });
@@ -310,8 +302,51 @@ class _LiveScoreboardViewState extends State<LiveScoreboardView> {
     final currentRanking = _rankingsData[_currentPositionIndex];
     final candidates = currentRanking.candidates;
 
+    // --- RESPONSIVE CHECK ---
+    bool isMobile = MediaQuery.of(context).size.width < 900;
+
+    // UI SECTION 1: PODIUM
+    Widget podiumSection = Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            if (candidates.length >= 2) _buildPodiumPerson(candidates[1], 2, isMobile),
+            if (candidates.isNotEmpty) _buildPodiumPerson(candidates[0], 1, isMobile),
+            if (candidates.length >= 3) _buildPodiumPerson(candidates[2], 3, isMobile),
+          ],
+        ),
+        const SizedBox(height: 20),
+        const Text("top 3 candidates for the\nposition", textAlign: TextAlign.center, style: TextStyle(fontSize: 16, color: Colors.grey)),
+      ],
+    );
+
+    // UI SECTION 2: OTHER CANDIDATES LIST
+    Widget otherCandidatesSection = Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text("other candidates for the position", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          const SizedBox(height: 20),
+          Expanded(
+            child: ListView.builder(
+              itemCount: candidates.length > 3 ? candidates.length - 3 : 0,
+              itemBuilder: (context, index) {
+                final candidate = candidates[index + 3];
+                return _buildOtherCandidateListTile(candidate);
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+
     return Padding(
-      padding: const EdgeInsets.all(30.0),
+      padding: EdgeInsets.all(isMobile ? 15.0 : 30.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -320,7 +355,7 @@ class _LiveScoreboardViewState extends State<LiveScoreboardView> {
           
           Center(
             child: Container(
-              width: 350,
+              width: isMobile ? double.infinity : 350,
               decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.grey.shade300)),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -329,7 +364,7 @@ class _LiveScoreboardViewState extends State<LiveScoreboardView> {
                     icon: const Icon(Icons.arrow_left),
                     onPressed: _currentPositionIndex == 0 ? null : _goToPreviousPosition,
                   ),
-                  Text(currentRanking.positionName.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  Flexible(child: Text(currentRanking.positionName.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16), textAlign: TextAlign.center, overflow: TextOverflow.ellipsis)),
                   IconButton(
                     icon: const Icon(Icons.arrow_right),
                     onPressed: _currentPositionIndex == _rankingsData.length - 1 ? null : _goToNextPosition,
@@ -345,79 +380,57 @@ class _LiveScoreboardViewState extends State<LiveScoreboardView> {
                 ? const Center(
                     child: Text("No candidates assigned to this position yet.", style: TextStyle(fontSize: 18, color: Colors.grey)),
                   )
-                : Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // --- LEFT SIDE: TOP 3 PODIUM ---
-                      Expanded(
-                        flex: 2,
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                if (candidates.length >= 2) _buildPodiumPerson(candidates[1], 2),
-                                _buildPodiumPerson(candidates[0], 1),
-                                if (candidates.length >= 3) _buildPodiumPerson(candidates[2], 3),
-                              ],
-                            ),
-                            const SizedBox(height: 20),
-                            const Text("top 3 candidates for the\nposition", textAlign: TextAlign.center, style: TextStyle(fontSize: 16, color: Colors.grey)),
-                          ],
-                        ),
+                : isMobile
+                    // --- MOBILE LAYOUT: STACKED (COLUMN) ---
+                    ? Column(
+                        children: [
+                          podiumSection,
+                          const SizedBox(height: 30),
+                          Expanded(child: otherCandidatesSection),
+                        ],
+                      )
+                    // --- WEB LAYOUT: SIDE-BY-SIDE (ROW) ---
+                    : Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(flex: 2, child: podiumSection),
+                          const SizedBox(width: 40),
+                          Expanded(flex: 1, child: otherCandidatesSection),
+                        ],
                       ),
-
-                      const SizedBox(width: 40),
-
-                      // --- RIGHT SIDE: OTHER CANDIDATES ---
-                      Expanded(
-                        flex: 1,
-                        child: Container(
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text("other candidates for the position", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                              const SizedBox(height: 20),
-                              Expanded(
-                                child: ListView.builder(
-                                  itemCount: candidates.length > 3 ? candidates.length - 3 : 0,
-                                  itemBuilder: (context, index) {
-                                    final candidate = candidates[index + 3];
-                                    return _buildOtherCandidateListTile(candidate);
-                                  },
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildPodiumPerson(CandidateResult candidate, int rank) {
+  // --- PASS isMobile TO ADJUST AVATAR SIZES FOR SMALL SCREENS ---
+  Widget _buildPodiumPerson(CandidateResult candidate, int rank, bool isMobile) {
+    // Slightly smaller avatars on mobile so they don't squish
+    double avatarRadius = rank == 1 ? (isMobile ? 50 : 60) : (isMobile ? 40 : 50);
+    double iconSize = rank == 1 ? (isMobile ? 60 : 80) : (isMobile ? 50 : 60);
+
     return GestureDetector(
       onTap: () => _showPercentagePopup(candidate),
       child: Column(
         children: [
           CircleAvatar(
-            radius: rank == 1 ? 60 : 50, 
+            radius: avatarRadius, 
             backgroundColor: Colors.white,
-            child: Icon(Icons.person, size: rank == 1 ? 80 : 60, color: Colors.grey),
+            child: Icon(Icons.person, size: iconSize, color: Colors.grey),
           ),
           const SizedBox(height: 15),
-          Text(candidate.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-          Text(candidate.party, style: const TextStyle(color: Colors.black54, fontSize: 12)),
+          Text(
+            candidate.name, 
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: isMobile ? 14 : 16),
+            textAlign: TextAlign.center,
+          ),
+          Text(
+            candidate.party, 
+            style: TextStyle(color: Colors.black54, fontSize: isMobile ? 10 : 12),
+            textAlign: TextAlign.center,
+          ),
           const SizedBox(height: 5),
-          // Added a small label to easily see the vote count on the podiums
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
@@ -451,7 +464,6 @@ class _LiveScoreboardViewState extends State<LiveScoreboardView> {
                   alignment: Alignment.centerLeft,
                   child: Container(
                     height: 20,
-                    // Prevent rendering error if percentage is 0
                     width: candidate.percentage > 0 ? (candidate.percentage / 100) * 200 : 0, 
                     decoration: BoxDecoration(color: Colors.green, borderRadius: BorderRadius.circular(10)),
                     padding: const EdgeInsets.symmetric(horizontal: 8),

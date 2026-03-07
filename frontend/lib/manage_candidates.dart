@@ -139,20 +139,25 @@ class _ManageCandidatesState extends State<ManageCandidates> {
     );
   }
 
-  @override
+@override
   Widget build(BuildContext context) {
     final filteredCandidates = _candidates.where((c) => c['position'] == _selectedPosition).toList();
+    // Check if the screen is narrow (like a mobile phone)
+    bool isMobile = MediaQuery.of(context).size.width < 700;
 
     return Padding(
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          // FIX 1: Changed Row to Wrap so the dropdown moves to the next line on mobile
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 15,
+            runSpacing: 15,
             children: [
-              const Text("Manage Candidates", style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
-              
+              const Text("Manage Candidates", style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
               if (_polls.isNotEmpty)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 15),
@@ -177,18 +182,22 @@ class _ManageCandidatesState extends State<ManageCandidates> {
                 ),
             ],
           ),
-          const SizedBox(height: 5),
+          const SizedBox(height: 10),
           const Text("Edit or remove existing candidates from the selected poll.", style: TextStyle(color: Colors.grey, fontSize: 16)),
           const SizedBox(height: 20),
           
           Expanded(
-            child: Row(
+            // FIX 2: Switch between Row (Desktop) and Column (Mobile) dynamically
+            child: Flex(
+              direction: isMobile ? Axis.vertical : Axis.horizontal,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  width: 250,
-                  margin: const EdgeInsets.only(right: 20),
+                  width: isMobile ? double.infinity : 250,
+                  height: isMobile ? 80 : null, // Give it a fixed height on mobile so it can scroll horizontally
+                  margin: EdgeInsets.only(right: isMobile ? 0 : 20, bottom: isMobile ? 20 : 0),
                   child: ListView.builder(
+                    scrollDirection: isMobile ? Axis.horizontal : Axis.vertical,
                     itemCount: _positions.length,
                     itemBuilder: (context, index) {
                       final position = _positions[index];
@@ -196,14 +205,16 @@ class _ManageCandidatesState extends State<ManageCandidates> {
                       return InkWell(
                         onTap: () => setState(() => _selectedPosition = position),
                         child: Container(
-                          margin: const EdgeInsets.only(bottom: 10),
+                          margin: EdgeInsets.only(bottom: isMobile ? 0 : 10, right: isMobile ? 10 : 0),
                           padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 15),
                           decoration: BoxDecoration(
                             color: isSelected ? const Color(0xFFD6D6D6) : Colors.grey[200],
                             border: isSelected ? Border.all(color: Colors.grey, width: 2) : null,
                             borderRadius: BorderRadius.circular(4),
                           ),
-                          child: Text('Candidates for $position', style: TextStyle(fontSize: 14, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
+                          child: Center(
+                            child: Text('Candidates for $position', style: TextStyle(fontSize: 14, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
+                          ),
                         ),
                       );
                     },
@@ -223,9 +234,9 @@ class _ManageCandidatesState extends State<ManageCandidates> {
                           child: _isLoading 
                             ? const Center(child: CircularProgressIndicator())
                             : _polls.isEmpty 
-                                ? const Center(child: Text("Please create a Poll first in Poll Management.", style: TextStyle(fontSize: 16)))
+                                ? const Center(child: Text("Please create a Poll first.", style: TextStyle(fontSize: 16)))
                                 : filteredCandidates.isEmpty
-                                  ? const Center(child: Text("No candidates added for this position yet.\n(Use the 'Registration for Candidates' module to add them).", textAlign: TextAlign.center))
+                                  ? const Center(child: Text("No candidates added yet.", textAlign: TextAlign.center))
                                   : ListView.builder(
                                       itemCount: filteredCandidates.length,
                                       itemBuilder: (context, index) {
@@ -233,21 +244,13 @@ class _ManageCandidatesState extends State<ManageCandidates> {
                                         return Card(
                                           margin: const EdgeInsets.only(bottom: 10),
                                           child: ListTile(
-                                            title: Text(candidate['name'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                                            title: Text(candidate['name'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                                             subtitle: Text('${candidate['party_name']} • ${candidate['course_year']}'),
                                             trailing: Row(
                                               mainAxisSize: MainAxisSize.min,
                                               children: [
-                                                // EDIT BUTTON ADDED HERE
-                                                IconButton(
-                                                  icon: const Icon(Icons.edit, color: Colors.blue),
-                                                  onPressed: () => _showEditCandidateDialog(candidate),
-                                                ),
-                                                // DELETE BUTTON
-                                                IconButton(
-                                                  icon: const Icon(Icons.delete, color: Colors.red),
-                                                  onPressed: () => _deleteCandidate(candidate['candidate_id']),
-                                                ),
+                                                IconButton(icon: const Icon(Icons.edit, color: Colors.blue), onPressed: () => _showEditCandidateDialog(candidate)),
+                                                IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: () => _deleteCandidate(candidate['candidate_id'])),
                                               ],
                                             ),
                                           ),
