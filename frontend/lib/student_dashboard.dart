@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'api_config.dart'; 
 import 'voting_page.dart';
+import 'my_votes_view.dart';
 
 // ========================================================================
 // 1. DATA MODELS 
@@ -129,7 +130,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
       case 2:
         return const Center(child: Text("Registered Parties Coming Soon", style: TextStyle(fontSize: 24)));
       case 3:
-        return const Center(child: Text("My Votes History Coming Soon", style: TextStyle(fontSize: 24)));
+        return const MyVotesView();
       case 4:
         return const Center(child: Text("FAQs", style: TextStyle(fontSize: 24)));
       case 5:

@@ -719,3 +719,45 @@ async def register_candidate(
     db.commit()
 
     return {"message": "Candidate registered successfully!"}
+
+@app.get("/api/users/me/votes")
+def get_my_votes(current_user: dict = Depends(get_current_user_id), db: Session = Depends(get_db)):
+
+    user_id = current_user["id"]
+
+    results = db.execute("""
+        SELECT 
+            p.poll_id,
+            p.title AS poll_title,
+            c.name,
+            c.position,
+            c.party,
+            c.photo
+        FROM votes v
+        JOIN candidates c ON v.candidate_id = c.candidate_id
+        JOIN polls p ON v.poll_id = p.poll_id
+        WHERE v.user_id = :user_id
+        ORDER BY p.poll_id DESC
+    """, {"user_id": user_id}).fetchall()
+
+    polls = {}
+
+    for r in results:
+
+        poll_id = r.poll_id
+
+        if poll_id not in polls:
+            polls[poll_id] = {
+                "poll_id": poll_id,
+                "poll_title": r.poll_title,
+                "candidates": []
+            }
+
+        polls[poll_id]["candidates"].append({
+            "name": r.name,
+            "position": r.position,
+            "party": r.party,
+            "photo": r.photo
+        })
+
+    return list(polls.values())

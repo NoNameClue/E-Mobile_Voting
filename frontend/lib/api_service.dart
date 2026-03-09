@@ -5,6 +5,8 @@ import 'api_config.dart'; // Using your dynamic config
 
 class ApiService {
 
+  // static const String baseUrl = "http://127.0.0.1:8000";
+
   // 1. NEW: Check if user already voted
   static Future<bool> checkVoteStatus(int pollId) async {
     final prefs = await SharedPreferences.getInstance();
@@ -58,5 +60,27 @@ class ApiService {
     } else {
       throw Exception("Failed to load candidates");
     }
+  }
+
+  static Future<List<dynamic>> getMyVotes() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('jwt_token') ?? '';
+
+    // Replace this URL with the actual URL to your backend
+    final url = Uri.parse("http://127.0.0.1:8000/api/users/me/votes");
+
+    final response = await http.get(
+      url,
+      headers: {
+        "Authorization": "Bearer $token",
+        "Content-Type": "application/json"
+      },
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+
+    throw Exception("Failed to load votes");
   }
 }
