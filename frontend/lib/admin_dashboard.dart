@@ -4,7 +4,8 @@ import 'manage_users.dart';
 import 'manage_candidates.dart';
 import 'election_result.dart';
 import 'admin_live_scoreboard.dart';
-
+import 'manage_parties.dart';
+import 'candidates_registration.dart';
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
 
@@ -24,7 +25,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     "Users / Account Control",
     "Manage Polls",
     "Manage Candidates",
-    "Registered Parties",
+    "Manage Parties",
     "Registration for Candidates",
     "Live Scoreboard",
     "Election Result",
@@ -157,9 +158,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
       case 3:
         return const ManageCandidates();
       case 4:
-        return const Center(child: Text("Registered Parties"));
+        return const ManageParties();
       case 5:
-        return const Center(child: Text("Registration for Candidates"));
+        return const CandidatesRegistration();
       case 6:
         return const AdminLiveScoreboard();
       case 7:

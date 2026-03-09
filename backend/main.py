@@ -1,4 +1,7 @@
-from fastapi import Security, FastAPI, HTTPException, Depends
+import os
+import shutil
+from fastapi import Security, FastAPI, HTTPException, Depends, File, UploadFile, Form
+from fastapi.staticfiles import StaticFiles
 from fastapi.security import HTTPBearer
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -24,6 +27,10 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 app = FastAPI()
+# Create uploads folder if it doesn't exist
+os.makedirs("uploads", exist_ok=True)
+# Mount it so images can be accessed publicly via /uploads/filename.jpg
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 security = HTTPBearer()
 
 def get_db():
@@ -152,6 +159,14 @@ class Vote(Base):
 class VoteRequest(BaseModel):
     poll_id: int
     candidate_ids: list[int]
+
+class Party(Base):
+    __tablename__ = "parties"
+    party_id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), unique=True, nullable=False)
+
+class PartyCreate(BaseModel):
+    name: str
 
 # ==========================================
 # 3. API ENDPOINTS
@@ -588,3 +603,119 @@ def get_poll_report(poll_id: int, db: Session = Depends(get_db)):
         },
         "results": report_details
     }
+
+@app.post("/api/parties")
+def create_party(party: PartyCreate, db: Session = Depends(get_db)):
+    if not party.name or not party.name.strip():
+        raise HTTPException(status_code=400, detail="Party name cannot be empty.")
+    
+    # Check for duplicates
+    existing_party = db.query(Party).filter(func.lower(Party.name) == party.name.lower().strip()).first()
+    if existing_party:
+        raise HTTPException(status_code=400, detail="Error: A party with this name already exists.")
+    
+    new_party = Party(name=party.name.strip())
+    db.add(new_party)
+    db.commit()
+    
+    return {"message": "Party created successfully"}
+
+@app.get("/api/parties/lineups")
+def get_party_lineups(db: Session = Depends(get_db)):
+    parties = db.query(Party).all()
+    # Standard positions to check against
+    standard_positions = ["President", "Vice President", "Secretary", "Treasurer", "Auditor", "PIO"]
+    
+    results = []
+    for p in parties:
+        # Fetch all candidates currently claiming this party name
+        cands = db.query(Candidate).filter(Candidate.party_name == p.name).all()
+        
+        # Build the lineup dictionary with default nulls
+        lineup = {pos: None for pos in standard_positions}
+        
+        for c in cands:
+            if c.position in lineup:
+                lineup[c.position] = c.name
+                
+        results.append({
+            "party_id": p.party_id,
+            "party_name": p.name,
+            "lineup": lineup
+        })
+        
+    return results
+
+@app.delete("/api/parties/{party_id}")
+def delete_party(party_id: int, db: Session = Depends(get_db)):
+    party_to_delete = db.query(Party).filter(Party.party_id == party_id).first()
+    
+    if not party_to_delete:
+        raise HTTPException(status_code=404, detail="Party not found.")
+        
+    # Prevent deletion of the default 'Independent' party
+    if party_to_delete.name.lower() == "independent":
+        raise HTTPException(status_code=403, detail="Cannot delete the Independent party.")
+
+    # 1. Safely migrate existing candidates to 'Independent'
+    db.query(Candidate).filter(Candidate.party_name == party_to_delete.name).update(
+        {"party_name": "Independent"}, synchronize_session=False
+    )
+    
+    # 2. Delete the party
+    db.delete(party_to_delete)
+    db.commit()
+    
+    return {"message": "Party deleted and candidates migrated to Independent."}
+
+@app.post("/api/candidates")
+async def register_candidate(
+    poll_id: int = Form(...),
+    name: str = Form(...),
+    position: str = Form(...),
+    party_name: str = Form(...),
+    course_year: str = Form(...),
+    description_platform: Optional[str] = Form(None),
+    photo: Optional[UploadFile] = File(None),
+    db: Session = Depends(get_db)
+):
+    # 1. Validation Check: No duplicate positions in the same party (except Independent)
+    if party_name.lower() != "independent":
+        existing = db.query(Candidate).filter(
+            Candidate.poll_id == poll_id,
+            Candidate.party_name == party_name,
+            Candidate.position == position
+        ).first()
+
+        if existing:
+            raise HTTPException(status_code=400, detail=f"The {party_name} already has a {position} registered.")
+
+    # 2. Handle Photo Upload
+    photo_url = None
+    if photo and photo.filename:
+        from datetime import datetime
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        safe_filename = photo.filename.replace(" ", "_")
+        file_path = f"uploads/{timestamp}_{safe_filename}"
+
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(photo.file, buffer)
+
+        # Store the URL path in the database
+        photo_url = f"{file_path}"
+
+    # 3. Save to Database
+    new_candidate = Candidate(
+        poll_id=poll_id,
+        name=name,
+        position=position,
+        party_name=party_name,
+        course_year=course_year,
+        description_platform=description_platform, # or 'bio' depending on your exact SQLAlchemy model name
+        photo_url=photo_url
+    )
+
+    db.add(new_candidate)
+    db.commit()
+
+    return {"message": "Candidate registered successfully!"}
