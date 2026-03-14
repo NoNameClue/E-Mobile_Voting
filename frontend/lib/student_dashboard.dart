@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart'; // ADDED
 import 'dart:convert';
 import 'api_config.dart'; 
 import 'voting_page.dart';
 import 'my_votes_view.dart';
+import 'view_parties.dart';
 
 // ========================================================================
 // 1. DATA MODELS 
@@ -50,16 +52,60 @@ class _StudentDashboardState extends State<StudentDashboard> {
   int selectedIndex = 0;
   final Color primaryColor = const Color(0xFF000B6B);
 
+  // Profile States
+  String _studentName = "Loading...";
+  String _studentId = "";
+  String? _profilePicUrl;
+
   final List<String> menuItems = [
     "Dashboard",
     "Vote",
-    "Registered Party",
+    "View Parties",
     "My Votes",
     "FAQs",
     "About Us",
   ];
 
-  void logout() {
+  @override
+  void initState() {
+    super.initState();
+    _fetchUserProfile(); // Fetch user data on load
+  }
+
+  // Fetch the logged-in user's profile
+  Future<void> _fetchUserProfile() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('jwt_token') ?? '';
+
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/api/users/me'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (mounted) {
+          setState(() {
+            _studentName = data['full_name'] ?? 'Student';
+            _studentId = data['student_number'] ?? '';
+            _profilePicUrl = data['profile_pic_url'];
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _studentName = "Student";
+        });
+      }
+    }
+  }
+
+  void logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear(); // Clear token on logout
+    if (!mounted) return;
     Navigator.pushReplacementNamed(context, '/login');
   }
 
@@ -83,9 +129,26 @@ class _StudentDashboardState extends State<StudentDashboard> {
             ),
           ),
           const SizedBox(height: 40),
-          const CircleAvatar(radius: 30, backgroundColor: Colors.white, child: Icon(Icons.person, size: 40, color: Colors.grey)),
+          
+          // DYNAMIC PROFILE PICTURE
+          CircleAvatar(
+            radius: 30, 
+            backgroundColor: Colors.white, 
+            backgroundImage: _profilePicUrl != null 
+                ? NetworkImage('${ApiConfig.baseUrl}/$_profilePicUrl') 
+                : null,
+            child: _profilePicUrl == null 
+                ? const Icon(Icons.person, size: 40, color: Colors.grey)
+                : null,
+          ),
           const SizedBox(height: 10),
-          const Text("Student Name\nID: 1234567", textAlign: TextAlign.center, style: TextStyle(color: Colors.white)),
+          
+          // DYNAMIC NAME & ID
+          Text(
+            "$_studentName\nID: $_studentId", 
+            textAlign: TextAlign.center, 
+            style: const TextStyle(color: Colors.white)
+          ),
           const SizedBox(height: 40),
 
           for (int i = 0; i < menuItems.length; i++)
@@ -128,7 +191,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
           },
         );
       case 2:
-        return const Center(child: Text("Registered Parties Coming Soon", style: TextStyle(fontSize: 24)));
+        return const ViewParties();
       case 3:
         return const MyVotesView();
       case 4:

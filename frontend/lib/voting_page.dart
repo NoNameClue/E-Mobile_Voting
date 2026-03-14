@@ -27,6 +27,7 @@ class _VotingPageState extends State<VotingPage> {
   String activePollTitle = "";
   bool hasAlreadyVoted = false;
   bool isJustSubmitted = false; 
+  bool isExpired = false; // <--- NEW STATE ADDED
 
   @override
   void initState() {
@@ -53,7 +54,16 @@ class _VotingPageState extends State<VotingPage> {
       }
 
       activePollId = publishedPoll['poll_id'];
-      activePollTitle = publishedPoll['title']; // Save the title for the UI
+      activePollTitle = publishedPoll['title']; 
+      
+      // CHECK IF POLL IS EXPIRED
+      if (publishedPoll['status'] == 'Ended') {
+        setState(() {
+          isExpired = true;
+          isLoading = false;
+        });
+        return; // Stop here, no need to load candidates or check vote status
+      }
 
       // 2. CHECK IF USER HAS ALREADY VOTED
       bool voted = await ApiService.checkVoteStatus(activePollId!);
@@ -67,7 +77,7 @@ class _VotingPageState extends State<VotingPage> {
         return; 
       }
 
-      // 3. IF NOT VOTED, LOAD CANDIDATES
+      // 3. IF NOT VOTED AND NOT EXPIRED, LOAD CANDIDATES
       List candidates = await ApiService.fetchCandidates(activePollId!);
       Map<String, List<dynamic>> grouped = {};
 
@@ -105,7 +115,6 @@ class _VotingPageState extends State<VotingPage> {
 
   void submitBallot() async {
     try {
-      // Now passing the dynamic poll ID
       await ApiService.submitVote(activePollId!, selections);
 
       if (!mounted) return;
@@ -123,7 +132,26 @@ class _VotingPageState extends State<VotingPage> {
 
   @override
   Widget build(BuildContext context) {
-    // --- 1. NEW "ALREADY VOTED" LOCK SCREEN ---
+    if (isLoading) return const Center(child: CircularProgressIndicator(color: Color(0xFF000B6B)));
+    if (errorMessage != null) return Center(child: Text(errorMessage!, style: const TextStyle(fontSize: 18)));
+
+    // --- STATE 1: EXPIRED POLL ---
+    if (isExpired) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.timer_off, size: 80, color: Colors.red),
+            SizedBox(height: 20),
+            Text("This ballot has expired/ended.", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+            SizedBox(height: 10),
+            Text("Voting is no longer allowed for this election.", style: TextStyle(color: Colors.grey)),
+          ],
+        ),
+      );
+    }
+
+    // --- STATE 2: ALREADY VOTED ---
     if (hasAlreadyVoted && !isJustSubmitted) {
       return Center(
         child: Column(
@@ -157,7 +185,7 @@ class _VotingPageState extends State<VotingPage> {
       );
     }
 
-    // --- 2. THANK YOU PAGE (JUST SUBMITTED) ---
+    // --- STATE 3: THANK YOU PAGE (JUST SUBMITTED) ---
     if (isJustSubmitted) {
       return Center(
         child: Column(
@@ -190,10 +218,8 @@ class _VotingPageState extends State<VotingPage> {
       );
     }
 
-    // --- 3. NORMAL VOTING BALLOT ---
-    if (isLoading) return const Center(child: CircularProgressIndicator());
-    if (errorMessage != null) return Center(child: Text(errorMessage!));
-    if (positions.isEmpty) return const Center(child: Text("No candidates available for this election."));
+    // --- STATE 4: NORMAL VOTING BALLOT ---
+    if (positions.isEmpty) return const Center(child: Text("No candidates available for this election.", style: TextStyle(fontSize: 18)));
 
     String currentPosition = positions[currentPositionIndex];
     List candidates = candidatesByPosition[currentPosition]!;
@@ -211,9 +237,11 @@ class _VotingPageState extends State<VotingPage> {
             itemBuilder: (context, index) {
               var candidate = candidates[index];
               return Card(
+                elevation: 1,
                 margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                 child: RadioListTile<int>(
                   contentPadding: const EdgeInsets.all(12),
+                  activeColor: const Color(0xFF000B6B),
                   title: Row(
                     children: [
                       CircleAvatar(

@@ -3,8 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'auth_layout.dart'; 
-import 'widgets/modern_text_field.dart';
-import 'api_config.dart'; // IMPORTANT IMPORT
+import 'api_config.dart'; 
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -18,15 +17,20 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   
-  bool _isLoading = false;
+  bool _isLoading = false; // <-- Ensures it doesn't start in a loading state
+  bool _obscurePassword = true; 
   String _errorMessage = '';
 
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
-    setState(() { _isLoading = true; _errorMessage = ''; });
+    
+    setState(() { 
+      _isLoading = true; 
+      _errorMessage = ''; 
+    });
 
     try {
-      // NETWORK SMART: Uses ApiConfig.baseUrl
+      // Added a 10-second timeout so the app doesn't hang if Python isn't running
       final response = await http.post(
         Uri.parse('${ApiConfig.baseUrl}/api/login'),
         headers: {'Content-Type': 'application/json'},
@@ -34,7 +38,7 @@ class _LoginPageState extends State<LoginPage> {
           'email': _emailController.text.trim(),
           'password': _passwordController.text.trim(),
         }),
-      );
+      ).timeout(const Duration(seconds: 10));
 
       final data = jsonDecode(response.body);
 
@@ -53,9 +57,11 @@ class _LoginPageState extends State<LoginPage> {
         setState(() => _errorMessage = data['detail'] ?? 'Login failed');
       }
     } catch (e) {
-      setState(() => _errorMessage = 'Cannot connect to server. Is Python running?');
+      setState(() => _errorMessage = 'Cannot connect to server. Is your Python backend running?');
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -74,27 +80,53 @@ class _LoginPageState extends State<LoginPage> {
             const SizedBox(height: 30),
             
             if (_errorMessage.isNotEmpty)
-              Padding(padding: const EdgeInsets.only(bottom: 15), child: Text(_errorMessage, style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold))),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 15), 
+                child: Text(_errorMessage, style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold))
+              ),
 
-            ModernTextField(
+            // Standardized Email Field
+            TextFormField(
               controller: _emailController,
-              hintText: 'University Email',
-              validator: (value) => value!.isEmpty ? 'Email is required' : null,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                hintText: 'University Email',
+                hintStyle: const TextStyle(color: Colors.white54),
+                filled: true,
+                fillColor: Colors.white.withOpacity(0.1),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+              ),
+              validator: (value) => value == null || value.isEmpty ? 'Email is required' : null,
             ),
-            ModernTextField(
-              controller: _passwordController,
-              hintText: 'Password',
-              isPassword: true,
-              validator: (value) => value!.isEmpty ? 'Password is required' : null,
-            ),
-            
             const SizedBox(height: 15),
+
+            // Standardized Password Field with Toggle
+            TextFormField(
+              controller: _passwordController,
+              obscureText: _obscurePassword,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                hintText: 'Password',
+                hintStyle: const TextStyle(color: Colors.white54),
+                filled: true,
+                fillColor: Colors.white.withOpacity(0.1),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                suffixIcon: IconButton(
+                  icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility, color: Colors.white70),
+                  onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                ),
+              ),
+              validator: (value) => value == null || value.isEmpty ? 'Password is required' : null,
+            ),
+            const SizedBox(height: 25),
             
+            // Sign In Button (FIXED)
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.amber,
+                  disabledBackgroundColor: Colors.amber.withOpacity(0.7), // Prevents button from going dark!
                   foregroundColor: const Color(0xFF000B6B),
                   padding: const EdgeInsets.symmetric(vertical: 18),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

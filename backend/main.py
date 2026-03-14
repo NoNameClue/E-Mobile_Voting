@@ -83,7 +83,8 @@ class User(Base):
     password_hash = Column(String(255), nullable=False)
     role = Column(SQLEnum('Admin', 'Student'), default='Student')
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow) # <--- ADD THIS LINE
+    created_at = Column(DateTime, default=datetime.utcnow) 
+    profile_pic_url = Column(String(255), nullable=True) # <--- ADDED
 
 # --- POLL MODEL (UPDATED FOR PUBLISHING) ---
 class Poll(Base):
@@ -175,7 +176,17 @@ class PartyCreate(BaseModel):
 # --- POLL ENDPOINTS ---
 @app.get("/api/polls")
 def get_polls(db: Session = Depends(get_db)):
-    return db.query(Poll).all()
+    polls = db.query(Poll).all()
+    current_time = datetime.utcnow()
+    
+    for p in polls:
+        # Automatically expire polls if end_time has passed
+        if p.end_time < current_time and p.status != "Ended":
+            p.status = "Ended"
+            db.commit()
+            db.refresh(p)
+            
+    return polls
 
 @app.post("/api/polls")
 def create_poll(poll: PollCreate, db: Session = Depends(get_db)):
@@ -265,6 +276,16 @@ def get_poll_results(poll_id: int, db: Session = Depends(get_db)):
 
     return response
 
+@app.get("/api/polls/{poll_id}/summary")
+def get_poll_summary(poll_id: int, db: Session = Depends(get_db)):
+    total_candidates = db.query(Candidate).filter(Candidate.poll_id == poll_id).count()
+    parties_count = db.query(func.count(func.distinct(Candidate.party_name))).filter(Candidate.poll_id == poll_id).scalar()
+    
+    return {
+        "total_candidates": total_candidates,
+        "total_parties": parties_count or 0
+    }
+
 # --- USER & ADMIN ENDPOINTS ---
 @app.get("/api/admin/students")
 def get_students(db: Session = Depends(get_db)):
@@ -282,6 +303,18 @@ def get_students(db: Session = Depends(get_db)):
         }
         for student in students
     ]
+    
+@app.get("/api/users/me")
+def get_user_profile(user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.user_id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return {
+        "full_name": user.full_name,
+        "student_number": user.student_number,
+        "profile_pic_url": user.profile_pic_url
+    }
 
 @app.put("/api/admin/students/{student_id}/toggle")
 def toggle_student(student_id: str, db: Session = Depends(get_db)):
@@ -304,35 +337,43 @@ def toggle_student(student_id: str, db: Session = Depends(get_db)):
     }
 
 @app.post("/api/register")
-def register(request: RegisterRequest, db: Session = Depends(get_db)):
-    # 1. Check if email or student number already exists
-    if db.query(User).filter(User.email == request.email).first():
+async def register(
+    student_number: str = Form(...),
+    full_name: str = Form(...),
+    email: str = Form(...),
+    course: str = Form(...),
+    password: str = Form(...),
+    photo: Optional[UploadFile] = File(None), # <--- ADDED
+    db: Session = Depends(get_db)
+):
+    if db.query(User).filter(User.email == email).first():
         raise HTTPException(status_code=400, detail="Email is already registered")
-    
-    if db.query(User).filter(User.student_number == request.student_number).first():
+    if db.query(User).filter(User.student_number == student_number).first():
         raise HTTPException(status_code=400, detail="Student number is already registered")
     
-    raw_password = request.password
-    if len(raw_password.encode('utf-8')) > 72:
-        raw_password = raw_password[:72]
+    photo_url = None
+    if photo and photo.filename:
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        safe_filename = photo.filename.replace(" ", "_")
+        file_path = f"uploads/user_{timestamp}_{safe_filename}"
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(photo.file, buffer)
+        photo_url = file_path
+
+    hashed_password = pwd_context.hash(password)
     
-    # 2. Securely hash the password
-    hashed_password = pwd_context.hash(request.password)
-    
-    # 3. Create the new user object
     new_user = User(
-        student_number=request.student_number,
-        full_name=request.full_name,
-        email=request.email,
-        course=request.course,
+        student_number=student_number,
+        full_name=full_name,
+        email=email,
+        course=course,
         password_hash=hashed_password,
+        profile_pic_url=photo_url, # <--- ADDED
         is_active=True
     )
     
-    # 4. Save to the database
     db.add(new_user)
     db.commit()
-    
     return {"message": "Registration successful! You can now log in."}
 
 @app.post("/api/login")
@@ -389,20 +430,33 @@ def get_candidates(db: Session = Depends(get_db)):
     ]
     
 @app.put("/api/candidates/{candidate_id}")
-def update_candidate(candidate_id: int, candidate_update: CandidateUpdate, db: Session = Depends(get_db)):
+async def update_candidate(
+    candidate_id: int, 
+    name: str = Form(...),
+    party_name: str = Form(...),
+    course_year: str = Form(...),
+    description_platform: str = Form(""),
+    photo: Optional[UploadFile] = File(None),
+    db: Session = Depends(get_db)
+):
     db_candidate = db.query(Candidate).filter(Candidate.candidate_id == candidate_id).first()
-    
     if not db_candidate:
         raise HTTPException(status_code=404, detail="Candidate not found")
 
-    # Update only the fields that were provided
-    update_data = candidate_update.dict(exclude_unset=True)
-    for key, value in update_data.items():
-        setattr(db_candidate, key, value)
+    db_candidate.name = name
+    db_candidate.party_name = party_name
+    db_candidate.course_year = course_year
+    db_candidate.description_platform = description_platform
+
+    if photo and photo.filename:
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        safe_filename = photo.filename.replace(" ", "_")
+        file_path = f"uploads/{timestamp}_{safe_filename}"
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(photo.file, buffer)
+        db_candidate.photo_url = file_path
 
     db.commit()
-    db.refresh(db_candidate)
-    
     return {"message": "Candidate updated successfully"}
 
 @app.get("/api/candidates/{poll_id}")
@@ -721,43 +775,37 @@ async def register_candidate(
     return {"message": "Candidate registered successfully!"}
 
 @app.get("/api/users/me/votes")
-def get_my_votes(current_user: dict = Depends(get_current_user_id), db: Session = Depends(get_db)):
-
-    user_id = current_user["id"]
-
-    results = db.execute("""
-        SELECT 
-            p.poll_id,
-            p.title AS poll_title,
-            c.name,
-            c.position,
-            c.party,
-            c.photo
-        FROM votes v
-        JOIN candidates c ON v.candidate_id = c.candidate_id
-        JOIN polls p ON v.poll_id = p.poll_id
-        WHERE v.user_id = :user_id
-        ORDER BY p.poll_id DESC
-    """, {"user_id": user_id}).fetchall()
+def get_my_votes(user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    
+    # Using SQLAlchemy ORM safely joins the tables and prevents raw SQL column errors
+    results = db.query(Vote, Candidate, Poll).join(
+        Candidate, Vote.candidate_id == Candidate.candidate_id
+    ).join(
+        Poll, Vote.poll_id == Poll.poll_id
+    ).filter(
+        Vote.user_id == user_id
+    ).order_by(
+        Poll.poll_id.desc()
+    ).all()
 
     polls = {}
 
-    for r in results:
-
-        poll_id = r.poll_id
+    for vote, candidate, poll in results:
+        poll_id = poll.poll_id
 
         if poll_id not in polls:
             polls[poll_id] = {
                 "poll_id": poll_id,
-                "poll_title": r.poll_title,
+                "poll_title": poll.title,
                 "candidates": []
             }
 
+        # Format exactly as Flutter expects it
         polls[poll_id]["candidates"].append({
-            "name": r.name,
-            "position": r.position,
-            "party": r.party,
-            "photo": r.photo
+            "name": candidate.name,
+            "position": candidate.position,
+            "party": candidate.party_name, # Map DB column 'party_name' to Flutter's 'party'
+            "photo": candidate.photo_url   # Map DB column 'photo_url' to Flutter's 'photo'
         })
 
     return list(polls.values())

@@ -229,6 +229,27 @@ class _ManagePollsState extends State<ManagePolls> {
                                   ),
                                   
                                 const SizedBox(width: 10),
+                                
+                                // NEW INFO SUMMARY BUTTON ADDED HERE
+                                IconButton(
+                                  icon: const Icon(Icons.info, color: Colors.amber), 
+                                  onPressed: () async {
+                                    final res = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/polls/${poll['poll_id']}/summary'));
+                                    if (res.statusCode == 200) {
+                                      final data = jsonDecode(res.body);
+                                      if (!mounted) return;
+                                      showDialog(
+                                        context: context,
+                                        builder: (context) => AlertDialog(
+                                          title: Text(poll['title']),
+                                          content: Text("Total Candidates: ${data['total_candidates']}\nParticipating Parties: ${data['total_parties']}"),
+                                          actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text("Close"))],
+                                        )
+                                      );
+                                    }
+                                  }
+                                ),
+
                                 IconButton(icon: const Icon(Icons.edit, color: Colors.blue), onPressed: () => _showPollDialog(existingPoll: poll)),
                                 IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: () => _deletePoll(poll['poll_id'])),
                               ],

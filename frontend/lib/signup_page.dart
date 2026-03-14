@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:image_picker/image_picker.dart';
 import 'auth_layout.dart'; 
 import 'widgets/modern_text_field.dart';
 import 'api_config.dart'; 
@@ -26,6 +28,15 @@ class _SignupPageState extends State<SignupPage> {
   String _errorMessage = '';
   String _successMessage = '';
 
+  // New state variables for Password Visibility and Image Upload
+  bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
+  
+  // Cross-platform Image variables (Safe for Web & Mobile)
+  XFile? _profileImage;
+  Uint8List? _profileImageBytes;
+  final ImagePicker _picker = ImagePicker();
+
   final List<String> _courses = [
     'Bachelor of Science in Tourism Management',
     'Bachelor of Science in Hospitality Management',
@@ -46,6 +57,18 @@ class _SignupPageState extends State<SignupPage> {
     'Bachelor of Secondary Education'
   ];
 
+  // Pick Image Function using bytes
+  Future<void> _pickImage() async {
+    final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+    if (pickedFile != null) {
+      final bytes = await pickedFile.readAsBytes(); // Safe for Web & Mobile
+      setState(() {
+        _profileImage = pickedFile;
+        _profileImageBytes = bytes;
+      });
+    }
+  }
+
   Future<void> _handleRegister() async {
     // This triggers all the validators in the form
     if (!_formKey.currentState!.validate()) return;
@@ -58,18 +81,28 @@ class _SignupPageState extends State<SignupPage> {
     setState(() { _isLoading = true; _errorMessage = ''; _successMessage = ''; });
 
     try {
-      final response = await http.post(
-        Uri.parse('${ApiConfig.baseUrl}/api/register'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'student_number': _studentIdController.text.trim(),
-          'full_name': _nameController.text.trim(),
-          'email': _emailController.text.trim(),
-          'course': _selectedCourse, 
-          'password': _passwordController.text.trim(),
-        }),
-      );
+      // Create MultipartRequest instead of standard POST
+      var request = http.MultipartRequest('POST', Uri.parse('${ApiConfig.baseUrl}/api/register'));
+      
+      // Add text fields
+      request.fields['student_number'] = _studentIdController.text.trim();
+      request.fields['full_name'] = _nameController.text.trim();
+      request.fields['email'] = _emailController.text.trim();
+      request.fields['course'] = _selectedCourse!;
+      request.fields['password'] = _passwordController.text.trim();
 
+      // Add image file if selected (using bytes for web compatibility)
+      if (_profileImage != null && _profileImageBytes != null) {
+        request.files.add(http.MultipartFile.fromBytes(
+          'photo', 
+          _profileImageBytes!,
+          filename: _profileImage!.name,
+        ));
+      }
+
+      // Send the request
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200) {
@@ -81,6 +114,10 @@ class _SignupPageState extends State<SignupPage> {
           _selectedCourse = null; 
           _passwordController.clear(); 
           _confirmPasswordController.clear();
+          
+          // Clear image variables
+          _profileImage = null; 
+          _profileImageBytes = null; 
         });
       } else {
         setState(() => _errorMessage = data['detail'] ?? 'Registration failed');
@@ -121,21 +158,33 @@ class _SignupPageState extends State<SignupPage> {
             if (_successMessage.isNotEmpty)
               Padding(padding: const EdgeInsets.only(bottom: 15), child: Text(_successMessage, style: const TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold))),
 
+            // Profile Picture Picker UI
+            Center(
+              child: GestureDetector(
+                onTap: _pickImage,
+                child: CircleAvatar(
+                  radius: 40,
+                  backgroundColor: Colors.white.withOpacity(0.1),
+                  backgroundImage: _profileImageBytes != null ? MemoryImage(_profileImageBytes!) : null,
+                  child: _profileImageBytes == null
+                      ? const Icon(Icons.camera_alt, color: Colors.white70, size: 30)
+                      : null,
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+
             ModernTextField(
               controller: _nameController,
               hintText: 'Full Name (e.g. John Doe)',
               validator: (value) => value == null || value.isEmpty ? 'Name is required' : null,
             ),
             
-            // ==========================================
-            // VALIDATION: EMAIL 
-            // ==========================================
             ModernTextField(
               controller: _emailController,
               hintText: 'University Email',
               validator: (value) {
                 if (value == null || value.isEmpty) return 'Email is required';
-                // Regex checks for characters before @, after @, and ending in .com or .edu.ph
                 if (!RegExp(r'^.+@.+\.(com|edu\.ph)$').hasMatch(value)) {
                   return 'Must end in .com or .edu.ph';
                 }
@@ -146,9 +195,6 @@ class _SignupPageState extends State<SignupPage> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ==========================================
-                // VALIDATION: STUDENT ID (7 DIGITS)
-                // ==========================================
                 Expanded(
                   flex: 2, 
                   child: ModernTextField(
@@ -156,10 +202,7 @@ class _SignupPageState extends State<SignupPage> {
                     hintText: 'Student ID',
                     validator: (value) {
                       if (value == null || value.isEmpty) return 'Required';
-                      // Regex checks that the input is exactly 7 digits long, no letters allowed
-                      if (!RegExp(r'^\d{7}$').hasMatch(value)) {
-                        return 'Must be 7 digits';
-                      }
+                      if (!RegExp(r'^\d{7}$').hasMatch(value)) return 'Must be 7 digits';
                       return null;
                     },
                   ),
@@ -205,33 +248,53 @@ class _SignupPageState extends State<SignupPage> {
               ],
             ),
 
-            // ==========================================
-            // VALIDATION: PASSWORD (MIN 12 CHARACTERS)
-            // ==========================================
-            ModernTextField(
+            // Password Field with Visibility Toggle
+            TextFormField(
               controller: _passwordController,
-              hintText: 'Password',
-              isPassword: true,
+              obscureText: _obscurePassword,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                hintText: 'Password',
+                hintStyle: const TextStyle(color: Colors.white54),
+                filled: true,
+                fillColor: Colors.white.withOpacity(0.1),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                suffixIcon: IconButton(
+                  icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility, color: Colors.white70),
+                  onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                ),
+              ),
               validator: (value) {
                 if (value == null || value.isEmpty) return 'Password is required';
                 if (value.length < 12) return 'Min. 12 characters required';
                 return null;
               },
             ),
+            const SizedBox(height: 15), // Spacing
             
-            // Confirm Password validation updated to check match instantly
-            ModernTextField(
+            // Confirm Password Field with Visibility Toggle
+            TextFormField(
               controller: _confirmPasswordController,
-              hintText: 'Confirm Password',
-              isPassword: true,
+              obscureText: _obscureConfirmPassword,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                hintText: 'Confirm Password',
+                hintStyle: const TextStyle(color: Colors.white54),
+                filled: true,
+                fillColor: Colors.white.withOpacity(0.1),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                suffixIcon: IconButton(
+                  icon: Icon(_obscureConfirmPassword ? Icons.visibility_off : Icons.visibility, color: Colors.white70),
+                  onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+                ),
+              ),
               validator: (value) {
                 if (value == null || value.isEmpty) return 'Please confirm';
                 if (value != _passwordController.text) return 'Passwords do not match';
                 return null;
               },
             ),
-            
-            const SizedBox(height: 10),
+            const SizedBox(height: 15),
             
             SizedBox(
               width: double.infinity,
