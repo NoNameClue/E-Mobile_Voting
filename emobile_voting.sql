@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Mar 06, 2026 at 04:24 PM
+-- Generation Time: Mar 14, 2026 at 12:35 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -33,7 +33,7 @@ CREATE TABLE `candidates` (
   `name` varchar(100) NOT NULL,
   `position` varchar(50) NOT NULL,
   `party_name` varchar(50) DEFAULT 'Independent',
-  `course_year` varchar(50) NOT NULL,
+  `course_year` varchar(80) NOT NULL,
   `description_platform` text DEFAULT NULL,
   `photo_url` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -66,7 +66,27 @@ INSERT INTO `candidates` (`candidate_id`, `poll_id`, `name`, `position`, `party_
 (21, 1, 'Jessica Day', 'Secretary', 'Innovators Bloc', 'BSEE 3', 'Streamlining communication so students never miss an important deadline again.', NULL),
 (22, 1, 'Mason Clark', 'Treasurer', 'Innovators Bloc', 'BSCS 4', 'Introducing a cashless payment option for the university cafeteria and bookstore.', NULL),
 (23, 1, 'Amelia Lewis', 'Auditor', 'Innovators Bloc', 'BSIT 2', 'Modernizing the tracking of student council expenses using blockchain concepts.', NULL),
-(24, 1, 'Logan Walker', 'PIO', 'Innovators Bloc', 'BSCE 1', 'Establishing an official student podcast to discuss campus life, academics, and pop culture.', NULL);
+(24, 1, 'Logan Walker', 'PIO', 'Innovators Bloc', 'BSCE 1', 'Establishing an official student podcast to discuss campus life, academics, and pop culture.', NULL),
+(25, 2, 'Mark Fischbach', 'President', 'Example Party 1', 'BS Information Technology - 3rd Year', 'VOTE FOR ME 2027', 'uploads/20260309121522_Untitled_design_(1).png');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `parties`
+--
+
+CREATE TABLE `parties` (
+  `party_id` int(11) NOT NULL,
+  `name` varchar(100) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `parties`
+--
+
+INSERT INTO `parties` (`party_id`, `name`) VALUES
+(3, 'Example Party 1'),
+(1, 'Independent');
 
 -- --------------------------------------------------------
 
@@ -89,7 +109,7 @@ CREATE TABLE `polls` (
 
 INSERT INTO `polls` (`poll_id`, `title`, `start_time`, `end_time`, `status`, `is_published`) VALUES
 (1, 'ELECTION 2026', '2026-03-13 13:38:00', '2026-03-31 13:38:00', 'Published', 1),
-(2, 'ELECTION 2027', '2026-04-01 23:47:00', '2026-04-02 23:47:00', 'Draft', 0);
+(2, 'ELECTION 2027', '2026-04-01 23:47:00', '2026-04-02 23:47:00', 'Published', 1);
 
 -- --------------------------------------------------------
 
@@ -106,17 +126,19 @@ CREATE TABLE `users` (
   `password_hash` varchar(255) NOT NULL,
   `role` enum('Admin','Student') DEFAULT 'Student',
   `is_active` tinyint(1) DEFAULT 1,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `profile_pic_url` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `users`
 --
 
-INSERT INTO `users` (`user_id`, `student_number`, `full_name`, `email`, `course`, `password_hash`, `role`, `is_active`, `created_at`) VALUES
-(1, '1234567', 'admin', 'admin@gmail.com', 'Bachelor of Science in Information Technology', '$2b$12$vA6OiFcyAsubvvWXREDwH.HqtAsUiT5vSY4mhz8Qjqp3ZbIW/Bi6O', 'Admin', 1, '2026-03-05 05:05:42'),
-(2, '1234569', 'John Doe', 'john@gmail.com', 'Bachelor of Entrepreneurship', '$2b$12$360IOqztfaCmmocJV0/h9.4BM35A9z7fNkKuelUq5wf2256LTFmBS', 'Student', 1, '2026-03-05 06:13:25'),
-(3, '8765431', 'jane', 'jane@gmail.com', 'Bachelor of Arts in English Language', '$2b$12$h0pCbjD.508PV/JF8aUNQOVWoh0nY.7lQIsAfrfCtK6XlFe5EsMIW', 'Student', 1, '2026-03-06 07:15:50');
+INSERT INTO `users` (`user_id`, `student_number`, `full_name`, `email`, `course`, `password_hash`, `role`, `is_active`, `created_at`, `profile_pic_url`) VALUES
+(1, '1234567', 'admin', 'admin@gmail.com', 'Bachelor of Science in Information Technology', '$2b$12$vA6OiFcyAsubvvWXREDwH.HqtAsUiT5vSY4mhz8Qjqp3ZbIW/Bi6O', 'Admin', 1, '2026-03-05 05:05:42', NULL),
+(2, '1234569', 'John Doe', 'john@gmail.com', 'Bachelor of Entrepreneurship', '$2b$12$360IOqztfaCmmocJV0/h9.4BM35A9z7fNkKuelUq5wf2256LTFmBS', 'Student', 1, '2026-03-05 06:13:25', NULL),
+(3, '8765431', 'jane', 'jane@gmail.com', 'Bachelor of Arts in English Language', '$2b$12$h0pCbjD.508PV/JF8aUNQOVWoh0nY.7lQIsAfrfCtK6XlFe5EsMIW', 'Student', 1, '2026-03-06 07:15:50', NULL),
+(4, '7654321', 'carl', 'carl@gmail.com', 'Bachelor of Science in Tourism Management', '$2b$12$qpBeD9Ldcrd82e4q4EKL0.aNk2NlxhL1slWGvGKJdvY/aS22fUBeC', 'Student', 1, '2026-03-14 01:17:06', 'uploads/user_20260314171705_116018138_4056146044458962_8949890354613494763_n.jpg');
 
 -- --------------------------------------------------------
 
@@ -148,7 +170,13 @@ INSERT INTO `votes` (`vote_id`, `user_id`, `poll_id`, `candidate_id`, `cast_at`)
 (17, 3, 1, 21, '2026-03-06 07:16:45'),
 (18, 3, 1, 4, '2026-03-06 07:16:45'),
 (19, 3, 1, 11, '2026-03-06 07:16:45'),
-(20, 3, 1, 24, '2026-03-06 07:16:45');
+(20, 3, 1, 24, '2026-03-06 07:16:45'),
+(21, 4, 1, 1, '2026-03-14 01:47:57'),
+(22, 4, 1, 14, '2026-03-14 01:47:57'),
+(23, 4, 1, 21, '2026-03-14 01:47:57'),
+(24, 4, 1, 10, '2026-03-14 01:47:57'),
+(25, 4, 1, 5, '2026-03-14 01:47:57'),
+(26, 4, 1, 18, '2026-03-14 01:47:57');
 
 --
 -- Indexes for dumped tables
@@ -160,6 +188,13 @@ INSERT INTO `votes` (`vote_id`, `user_id`, `poll_id`, `candidate_id`, `cast_at`)
 ALTER TABLE `candidates`
   ADD PRIMARY KEY (`candidate_id`),
   ADD KEY `poll_id` (`poll_id`);
+
+--
+-- Indexes for table `parties`
+--
+ALTER TABLE `parties`
+  ADD PRIMARY KEY (`party_id`),
+  ADD UNIQUE KEY `name` (`name`);
 
 --
 -- Indexes for table `polls`
@@ -191,7 +226,13 @@ ALTER TABLE `votes`
 -- AUTO_INCREMENT for table `candidates`
 --
 ALTER TABLE `candidates`
-  MODIFY `candidate_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
+  MODIFY `candidate_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=26;
+
+--
+-- AUTO_INCREMENT for table `parties`
+--
+ALTER TABLE `parties`
+  MODIFY `party_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `polls`
@@ -203,13 +244,13 @@ ALTER TABLE `polls`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `votes`
 --
 ALTER TABLE `votes`
-  MODIFY `vote_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
+  MODIFY `vote_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=27;
 
 --
 -- Constraints for dumped tables
