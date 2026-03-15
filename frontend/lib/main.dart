@@ -73,7 +73,7 @@ import 'login_page.dart';
 import 'signup_page.dart';
 import 'student_dashboard.dart';
 import 'admin_dashboard.dart';
-import 'responsive_screen.dart';
+// import 'responsive_screen.dart';
 
 void main() {
   runApp(const LnuVotingApp());

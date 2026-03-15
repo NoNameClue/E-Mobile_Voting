@@ -2,44 +2,44 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'api_config.dart'; // Adjust based on your actual config file
-import 'responsive_screen.dart'; // Adjust based on your actual responsive screen file
+// import 'responsive_screen.dart'; // Adjust based on your actual responsive screen file
 
 class ViewParties extends StatefulWidget {
   const ViewParties({super.key});
 
   @override
   State<ViewParties> createState() => _ViewPartiesState();
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: ResponsiveScreen(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              "Political Parties",
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
+  // Widget build(BuildContext context) {
+  //   return Scaffold(
+  //     body: ResponsiveScreen(
+  //       child: Column(
+  //         crossAxisAlignment: CrossAxisAlignment.start,
+  //         children: [
+  //           const Text(
+  //             "Political Parties",
+  //             style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+  //           ),
 
-            const SizedBox(height: 20),
+  //           const SizedBox(height: 20),
 
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: 5,
-              itemBuilder: (context, index) {
-                return Card(
-                  child: ListTile(
-                    title: Text("Party Name"),
-                    subtitle: Text("Party Description"),
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  //           ListView.builder(
+  //             shrinkWrap: true,
+  //             physics: const NeverScrollableScrollPhysics(),
+  //             itemCount: 5,
+  //             itemBuilder: (context, index) {
+  //               return Card(
+  //                 child: ListTile(
+  //                   title: Text("Party Name"),
+  //                   subtitle: Text("Party Description"),
+  //                 ),
+  //               );
+  //             },
+  //           ),
+  //         ],
+  //       ),
+  //     ),
+  //   );
+  // }
 }
 
 class _ViewPartiesState extends State<ViewParties> {

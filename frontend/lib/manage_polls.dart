@@ -2,44 +2,44 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'api_config.dart';
-import 'responsive_screen.dart';
+// import 'responsive_screen.dart';
 
 class ManagePolls extends StatefulWidget {
   const ManagePolls({super.key});
 
   @override
   State<ManagePolls> createState() => _ManagePollsState();
-   Widget build(BuildContext context) {
-    return Scaffold(
-      body: ResponsiveScreen(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              "Manage Polls",
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
+  //  Widget build(BuildContext context) {
+  //   return Scaffold(
+  //     body: ResponsiveScreen(
+  //       child: Column(
+  //         crossAxisAlignment: CrossAxisAlignment.start,
+  //         children: [
+  //           const Text(
+  //             "Manage Polls",
+  //             style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+  //           ),
 
-            const SizedBox(height: 20),
+  //           const SizedBox(height: 20),
 
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: DataTable(
-                columns: const [
-                  DataColumn(label: Text("Poll Title")),
-                  DataColumn(label: Text("Start Date")),
-                  DataColumn(label: Text("End Date")),
-                  DataColumn(label: Text("Status")),
-                  DataColumn(label: Text("Actions")),
-                ],
-                rows: const [],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  //           SingleChildScrollView(
+  //             scrollDirection: Axis.horizontal,
+  //             child: DataTable(
+  //               columns: const [
+  //                 DataColumn(label: Text("Poll Title")),
+  //                 DataColumn(label: Text("Start Date")),
+  //                 DataColumn(label: Text("End Date")),
+  //                 DataColumn(label: Text("Status")),
+  //                 DataColumn(label: Text("Actions")),
+  //               ],
+  //               rows: const [],
+  //             ),
+  //           ),
+  //         ],
+  //       ),
+  //     ),
+  //   );
+  // }
 }
 
 class _ManagePollsState extends State<ManagePolls> {

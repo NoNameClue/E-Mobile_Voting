@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'api_config.dart';
 import 'api_service.dart';
-import 'responsive_screen.dart';
+// import 'responsive_screen.dart';
 
 class VotingPage extends StatefulWidget {
   final VoidCallback onReturnToDashboard;
@@ -13,20 +13,20 @@ class VotingPage extends StatefulWidget {
 
   @override
   State<VotingPage> createState() => _VotingPageState();
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: ResponsiveScreen(
-        child: Center(
-          child: Column(
-            children: [
-            Text("Vote for Candidates"),
-            ManageCandidates(),
-            ],
-          )
-        )
-      ),
-    );
-  }
+  // Widget build(BuildContext context) {
+  //   return Scaffold(
+  //     body: ResponsiveScreen(
+  //       child: Center(
+  //         child: Column(
+  //           children: [
+  //           Text("Vote for Candidates"),
+  //           ManageCandidates(),
+  //           ],
+  //         )
+  //       )
+  //     ),
+  //   );
+  // }
 }
 
 class _VotingPageState extends State<VotingPage> {
