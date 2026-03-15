@@ -235,7 +235,45 @@ class _VotingPageState extends State<VotingPage> {
     }
 
     // --- STATE 4: NORMAL VOTING BALLOT ---
-    if (positions.isEmpty) return const Center(child: Text("No candidates available for this election.", style: TextStyle(fontSize: 18)));
+    if (positions.isEmpty) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+
+            Icon(
+              Icons.ballot_outlined,
+              size: 90,
+              color: Colors.grey,
+            ),
+
+            SizedBox(height: 20),
+
+            Text(
+              "No Candidates Available",
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey,
+              ),
+              textAlign: TextAlign.center,
+            ),
+
+            SizedBox(height: 10),
+
+            Text(
+              "Candidates have not been added to this election yet.",
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey,
+              ),
+              textAlign: TextAlign.center,
+            ),
+
+          ],
+        ),
+      );
+    }
 
     String currentPosition = positions[currentPositionIndex];
     List candidates = candidatesByPosition[currentPosition]!;

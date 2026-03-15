@@ -136,7 +136,43 @@ class _ViewPartiesState extends State<ViewParties> {
     }
 
     if (_groupedParties.isEmpty) {
-      return const Center(child: Text("No parties available for the active election.", style: TextStyle(fontSize: 18)));
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+
+            Icon(
+              Icons.groups_outlined,
+              size: 90,
+              color: Colors.grey,
+            ),
+
+            SizedBox(height: 20),
+
+            Text(
+              "No Political Parties Yet",
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w500,
+                color: Colors.grey,
+              ),
+              textAlign: TextAlign.center,
+            ),
+
+            SizedBox(height: 10),
+
+            Text(
+              "No parties are available for the active election.",
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey,
+              ),
+              textAlign: TextAlign.center,
+            ),
+
+          ],
+        ),
+      );
     }
 
     return Padding(

@@ -278,7 +278,44 @@ class _AdminLiveScoreboardState extends State<AdminLiveScoreboard> {
           if (_isLoading)
             const Expanded(child: Center(child: CircularProgressIndicator()))
           else if (_groupedResults.isEmpty)
-            const Expanded(child: Center(child: Text("No candidates or votes to display for this poll.")))
+            const Expanded(
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+
+                    Icon(
+                      Icons.hourglass_empty,
+                      size: 90,
+                      color: Colors.grey,
+                    ),
+
+                    SizedBox(height: 20),
+
+                    Text(
+                      "Awaiting final results",
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.grey,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+
+                    SizedBox(height: 10),
+
+                    Text(
+                      "Results will appear once voting begins.",
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey,
+                      ),
+                    ),
+
+                  ],
+                ),
+              ),
+            )
           else
             Expanded(
               child: SingleChildScrollView(

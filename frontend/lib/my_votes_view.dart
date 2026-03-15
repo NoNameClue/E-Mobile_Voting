@@ -68,7 +68,41 @@ class _MyVotesViewState extends State<MyVotesView> {
 
     if (polls.isEmpty) {
       return const Center(
-        child: Text("You haven't participated in any elections yet."),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+
+            Icon(
+              Icons.how_to_vote_outlined,
+              size: 90,
+              color: Colors.grey,
+            ),
+
+            SizedBox(height: 20),
+
+            Text(
+              "No Votes Yet",
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w500,
+                color: Colors.grey,
+              ),
+              textAlign: TextAlign.center,
+            ),
+
+            SizedBox(height: 10),
+
+            Text(
+              "You haven't participated in any elections yet.",
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey,
+              ),
+              textAlign: TextAlign.center,
+            ),
+
+          ],
+        ),
       );
     }
 

@@ -190,7 +190,45 @@ class _ElectionResultPageState extends State<ElectionResultPage> {
           if (_isLoading)
             const Expanded(child: Center(child: CircularProgressIndicator()))
           else if (_reportData == null)
-            const Expanded(child: Center(child: Text("No report data found.")))
+            const Expanded(
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+
+                    Icon(
+                      Icons.assessment_outlined,
+                      size: 90,
+                      color: Colors.grey,
+                    ),
+
+                    SizedBox(height: 20),
+
+                    Text(
+                      "Awaiting Election Results",
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.grey,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+
+                    SizedBox(height: 10),
+
+                    Text(
+                      "The report will appear once voting data is available.",
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+
+                  ],
+                ),
+              ),
+            )
           else
             Expanded(
               child: SingleChildScrollView(
