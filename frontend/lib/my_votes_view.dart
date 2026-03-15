@@ -1,24 +1,24 @@
 import 'package:flutter/material.dart';
 import 'api_service.dart';
-import 'responsive_screen.dart';
+// import 'responsive_screen.dart';
 
 class MyVotesView extends StatefulWidget {
   const MyVotesView({super.key});
 
   @override
   State<MyVotesView> createState() => _MyVotesViewState();
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: ResponsiveScreen(
-        child: Column(
-          children: [
-            Text("My Votes", style: TextStyle(fontSize: 24)),
-            MyVotesView(),
-          ],
-        ),
-      ),
-    );
-  }
+  // Widget build(BuildContext context) {
+  //   return Scaffold(
+  //     body: ResponsiveScreen(
+  //       child: Column(
+  //         children: [
+  //           Text("My Votes", style: TextStyle(fontSize: 24)),
+  //           MyVotesView(),
+  //         ],
+  //       ),
+  //     ),
+  //   );
+  // }
 }
 
 class _MyVotesViewState extends State<MyVotesView> {

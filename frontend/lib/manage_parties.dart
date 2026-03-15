@@ -2,43 +2,43 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'api_config.dart';
-import 'responsive_screen.dart';
+// import 'responsive_screen.dart';
 
 class ManageParties extends StatefulWidget {
   const ManageParties({super.key});
 
   @override
   State<ManageParties> createState() => _ManagePartiesState();
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: ResponsiveScreen(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              "Manage Parties",
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
+  // Widget build(BuildContext context) {
+  //   return Scaffold(
+  //     body: ResponsiveScreen(
+  //       child: Column(
+  //         crossAxisAlignment: CrossAxisAlignment.start,
+  //         children: [
+  //           const Text(
+  //             "Manage Parties",
+  //             style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+  //           ),
 
-            const SizedBox(height: 20),
+  //           const SizedBox(height: 20),
 
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: DataTable(
-                columns: const [
-                  DataColumn(label: Text("Party Name")),
-                  DataColumn(label: Text("Description")),
-                  DataColumn(label: Text("Members")),
-                  DataColumn(label: Text("Actions")),
-                ],
-                rows: const [],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  //           SingleChildScrollView(
+  //             scrollDirection: Axis.horizontal,
+  //             child: DataTable(
+  //               columns: const [
+  //                 DataColumn(label: Text("Party Name")),
+  //                 DataColumn(label: Text("Description")),
+  //                 DataColumn(label: Text("Members")),
+  //                 DataColumn(label: Text("Actions")),
+  //               ],
+  //               rows: const [],
+  //             ),
+  //           ),
+  //         ],
+  //       ),
+  //     ),
+  //   );
+  // }
 }
 
 class _ManagePartiesState extends State<ManageParties> {

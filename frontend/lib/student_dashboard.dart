@@ -6,7 +6,7 @@ import 'api_config.dart';
 import 'voting_page.dart';
 import 'my_votes_view.dart';
 import 'view_parties.dart';
-import 'responsive_screen.dart';
+// import 'responsive_screen.dart';
 
 // ========================================================================
 // 1. DATA MODELS 
@@ -47,18 +47,18 @@ class StudentDashboard extends StatefulWidget {
 
   @override
   State<StudentDashboard> createState() => _StudentDashboardState();
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: ResponsiveScreen(
-        child: Column(
-          children: [
-            Text("Student Dashboard", style: TextStyle(fontSize: 24)),
-            StudentDashboard(),
-          ],
-        ),
-      ),
-    );
-  }
+  // Widget build(BuildContext context) {
+  //   return Scaffold(
+  //     body: ResponsiveScreen(
+  //       child: Column(
+  //         children: [
+  //           Text("Student Dashboard", style: TextStyle(fontSize: 24)),
+  //           StudentDashboard(),
+  //         ],
+  //       ),
+  //     ),
+  //   );
+  // }
 }
 
 class _StudentDashboardState extends State<StudentDashboard> {

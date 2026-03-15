@@ -2,25 +2,25 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'api_config.dart';
-import 'responsive_screen.dart';
+// import 'responsive_screen.dart';
 
 class ElectionResultPage extends StatefulWidget {
   const ElectionResultPage({super.key});
 
   @override
   State<ElectionResultPage> createState() => _ElectionResultPageState();
-   Widget build(BuildContext context) {
-    return Scaffold(
-      body: ResponsiveScreen(
-        child: Column(
-          children: [
-            Text("Election Results", style: TextStyle(fontSize: 24)),
-            ElectionResultPage(),
-          ],
-        ),
-      ),
-    );
-  }
+  //  Widget build(BuildContext context) {
+  //   return Scaffold(
+  //     body: ResponsiveScreen(
+  //       child: Column(
+  //         children: [
+  //           Text("Election Results", style: TextStyle(fontSize: 24)),
+  //           ElectionResultPage(),
+  //         ],
+  //       ),
+  //     ),
+  //   );
+  // }
 }
 
 class _ElectionResultPageState extends State<ElectionResultPage> {

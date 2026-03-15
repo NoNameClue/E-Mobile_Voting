@@ -2,25 +2,25 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'api_config.dart';
-import 'responsive_screen.dart';
+// import 'responsive_screen.dart';
 
 class ManageUsers extends StatefulWidget {
   const ManageUsers({super.key});
 
   @override
   State<ManageUsers> createState() => _ManageUsersState();
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: ResponsiveScreen(
-        child: Column(
-          children: [
-            Text("Manage Users", style: TextStyle(fontSize: 24)),
-            ManageUsers(),
-          ],
-        ),
-      ),
-    );
-  }
+  // Widget build(BuildContext context) {
+  //   return Scaffold(
+  //     body: ResponsiveScreen(
+  //       child: Column(
+  //         children: [
+  //           Text("Manage Users", style: TextStyle(fontSize: 24)),
+  //           ManageUsers(),
+  //         ],
+  //       ),
+  //     ),
+  //   );
+  // }
 }
 
 class _ManageUsersState extends State<ManageUsers> {

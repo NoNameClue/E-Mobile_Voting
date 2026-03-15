@@ -4,36 +4,36 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:image_picker/image_picker.dart';
 import 'api_config.dart';
-import 'responsive_screen.dart';
+// import 'responsive_screen.dart';
 
 class ManageCandidates extends StatefulWidget {
   const ManageCandidates({super.key});
 
   @override
   State<ManageCandidates> createState() => _ManageCandidatesState();
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: ResponsiveScreen(
-        child: Column(
-          children: [
-            Text("Manage Candidates", style: TextStyle(fontSize: 24)),
+  // Widget build(BuildContext context) {
+  //   return Scaffold(
+  //     body: ResponsiveScreen(
+  //       child: Column(
+  //         children: [
+  //           Text("Manage Candidates", style: TextStyle(fontSize: 24)),
 
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: DataTable(
-                columns: [
-                  DataColumn(label: Text("Name")),
-                  DataColumn(label: Text("Position")),
-                  DataColumn(label: Text("Party")),
-                ],
-                rows: [],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  //           SingleChildScrollView(
+  //             scrollDirection: Axis.horizontal,
+  //             child: DataTable(
+  //               columns: [
+  //                 DataColumn(label: Text("Name")),
+  //                 DataColumn(label: Text("Position")),
+  //                 DataColumn(label: Text("Party")),
+  //               ],
+  //               rows: [],
+  //             ),
+  //           ),
+  //         ],
+  //       ),
+  //     ),
+  //   );
+  // }
 }
 
 class _ManageCandidatesState extends State<ManageCandidates> {
