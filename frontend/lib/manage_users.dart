@@ -2,12 +2,25 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'api_config.dart';
+import 'responsive_screen.dart';
 
 class ManageUsers extends StatefulWidget {
   const ManageUsers({super.key});
 
   @override
   State<ManageUsers> createState() => _ManageUsersState();
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: ResponsiveScreen(
+        child: Column(
+          children: [
+            Text("Manage Users", style: TextStyle(fontSize: 24)),
+            ManageUsers(),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _ManageUsersState extends State<ManageUsers> {
@@ -178,7 +191,7 @@ class _ManageUsersState extends State<ManageUsers> {
                               ),
                               trailing: Switch(
                                 value: isActive,
-                                activeColor: Colors.green,
+                                activeThumbColor: Colors.green,
                                 inactiveThumbColor: Colors.red,
                                 onChanged: (bool newValue) {
                                   _toggleStudentStatus(student['user_id'], isActive);

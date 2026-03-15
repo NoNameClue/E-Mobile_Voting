@@ -6,11 +6,25 @@ import 'election_result.dart';
 import 'admin_live_scoreboard.dart';
 import 'manage_parties.dart';
 import 'candidates_registration.dart';
+import'responsive_screen.dart'; 
+
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
 
   @override
   State<AdminDashboard> createState() => _AdminDashboardState();
+   Widget build(BuildContext context) {
+    return Scaffold(
+      body: ResponsiveScreen(
+        child: Column(
+          children: [
+            Text("Admin Dashboard", style: TextStyle(fontSize: 24)),
+            AdminDashboard(),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _AdminDashboardState extends State<AdminDashboard> {

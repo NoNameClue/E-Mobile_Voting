@@ -202,7 +202,7 @@ class _CandidatesRegistrationState extends State<CandidatesRegistration> {
                   // --- POLL & NAME ---
                   DropdownButtonFormField<int>(
                     decoration: const InputDecoration(labelText: "Select Election Poll", border: OutlineInputBorder()),
-                    value: _selectedPollId,
+                    initialValue: _selectedPollId,
                     items: _polls.map<DropdownMenuItem<int>>((poll) => DropdownMenuItem(value: poll['poll_id'], child: Text(poll['title']))).toList(),
                     onChanged: (val) => setState(() => _selectedPollId = val),
                     validator: (value) => value == null ? 'Please select a poll' : null,
@@ -221,7 +221,7 @@ class _CandidatesRegistrationState extends State<CandidatesRegistration> {
                       Expanded(
                         child: DropdownButtonFormField<String>(
                           decoration: const InputDecoration(labelText: "Position", border: OutlineInputBorder()),
-                          value: _selectedPosition,
+                          initialValue: _selectedPosition,
                           items: _positions.map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(),
                           onChanged: (val) => setState(() => _selectedPosition = val),
                           validator: (value) => value == null ? 'Required' : null,
@@ -231,7 +231,7 @@ class _CandidatesRegistrationState extends State<CandidatesRegistration> {
                       Expanded(
                         child: DropdownButtonFormField<String>(
                           decoration: const InputDecoration(labelText: "Select Party", border: OutlineInputBorder()),
-                          value: _selectedParty,
+                          initialValue: _selectedParty,
                           items: _parties.map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(),
                           onChanged: (val) => setState(() => _selectedParty = val!),
                         ),
@@ -247,7 +247,7 @@ class _CandidatesRegistrationState extends State<CandidatesRegistration> {
                         flex: 2,
                         child: DropdownButtonFormField<String>(
                           decoration: const InputDecoration(labelText: "Course", border: OutlineInputBorder()),
-                          value: _selectedCourse,
+                          initialValue: _selectedCourse,
                           items: _courses.map((c) => DropdownMenuItem(value: c, child: Text(c, overflow: TextOverflow.ellipsis))).toList(),
                           onChanged: (val) => setState(() => _selectedCourse = val),
                           validator: (value) => value == null ? 'Required' : null,
@@ -258,7 +258,7 @@ class _CandidatesRegistrationState extends State<CandidatesRegistration> {
                         flex: 1,
                         child: DropdownButtonFormField<String>(
                           decoration: const InputDecoration(labelText: "Year Level", border: OutlineInputBorder()),
-                          value: _selectedYear,
+                          initialValue: _selectedYear,
                           items: _years.map((y) => DropdownMenuItem(value: y, child: Text(y))).toList(),
                           onChanged: (val) => setState(() => _selectedYear = val),
                           validator: (value) => value == null ? 'Required' : null,

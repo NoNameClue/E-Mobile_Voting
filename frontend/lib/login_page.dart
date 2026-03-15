@@ -4,12 +4,27 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'auth_layout.dart'; 
 import 'api_config.dart'; 
+import 'responsive_screen.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
   @override
   State<LoginPage> createState() => _LoginPageState();
+  Widget build(BuildContext context) {
+      return Scaffold(
+      body: ResponsiveScreen(
+        child: Center(
+          child: Column(
+            children: [
+              Text("Login"),
+              LoginPage(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _LoginPageState extends State<LoginPage> {

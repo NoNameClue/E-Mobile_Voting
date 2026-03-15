@@ -4,12 +4,43 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:async';
 import 'api_config.dart';
+import 'responsive_screen.dart';
 
 class AdminLiveScoreboard extends StatefulWidget {
   const AdminLiveScoreboard({super.key});
 
   @override
   State<AdminLiveScoreboard> createState() => _AdminLiveScoreboardState();
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: ResponsiveScreen(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Live Election Scoreboard",
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
+
+            const SizedBox(height: 20),
+
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: DataTable(
+                columns: const [
+                  DataColumn(label: Text("Candidate")),
+                  DataColumn(label: Text("Position")),
+                  DataColumn(label: Text("Party")),
+                  DataColumn(label: Text("Votes")),
+                ],
+                rows: const [],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _AdminLiveScoreboardState extends State<AdminLiveScoreboard> {

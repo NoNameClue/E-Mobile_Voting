@@ -6,12 +6,25 @@ import 'package:image_picker/image_picker.dart';
 import 'auth_layout.dart'; 
 import 'widgets/modern_text_field.dart';
 import 'api_config.dart'; 
+import 'responsive_screen.dart';
 
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
 
   @override
   State<SignupPage> createState() => _SignupPageState();
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: ResponsiveScreen(
+        child: Column(
+          children: [
+            Text("Create Account", style: TextStyle(fontSize: 24)),
+            SignupPage(),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _SignupPageState extends State<SignupPage> {
