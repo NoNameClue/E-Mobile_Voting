@@ -68,21 +68,31 @@ class _AdminDashboardState extends State<AdminDashboard> {
           const SizedBox(height: 30),
 
           for (int i = 0; i < menuItems.length; i++)
-            ListTile(
-              title: Text(
-                menuItems[i],
-                style: TextStyle(
-                  color: selectedIndex == i
-                      ? Colors.amber
-                      : Colors.white,
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 10),
+              child: Container(
+                decoration: BoxDecoration(
+                  // Highlights the entire row in amber when active
+                  color: selectedIndex == i ? Colors.amber : Colors.transparent,
+                  borderRadius: BorderRadius.circular(5),
+                ),
+                child: ListTile(
+                  dense: true,
+                  title: Text(
+                    menuItems[i],
+                    style: TextStyle(
+                      color: selectedIndex == i ? const Color(0xFF000B6B) : Colors.white,
+                      fontWeight: selectedIndex == i ? FontWeight.bold : FontWeight.normal,
+                    ),
+                  ),
+                  onTap: () {
+                    setState(() {
+                      selectedIndex = i;
+                    });
+                    if (!isDesktop) Navigator.pop(context);
+                  },
                 ),
               ),
-              onTap: () {
-                setState(() {
-                  selectedIndex = i;
-                });
-                if (!isDesktop) Navigator.pop(context);
-              },
             ),
 
           const Spacer(),

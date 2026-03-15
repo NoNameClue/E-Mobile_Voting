@@ -165,15 +165,29 @@ class _StudentDashboardState extends State<StudentDashboard> {
           const SizedBox(height: 40),
 
           for (int i = 0; i < menuItems.length; i++)
-            ListTile(
-              title: Text(
-                menuItems[i],
-                style: TextStyle(color: selectedIndex == i ? Colors.amber : Colors.white),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+              child: Container(
+                decoration: BoxDecoration(
+                  // THE HIGHLIGHT BAR: If selected, show amber background
+                  color: selectedIndex == i ? Colors.amber : Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: ListTile(
+                  title: Text(
+                    menuItems[i],
+                    style: TextStyle(
+                      // Text turns dark blue on amber background for high contrast
+                      color: selectedIndex == i ? const Color(0xFF000B6B) : Colors.white,
+                      fontWeight: selectedIndex == i ? FontWeight.bold : FontWeight.normal,
+                    ),
+                  ),
+                  onTap: () {
+                    setState(() => selectedIndex = i);
+                    if (!isDesktop) Navigator.pop(context); 
+                  },
+                ),
               ),
-              onTap: () {
-                setState(() => selectedIndex = i);
-                if (!isDesktop) Navigator.pop(context); 
-              },
             ),
 
           const Spacer(),
@@ -382,10 +396,33 @@ class _LiveScoreboardViewState extends State<LiveScoreboardView> {
     // --- RESPONSIVE CHECK ---
     bool isMobile = MediaQuery.of(context).size.width < 900;
 
-    // UI SECTION 1: PODIUM
+   // UI SECTION 1: PODIUM
     Widget podiumSection = Column(
-      mainAxisAlignment: MainAxisAlignment.center,
+      mainAxisAlignment: MainAxisAlignment.start, 
       children: [
+        Container(
+          width: isMobile ? double.infinity : 350,
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.grey.shade300)),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.arrow_left),
+                onPressed: _currentPositionIndex == 0 ? null : _goToPreviousPosition,
+              ),
+              Flexible(child: Text(currentRanking.positionName.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16), textAlign: TextAlign.center, overflow: TextOverflow.ellipsis)),
+              IconButton(
+                icon: const Icon(Icons.arrow_right),
+                onPressed: _currentPositionIndex == _rankingsData.length - 1 ? null : _goToNextPosition,
+              ),
+            ],
+          ),
+        ),
+        
+        // --- THE FIX: Increased the spacing here to push the avatars down ---
+        // On desktop it pushes down 150 pixels, on mobile it stays at 50
+        SizedBox(height: isMobile ? 50 : 150), 
+        
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           crossAxisAlignment: CrossAxisAlignment.end,
@@ -427,29 +464,7 @@ class _LiveScoreboardViewState extends State<LiveScoreboardView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text("Dashboard", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 20),
-          
-          Center(
-            child: Container(
-              width: isMobile ? double.infinity : 350,
-              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.grey.shade300)),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_left),
-                    onPressed: _currentPositionIndex == 0 ? null : _goToPreviousPosition,
-                  ),
-                  Flexible(child: Text(currentRanking.positionName.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16), textAlign: TextAlign.center, overflow: TextOverflow.ellipsis)),
-                  IconButton(
-                    icon: const Icon(Icons.arrow_right),
-                    onPressed: _currentPositionIndex == _rankingsData.length - 1 ? null : _goToNextPosition,
-                  ),
-                ],
-              ),
-            ),
-          ),
+          Text("Dashboard", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: primaryColor)),
           const SizedBox(height: 30),
 
           Expanded(
@@ -458,7 +473,6 @@ class _LiveScoreboardViewState extends State<LiveScoreboardView> {
                     child: Text("No candidates assigned to this position yet.", style: TextStyle(fontSize: 18, color: Colors.grey)),
                   )
                 : isMobile
-                    // --- MOBILE LAYOUT: STACKED (COLUMN) ---
                     ? Column(
                         children: [
                           podiumSection,
@@ -466,7 +480,6 @@ class _LiveScoreboardViewState extends State<LiveScoreboardView> {
                           Expanded(child: otherCandidatesSection),
                         ],
                       )
-                    // --- WEB LAYOUT: SIDE-BY-SIDE (ROW) ---
                     : Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [

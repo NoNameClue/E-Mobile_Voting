@@ -2,29 +2,15 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:image_picker/image_picker.dart';
 import 'auth_layout.dart'; 
 import 'widgets/modern_text_field.dart';
 import 'api_config.dart'; 
-// import 'responsive_screen.dart';
 
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
 
   @override
   State<SignupPage> createState() => _SignupPageState();
-  // Widget build(BuildContext context) {
-  //   return Scaffold(
-  //     body: ResponsiveScreen(
-  //       child: Column(
-  //         children: [
-  //           Text("Create Account", style: TextStyle(fontSize: 24)),
-  //           SignupPage(),
-  //         ],
-  //       ),
-  //     ),
-  //   );
-  // }
 }
 
 class _SignupPageState extends State<SignupPage> {
@@ -41,14 +27,9 @@ class _SignupPageState extends State<SignupPage> {
   String _errorMessage = '';
   String _successMessage = '';
 
-  // New state variables for Password Visibility and Image Upload
+  // New state variables for Password Visibility
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
-  
-  // Cross-platform Image variables (Safe for Web & Mobile)
-  XFile? _profileImage;
-  Uint8List? _profileImageBytes;
-  final ImagePicker _picker = ImagePicker();
 
   final List<String> _courses = [
     'Bachelor of Science in Tourism Management',
@@ -70,18 +51,6 @@ class _SignupPageState extends State<SignupPage> {
     'Bachelor of Secondary Education'
   ];
 
-  // Pick Image Function using bytes
-  Future<void> _pickImage() async {
-    final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
-    if (pickedFile != null) {
-      final bytes = await pickedFile.readAsBytes(); // Safe for Web & Mobile
-      setState(() {
-        _profileImage = pickedFile;
-        _profileImageBytes = bytes;
-      });
-    }
-  }
-
   Future<void> _handleRegister() async {
     // This triggers all the validators in the form
     if (!_formKey.currentState!.validate()) return;
@@ -94,28 +63,21 @@ class _SignupPageState extends State<SignupPage> {
     setState(() { _isLoading = true; _errorMessage = ''; _successMessage = ''; });
 
     try {
-      // Create MultipartRequest instead of standard POST
-      var request = http.MultipartRequest('POST', Uri.parse('${ApiConfig.baseUrl}/api/register'));
-      
-      // Add text fields
-      request.fields['student_number'] = _studentIdController.text.trim();
-      request.fields['full_name'] = _nameController.text.trim();
-      request.fields['email'] = _emailController.text.trim();
-      request.fields['course'] = _selectedCourse!;
-      request.fields['password'] = _passwordController.text.trim();
+      // Create a plain POST request for text data only
+      final response = await http.post(
+        Uri.parse('${ApiConfig.baseUrl}/api/register'),
+        headers: <String, String>{
+          'Content-Type': 'application/json; charset=UTF-8',
+        },
+        body: jsonEncode(<String, String>{
+          'student_number': _studentIdController.text.trim(),
+          'full_name': _nameController.text.trim(),
+          'email': _emailController.text.trim(),
+          'course': _selectedCourse!,
+          'password': _passwordController.text.trim(),
+        }),
+      );
 
-      // Add image file if selected (using bytes for web compatibility)
-      if (_profileImage != null && _profileImageBytes != null) {
-        request.files.add(http.MultipartFile.fromBytes(
-          'photo', 
-          _profileImageBytes!,
-          filename: _profileImage!.name,
-        ));
-      }
-
-      // Send the request
-      final streamedResponse = await request.send();
-      final response = await http.Response.fromStream(streamedResponse);
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200) {
@@ -127,10 +89,6 @@ class _SignupPageState extends State<SignupPage> {
           _selectedCourse = null; 
           _passwordController.clear(); 
           _confirmPasswordController.clear();
-          
-          // Clear image variables
-          _profileImage = null; 
-          _profileImageBytes = null; 
         });
       } else {
         setState(() => _errorMessage = data['detail'] ?? 'Registration failed');
@@ -171,22 +129,6 @@ class _SignupPageState extends State<SignupPage> {
             if (_successMessage.isNotEmpty)
               Padding(padding: const EdgeInsets.only(bottom: 15), child: Text(_successMessage, style: const TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold))),
 
-            // Profile Picture Picker UI
-            Center(
-              child: GestureDetector(
-                onTap: _pickImage,
-                child: CircleAvatar(
-                  radius: 40,
-                  backgroundColor: Colors.white.withOpacity(0.1),
-                  backgroundImage: _profileImageBytes != null ? MemoryImage(_profileImageBytes!) : null,
-                  child: _profileImageBytes == null
-                      ? const Icon(Icons.camera_alt, color: Colors.white70, size: 30)
-                      : null,
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-
             ModernTextField(
               controller: _nameController,
               hintText: 'Full Name (e.g. John Doe)',
@@ -222,7 +164,7 @@ class _SignupPageState extends State<SignupPage> {
                 ),
                 const SizedBox(width: 10),
                 
-                // Course Dropdown
+                // Course Dropdown - Updated for solid white background and black text
                 Expanded(
                   flex: 3, 
                   child: Padding(
@@ -233,10 +175,10 @@ class _SignupPageState extends State<SignupPage> {
                       initialValue: _selectedCourse,
                       hint: const Text('Course', style: TextStyle(color: Colors.black54, fontSize: 13)),
                       icon: const Icon(Icons.arrow_drop_down, color: Colors.black54),
-                      dropdownColor: const Color(0xFFE2E2E2),
+                      dropdownColor: Colors.white,
                       decoration: InputDecoration(
                         filled: true,
-                        fillColor: const Color(0xFFE2E2E2),
+                        fillColor: Colors.white,
                         contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 15),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
                         errorStyle: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 11),
@@ -256,24 +198,24 @@ class _SignupPageState extends State<SignupPage> {
                       },
                       validator: (value) => value == null || value.isEmpty ? 'Required' : null,
                     ),
+                    ),
                   ),
-                ),
               ],
             ),
 
-            // Password Field with Visibility Toggle
+            // Password Field with Visibility Toggle - Updated for solid white background and black text
             TextFormField(
               controller: _passwordController,
               obscureText: _obscurePassword,
-              style: const TextStyle(color: Colors.white),
+              style: const TextStyle(color: Colors.black87),
               decoration: InputDecoration(
                 hintText: 'Password',
-                hintStyle: const TextStyle(color: Colors.white54),
+                hintStyle: const TextStyle(color: Colors.black54),
                 filled: true,
-                fillColor: Colors.white.withOpacity(0.1),
+                fillColor: Colors.white,
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
                 suffixIcon: IconButton(
-                  icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility, color: Colors.white70),
+                  icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility, color: Colors.black54),
                   onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                 ),
               ),
@@ -285,19 +227,19 @@ class _SignupPageState extends State<SignupPage> {
             ),
             const SizedBox(height: 15), // Spacing
             
-            // Confirm Password Field with Visibility Toggle
+            // Confirm Password Field with Visibility Toggle - Updated for solid white background and black text
             TextFormField(
               controller: _confirmPasswordController,
               obscureText: _obscureConfirmPassword,
-              style: const TextStyle(color: Colors.white),
+              style: const TextStyle(color: Colors.black87),
               decoration: InputDecoration(
                 hintText: 'Confirm Password',
-                hintStyle: const TextStyle(color: Colors.white54),
+                hintStyle: const TextStyle(color: Colors.black54),
                 filled: true,
-                fillColor: Colors.white.withOpacity(0.1),
+                fillColor: Colors.white,
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
                 suffixIcon: IconButton(
-                  icon: Icon(_obscureConfirmPassword ? Icons.visibility_off : Icons.visibility, color: Colors.white70),
+                  icon: Icon(_obscureConfirmPassword ? Icons.visibility_off : Icons.visibility, color: Colors.black54),
                   onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
                 ),
               ),

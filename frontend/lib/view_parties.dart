@@ -98,24 +98,32 @@ class _ViewPartiesState extends State<ViewParties> {
           title: Text(
             partyName.toUpperCase(),
             style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF000B6B)),
+            textAlign: TextAlign.center, // Centers the party name
           ),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: candidates.length,
-              itemBuilder: (context, index) {
-                var candidate = candidates[index];
-                return ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: Colors.grey[300],
-                    backgroundImage: candidate['photo_url'] != null ? NetworkImage(candidate['photo_url']) : null,
-                    child: candidate['photo_url'] == null ? const Icon(Icons.person, color: Colors.grey) : null,
-                  ),
-                  title: Text(candidate['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text(candidate['position']),
-                );
-              },
+          // --- THE FIX: ConstrainedBox prevents infinite stretching ---
+          content: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: 450, // Limits how wide the popup can get
+              maxHeight: MediaQuery.of(context).size.height * 0.7, // Prevents it from getting too tall if there are many candidates
+            ),
+            child: SizedBox(
+              width: double.maxFinite, // Fills the 450px constraints cleanly
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: candidates.length,
+                itemBuilder: (context, index) {
+                  var candidate = candidates[index];
+                  return ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: Colors.grey[300],
+                      backgroundImage: candidate['photo_url'] != null ? NetworkImage(candidate['photo_url']) : null,
+                      child: candidate['photo_url'] == null ? const Icon(Icons.person, color: Colors.grey) : null,
+                    ),
+                    title: Text(candidate['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
+                    subtitle: Text(candidate['position']),
+                  );
+                },
+              ),
             ),
           ),
           actions: [
@@ -124,6 +132,7 @@ class _ViewPartiesState extends State<ViewParties> {
               child: const Text("Close", style: TextStyle(color: Color(0xFF000B6B))),
             ),
           ],
+          actionsAlignment: MainAxisAlignment.center, // Centers the close button at the bottom
         );
       },
     );

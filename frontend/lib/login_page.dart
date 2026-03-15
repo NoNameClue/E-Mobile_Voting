@@ -103,12 +103,12 @@ class _LoginPageState extends State<LoginPage> {
             // Standardized Email Field
             TextFormField(
               controller: _emailController,
-              style: const TextStyle(color: Colors.white),
+              style: const TextStyle(color: Colors.black87), // Changed text to black
               decoration: InputDecoration(
                 hintText: 'University Email',
-                hintStyle: const TextStyle(color: Colors.white54),
+                hintStyle: const TextStyle(color: Colors.black54), // Changed hint to dark grey
                 filled: true,
-                fillColor: Colors.white.withOpacity(0.1),
+                fillColor: Colors.white, // Changed background to solid white
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
               ),
               validator: (value) => value == null || value.isEmpty ? 'Email is required' : null,
@@ -119,15 +119,16 @@ class _LoginPageState extends State<LoginPage> {
             TextFormField(
               controller: _passwordController,
               obscureText: _obscurePassword,
-              style: const TextStyle(color: Colors.white),
+              style: const TextStyle(color: Colors.black87), // Changed text to black
               decoration: InputDecoration(
                 hintText: 'Password',
-                hintStyle: const TextStyle(color: Colors.white54),
+                hintStyle: const TextStyle(color: Colors.black54), // Changed hint to dark grey
                 filled: true,
-                fillColor: Colors.white.withOpacity(0.1),
+                fillColor: Colors.white, // Changed background to solid white
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
                 suffixIcon: IconButton(
-                  icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility, color: Colors.white70),
+                  // Changed icon color to dark grey so it's visible on white
+                  icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility, color: Colors.black54),
                   onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                 ),
               ),
