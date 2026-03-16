@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart'; // ADDED
 import 'dart:convert';
-import 'api_config.dart'; 
+import 'api_config.dart';
 import 'voting_page.dart';
 import 'my_votes_view.dart';
 import 'view_parties.dart';
 // import 'responsive_screen.dart';
 
 // ========================================================================
-// 1. DATA MODELS 
+// 1. DATA MODELS
 // ========================================================================
 class CandidateResult {
   final int id;
@@ -17,7 +17,7 @@ class CandidateResult {
   final String party;
   final String? photoUrl;
   final int votes;
-  final double percentage; 
+  final double percentage;
 
   CandidateResult({
     required this.id,
@@ -31,16 +31,13 @@ class CandidateResult {
 
 class PositionRanking {
   final String positionName;
-  final List<CandidateResult> candidates; 
+  final List<CandidateResult> candidates;
 
-  PositionRanking({
-    required this.positionName,
-    required this.candidates,
-  });
+  PositionRanking({required this.positionName, required this.candidates});
 }
 
 // ========================================================================
-// 2. MAIN STUDENT DASHBOARD SHELL 
+// 2. MAIN STUDENT DASHBOARD SHELL
 // ========================================================================
 class StudentDashboard extends StatefulWidget {
   const StudentDashboard({super.key});
@@ -128,69 +125,101 @@ class _StudentDashboardState extends State<StudentDashboard> {
       color: primaryColor,
       child: Column(
         children: [
-          const SizedBox(height: 20),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 15),
-            child: Row(
-              children: [
-                CircleAvatar(backgroundColor: Colors.white, radius: 20, child: Text('Logo', style: TextStyle(color: Colors.black, fontSize: 10))),
-                SizedBox(width: 10),
-                Expanded(
-                  child: Text('Leyte Normal University\n(System Name)', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 40),
-          
-          // DYNAMIC PROFILE PICTURE
-          CircleAvatar(
-            radius: 30, 
-            backgroundColor: Colors.white, 
-            backgroundImage: _profilePicUrl != null 
-                ? NetworkImage('${ApiConfig.baseUrl}/$_profilePicUrl') 
-                : null,
-            child: _profilePicUrl == null 
-                ? const Icon(Icons.person, size: 40, color: Colors.grey)
-                : null,
-          ),
-          const SizedBox(height: 10),
-          
-          // DYNAMIC NAME & ID
-          Text(
-            "$_studentName\nID: $_studentId", 
-            textAlign: TextAlign.center, 
-            style: const TextStyle(color: Colors.white)
-          ),
-          const SizedBox(height: 40),
-
-          for (int i = 0; i < menuItems.length; i++)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-              child: Container(
-                decoration: BoxDecoration(
-                  // THE HIGHLIGHT BAR: If selected, show amber background
-                  color: selectedIndex == i ? Colors.amber : Colors.transparent,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: ListTile(
-                  title: Text(
-                    menuItems[i],
-                    style: TextStyle(
-                      // Text turns dark blue on amber background for high contrast
-                      color: selectedIndex == i ? const Color(0xFF000B6B) : Colors.white,
-                      fontWeight: selectedIndex == i ? FontWeight.bold : FontWeight.normal,
+          // --- TOP SECTION (Scrollable) ---
+          Expanded(
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  const SizedBox(height: 20),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 15),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          backgroundColor: Colors.white,
+                          radius: 20,
+                          child: Text(
+                            'Logo',
+                            style: TextStyle(color: Colors.black, fontSize: 10),
+                          ),
+                        ),
+                        SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'Leyte Normal University\n(System Name)',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  onTap: () {
-                    setState(() => selectedIndex = i);
-                    if (!isDesktop) Navigator.pop(context); 
-                  },
-                ),
+                  const SizedBox(height: 40),
+
+                  // DYNAMIC PROFILE PICTURE
+                  CircleAvatar(
+                    radius: 30,
+                    backgroundColor: Colors.white,
+                    backgroundImage: _profilePicUrl != null
+                        ? NetworkImage('${ApiConfig.baseUrl}/$_profilePicUrl')
+                        : null,
+                    child: _profilePicUrl == null
+                        ? const Icon(Icons.person, size: 40, color: Colors.grey)
+                        : null,
+                  ),
+                  const SizedBox(height: 10),
+
+                  // DYNAMIC NAME & ID
+                  Text(
+                    "$_studentName\nID: $_studentId",
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                  const SizedBox(height: 40),
+
+                  // NAVIGATION MENU WITH HIGHLIGHT BAR
+                  for (int i = 0; i < menuItems.length; i++)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 4,
+                        horizontal: 8,
+                      ),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: selectedIndex == i
+                              ? Colors.amber
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: ListTile(
+                          title: Text(
+                            menuItems[i],
+                            style: TextStyle(
+                              color: selectedIndex == i
+                                  ? const Color(0xFF000B6B)
+                                  : Colors.white,
+                              fontWeight: selectedIndex == i
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                            ),
+                          ),
+                          onTap: () {
+                            setState(() => selectedIndex = i);
+                            if (!isDesktop) Navigator.pop(context);
+                          },
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
+          ),
 
-          const Spacer(),
+          // --- BOTTOM SECTION (Anchored) ---
+          const Divider(color: Colors.white54, height: 1),
           ListTile(
             leading: const Icon(Icons.logout, color: Colors.white),
             title: const Text("Logout", style: TextStyle(color: Colors.white)),
@@ -198,7 +227,10 @@ class _StudentDashboardState extends State<StudentDashboard> {
           ),
           const Padding(
             padding: EdgeInsets.all(15.0),
-            child: Text('V1.2026.03126 | LNUVotingSystem', style: TextStyle(color: Colors.grey, fontSize: 10)),
+            child: Text(
+              'V1.2026.03126 | LNUVotingSystem',
+              style: TextStyle(color: Colors.grey, fontSize: 10),
+            ),
           ),
         ],
       ),
@@ -208,12 +240,12 @@ class _StudentDashboardState extends State<StudentDashboard> {
   Widget buildContent() {
     switch (selectedIndex) {
       case 0:
-        return const LiveScoreboardView(); 
+        return const LiveScoreboardView();
       case 1:
         return VotingPage(
           onReturnToDashboard: () {
             setState(() {
-              selectedIndex = 0; 
+              selectedIndex = 0;
             });
           },
         );
@@ -222,9 +254,13 @@ class _StudentDashboardState extends State<StudentDashboard> {
       case 3:
         return const MyVotesView();
       case 4:
-        return const Center(child: Text("FAQs", style: TextStyle(fontSize: 24)));
+        return const Center(
+          child: Text("FAQs", style: TextStyle(fontSize: 24)),
+        );
       case 5:
-        return const Center(child: Text("About Us", style: TextStyle(fontSize: 24)));
+        return const Center(
+          child: Text("About Us", style: TextStyle(fontSize: 24)),
+        );
       default:
         return const LiveScoreboardView();
     }
@@ -236,9 +272,12 @@ class _StudentDashboardState extends State<StudentDashboard> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFE5E5E5),
-      appBar: isDesktop 
-          ? null 
-          : AppBar(backgroundColor: primaryColor, title: const Text("Student Portal")),
+      appBar: isDesktop
+          ? null
+          : AppBar(
+              backgroundColor: primaryColor,
+              title: const Text("Student Portal"),
+            ),
       drawer: isDesktop ? null : Drawer(child: buildSidebar(false)),
       body: Row(
         children: [
@@ -251,7 +290,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
 }
 
 // ========================================================================
-// 3. LIVE SCOREBOARD WIDGET 
+// 3. LIVE SCOREBOARD WIDGET
 // ========================================================================
 class LiveScoreboardView extends StatefulWidget {
   const LiveScoreboardView({super.key});
@@ -261,8 +300,8 @@ class LiveScoreboardView extends StatefulWidget {
 }
 
 class _LiveScoreboardViewState extends State<LiveScoreboardView> {
-  int _currentPositionIndex = 0; 
-  List<PositionRanking> _rankingsData = []; 
+  int _currentPositionIndex = 0;
+  List<PositionRanking> _rankingsData = [];
   bool _isLoading = true;
   String _errorMessage = '';
 
@@ -271,16 +310,19 @@ class _LiveScoreboardViewState extends State<LiveScoreboardView> {
   @override
   void initState() {
     super.initState();
-    _fetchLiveResults(); 
+    _fetchLiveResults();
   }
 
   Future<void> _fetchLiveResults() async {
     try {
-      final pollResponse = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/polls'));
-      if (pollResponse.statusCode != 200) throw Exception("Failed to fetch polls");
-      
+      final pollResponse = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/api/polls'),
+      );
+      if (pollResponse.statusCode != 200)
+        throw Exception("Failed to fetch polls");
+
       final List<dynamic> polls = jsonDecode(pollResponse.body);
-      
+
       final publishedPoll = polls.firstWhere(
         (p) => p['is_published'] == true || p['is_published'] == 1,
         orElse: () => null,
@@ -296,9 +338,12 @@ class _LiveScoreboardViewState extends State<LiveScoreboardView> {
 
       int activePollId = publishedPoll['poll_id'];
 
-      final resultsResponse = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/polls/$activePollId/results'));
-      if (resultsResponse.statusCode != 200) throw Exception("Failed to fetch results");
-      
+      final resultsResponse = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/api/polls/$activePollId/results'),
+      );
+      if (resultsResponse.statusCode != 200)
+        throw Exception("Failed to fetch results");
+
       final List<dynamic> liveResults = jsonDecode(resultsResponse.body);
 
       Map<String, List<CandidateResult>> groupedData = {
@@ -318,9 +363,9 @@ class _LiveScoreboardViewState extends State<LiveScoreboardView> {
               id: c['candidate_id'],
               name: c['name'],
               party: c['party_name'] ?? 'Independent',
-              votes: c['votes'], 
-              percentage: c['percentage'] 
-            )
+              votes: c['votes'],
+              percentage: c['percentage'],
+            ),
           );
         }
       }
@@ -328,14 +373,15 @@ class _LiveScoreboardViewState extends State<LiveScoreboardView> {
       List<PositionRanking> formattedRankings = [];
       groupedData.forEach((position, candidatesList) {
         candidatesList.sort((a, b) => b.votes.compareTo(a.votes));
-        formattedRankings.add(PositionRanking(positionName: position, candidates: candidatesList));
+        formattedRankings.add(
+          PositionRanking(positionName: position, candidates: candidatesList),
+        );
       });
 
       setState(() {
         _rankingsData = formattedRankings;
         _isLoading = false;
       });
-
     } catch (e) {
       setState(() {
         _isLoading = false;
@@ -361,21 +407,33 @@ class _LiveScoreboardViewState extends State<LiveScoreboardView> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
           title: Text(candidate.name, textAlign: TextAlign.center),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
                 "${candidate.percentage.toStringAsFixed(1)}%",
-                style: TextStyle(fontSize: 48, fontWeight: FontWeight.bold, color: primaryColor),
+                style: TextStyle(
+                  fontSize: 48,
+                  fontWeight: FontWeight.bold,
+                  color: primaryColor,
+                ),
               ),
               const SizedBox(height: 10),
-              Text("Current vote share in ${_rankingsData[_currentPositionIndex].positionName} race.", textAlign: TextAlign.center),
+              Text(
+                "Current vote share in ${_rankingsData[_currentPositionIndex].positionName} race.",
+                textAlign: TextAlign.center,
+              ),
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text("Close")),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text("Close"),
+            ),
           ],
         );
       },
@@ -384,10 +442,16 @@ class _LiveScoreboardViewState extends State<LiveScoreboardView> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) return Center(child: CircularProgressIndicator(color: primaryColor));
-    
+    if (_isLoading)
+      return Center(child: CircularProgressIndicator(color: primaryColor));
+
     if (_errorMessage.isNotEmpty) {
-      return Center(child: Text(_errorMessage, style: const TextStyle(fontSize: 20, color: Colors.grey)));
+      return Center(
+        child: Text(
+          _errorMessage,
+          style: const TextStyle(fontSize: 20, color: Colors.grey),
+        ),
+      );
     }
 
     final currentRanking = _rankingsData[_currentPositionIndex];
@@ -396,55 +460,88 @@ class _LiveScoreboardViewState extends State<LiveScoreboardView> {
     // --- RESPONSIVE CHECK ---
     bool isMobile = MediaQuery.of(context).size.width < 900;
 
-   // UI SECTION 1: PODIUM
-    Widget podiumSection = Column(
-      mainAxisAlignment: MainAxisAlignment.start, 
-      children: [
-        Container(
-          width: isMobile ? double.infinity : 350,
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.grey.shade300)),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    // UI SECTION 1: PODIUM
+    Widget podiumSection = SingleChildScrollView(
+      // <-- Added Scroll view here
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          Container(
+            width: isMobile ? double.infinity : 350,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey.shade300),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.arrow_left),
+                  onPressed: _currentPositionIndex == 0
+                      ? null
+                      : _goToPreviousPosition,
+                ),
+                Flexible(
+                  child: Text(
+                    currentRanking.positionName.toUpperCase(),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                    textAlign: TextAlign.center,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.arrow_right),
+                  onPressed: _currentPositionIndex == _rankingsData.length - 1
+                      ? null
+                      : _goToNextPosition,
+                ),
+              ],
+            ),
+          ),
+
+          // Reduced the gap so it doesn't push off the screen on laptops
+          SizedBox(height: isMobile ? 30 : 60),
+
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              IconButton(
-                icon: const Icon(Icons.arrow_left),
-                onPressed: _currentPositionIndex == 0 ? null : _goToPreviousPosition,
-              ),
-              Flexible(child: Text(currentRanking.positionName.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16), textAlign: TextAlign.center, overflow: TextOverflow.ellipsis)),
-              IconButton(
-                icon: const Icon(Icons.arrow_right),
-                onPressed: _currentPositionIndex == _rankingsData.length - 1 ? null : _goToNextPosition,
-              ),
+              if (candidates.length >= 2)
+                _buildPodiumPerson(candidates[1], 2, isMobile),
+              if (candidates.isNotEmpty)
+                _buildPodiumPerson(candidates[0], 1, isMobile),
+              if (candidates.length >= 3)
+                _buildPodiumPerson(candidates[2], 3, isMobile),
             ],
           ),
-        ),
-        
-        // --- THE FIX: Increased the spacing here to push the avatars down ---
-        // On desktop it pushes down 150 pixels, on mobile it stays at 50
-        SizedBox(height: isMobile ? 50 : 150), 
-        
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            if (candidates.length >= 2) _buildPodiumPerson(candidates[1], 2, isMobile),
-            if (candidates.isNotEmpty) _buildPodiumPerson(candidates[0], 1, isMobile),
-            if (candidates.length >= 3) _buildPodiumPerson(candidates[2], 3, isMobile),
-          ],
-        ),
-        const SizedBox(height: 20),
-        const Text("top 3 candidates for the\nposition", textAlign: TextAlign.center, style: TextStyle(fontSize: 16, color: Colors.grey)),
-      ],
+          const SizedBox(height: 20),
+          const Text(
+            "top 3 candidates for the\nposition",
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 16, color: Colors.grey),
+          ),
+        ],
+      ),
     );
 
     // UI SECTION 2: OTHER CANDIDATES LIST
     Widget otherCandidatesSection = Container(
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text("other candidates for the position", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          const Text(
+            "other candidates for the position",
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ),
           const SizedBox(height: 20),
           Expanded(
             child: ListView.builder(
@@ -464,30 +561,40 @@ class _LiveScoreboardViewState extends State<LiveScoreboardView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text("Dashboard", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: primaryColor)),
+          Text(
+            "Dashboard",
+            style: TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: primaryColor,
+            ),
+          ),
           const SizedBox(height: 30),
 
           Expanded(
             child: candidates.isEmpty
                 ? const Center(
-                    child: Text("No candidates assigned to this position yet.", style: TextStyle(fontSize: 18, color: Colors.grey)),
+                    child: Text(
+                      "No candidates assigned to this position yet.",
+                      style: TextStyle(fontSize: 18, color: Colors.grey),
+                    ),
                   )
                 : isMobile
-                    ? Column(
-                        children: [
-                          podiumSection,
-                          const SizedBox(height: 30),
-                          Expanded(child: otherCandidatesSection),
-                        ],
-                      )
-                    : Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(flex: 2, child: podiumSection),
-                          const SizedBox(width: 40),
-                          Expanded(flex: 1, child: otherCandidatesSection),
-                        ],
-                      ),
+                ? Column(
+                    children: [
+                      podiumSection,
+                      const SizedBox(height: 30),
+                      Expanded(child: otherCandidatesSection),
+                    ],
+                  )
+                : Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(flex: 2, child: podiumSection),
+                      const SizedBox(width: 40),
+                      Expanded(flex: 1, child: otherCandidatesSection),
+                    ],
+                  ),
           ),
         ],
       ),
@@ -495,9 +602,15 @@ class _LiveScoreboardViewState extends State<LiveScoreboardView> {
   }
 
   // --- PASS isMobile TO ADJUST AVATAR SIZES FOR SMALL SCREENS ---
-  Widget _buildPodiumPerson(CandidateResult candidate, int rank, bool isMobile) {
+  Widget _buildPodiumPerson(
+    CandidateResult candidate,
+    int rank,
+    bool isMobile,
+  ) {
     // Slightly smaller avatars on mobile so they don't squish
-    double avatarRadius = rank == 1 ? (isMobile ? 50 : 60) : (isMobile ? 40 : 50);
+    double avatarRadius = rank == 1
+        ? (isMobile ? 50 : 60)
+        : (isMobile ? 40 : 50);
     double iconSize = rank == 1 ? (isMobile ? 60 : 80) : (isMobile ? 50 : 60);
 
     return GestureDetector(
@@ -505,19 +618,25 @@ class _LiveScoreboardViewState extends State<LiveScoreboardView> {
       child: Column(
         children: [
           CircleAvatar(
-            radius: avatarRadius, 
+            radius: avatarRadius,
             backgroundColor: Colors.white,
             child: Icon(Icons.person, size: iconSize, color: Colors.grey),
           ),
           const SizedBox(height: 15),
           Text(
-            candidate.name, 
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: isMobile ? 14 : 16),
+            candidate.name,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: isMobile ? 14 : 16,
+            ),
             textAlign: TextAlign.center,
           ),
           Text(
-            candidate.party, 
-            style: TextStyle(color: Colors.black54, fontSize: isMobile ? 10 : 12),
+            candidate.party,
+            style: TextStyle(
+              color: Colors.black54,
+              fontSize: isMobile ? 10 : 12,
+            ),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 5),
@@ -527,8 +646,15 @@ class _LiveScoreboardViewState extends State<LiveScoreboardView> {
               color: primaryColor.withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Text("${candidate.votes} Votes", style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold, fontSize: 12)),
-          )
+            child: Text(
+              "${candidate.votes} Votes",
+              style: TextStyle(
+                color: primaryColor,
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -545,27 +671,48 @@ class _LiveScoreboardViewState extends State<LiveScoreboardView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text("${candidate.name.toUpperCase()} AND ${candidate.party.toUpperCase()}", style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                Text(
+                  "${candidate.name.toUpperCase()} AND ${candidate.party.toUpperCase()}",
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 const SizedBox(height: 5),
                 Container(
                   height: 20,
                   width: double.infinity,
-                  decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(10)),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[200],
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                   alignment: Alignment.centerLeft,
                   child: Container(
                     height: 20,
-                    width: candidate.percentage > 0 ? (candidate.percentage / 100) * 200 : 0, 
-                    decoration: BoxDecoration(color: Colors.green, borderRadius: BorderRadius.circular(10)),
+                    width: candidate.percentage > 0
+                        ? (candidate.percentage / 100) * 200
+                        : 0,
+                    decoration: BoxDecoration(
+                      color: Colors.green,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                     alignment: Alignment.centerLeft,
-                    child: candidate.percentage > 0 
-                      ? Text("${candidate.percentage.toStringAsFixed(1)}%", style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold))
-                      : null,
+                    child: candidate.percentage > 0
+                        ? Text(
+                            "${candidate.percentage.toStringAsFixed(1)}%",
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          )
+                        : null,
                   ),
-                )
+                ),
               ],
             ),
-          )
+          ),
         ],
       ),
     );

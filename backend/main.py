@@ -303,6 +303,12 @@ def get_students(db: Session = Depends(get_db)):
         }
         for student in students
     ]
+
+@app.get("/api/users")
+def get_all_users(db: Session = Depends(get_db)):
+    # This fetches everyone from the database table you just showed me
+    users = db.query(User).all()
+    return users
     
 @app.get("/api/users/me")
 def get_user_profile(user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)):

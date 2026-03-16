@@ -14,7 +14,7 @@ class CandidatesRegistration extends StatefulWidget {
 
 class _CandidatesRegistrationState extends State<CandidatesRegistration> {
   final _formKey = GlobalKey<FormState>();
-  
+
   // Controllers
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _platformController = TextEditingController();
@@ -22,7 +22,7 @@ class _CandidatesRegistrationState extends State<CandidatesRegistration> {
   // Dropdown States
   List<dynamic> _polls = [];
   List<String> _parties = ['Independent'];
-  
+
   int? _selectedPollId;
   String? _selectedPosition;
   String _selectedParty = 'Independent';
@@ -33,14 +33,21 @@ class _CandidatesRegistrationState extends State<CandidatesRegistration> {
   XFile? _selectedImage;
   Uint8List? _imageBytes; // Used for universal web/mobile image preview
 
-  final List<String> _positions = ['President', 'Vice President', 'Secretary', 'Treasurer', 'Auditor', 'PIO'];
+  final List<String> _positions = [
+    'President',
+    'Vice President',
+    'Secretary',
+    'Treasurer',
+    'Auditor',
+    'PIO',
+  ];
   final List<String> _courses = [
     'BS Information Technology',
     'BS Computer Engineering',
     'BS Elementary Education',
     'BS Secondary Education',
     'BA Communication',
-    'BS Tourism Management'
+    'BS Tourism Management',
   ];
   final List<String> _years = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
 
@@ -55,7 +62,9 @@ class _CandidatesRegistrationState extends State<CandidatesRegistration> {
 
   Future<void> _fetchPolls() async {
     try {
-      final response = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/polls'));
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/api/polls'),
+      );
       if (response.statusCode == 200) {
         setState(() {
           _polls = jsonDecode(response.body);
@@ -69,7 +78,9 @@ class _CandidatesRegistrationState extends State<CandidatesRegistration> {
 
   Future<void> _fetchParties() async {
     try {
-      final response = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/parties/lineups'));
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/api/parties/lineups'),
+      );
       if (response.statusCode == 200) {
         final List<dynamic> fetchedParties = jsonDecode(response.body);
         setState(() {
@@ -89,7 +100,7 @@ class _CandidatesRegistrationState extends State<CandidatesRegistration> {
   Future<void> _pickImage() async {
     final ImagePicker picker = ImagePicker();
     final XFile? image = await picker.pickImage(source: ImageSource.gallery);
-    
+
     if (image != null) {
       final bytes = await image.readAsBytes();
       setState(() {
@@ -101,9 +112,14 @@ class _CandidatesRegistrationState extends State<CandidatesRegistration> {
 
   Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) return;
-    
-    if (_selectedCourse == null || _selectedYear == null || _selectedPosition == null || _selectedPollId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select all dropdown fields.')));
+
+    if (_selectedCourse == null ||
+        _selectedYear == null ||
+        _selectedPosition == null ||
+        _selectedPollId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select all dropdown fields.')),
+      );
       return;
     }
 
@@ -120,18 +136,21 @@ class _CandidatesRegistrationState extends State<CandidatesRegistration> {
       request.fields['party_name'] = _selectedParty;
       // CONCATENATE COURSE AND YEAR HERE
       request.fields['course_year'] = '$_selectedCourse - $_selectedYear';
-      
+
       if (_platformController.text.trim().isNotEmpty) {
-        request.fields['description_platform'] = _platformController.text.trim();
+        request.fields['description_platform'] = _platformController.text
+            .trim();
       }
 
       // Add Image File if selected
       if (_selectedImage != null && _imageBytes != null) {
-        request.files.add(http.MultipartFile.fromBytes(
-          'photo',
-          _imageBytes!,
-          filename: _selectedImage!.name,
-        ));
+        request.files.add(
+          http.MultipartFile.fromBytes(
+            'photo',
+            _imageBytes!,
+            filename: _selectedImage!.name,
+          ),
+        );
       }
 
       // Send Request
@@ -140,7 +159,12 @@ class _CandidatesRegistrationState extends State<CandidatesRegistration> {
       var jsonResponse = jsonDecode(responseData);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Candidate Registered Successfully!'), backgroundColor: Colors.green));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Candidate Registered Successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
         // Reset form
         _formKey.currentState!.reset();
         setState(() {
@@ -155,10 +179,20 @@ class _CandidatesRegistrationState extends State<CandidatesRegistration> {
         });
       } else {
         // This catches the Duplicate Party/Position 400 Error!
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(jsonResponse['detail'] ?? 'Registration failed.'), backgroundColor: Colors.red));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(jsonResponse['detail'] ?? 'Registration failed.'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Network error. Please try again.'), backgroundColor: Colors.red));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Network error. Please try again.'),
+          backgroundColor: Colors.red,
+        ),
+      );
     } finally {
       setState(() => _isLoading = false);
     }
@@ -173,14 +207,26 @@ class _CandidatesRegistrationState extends State<CandidatesRegistration> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text("Register New Candidate", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+            const Text(
+              "Register New Candidate",
+              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 10),
-            const Text("Enter candidate details, assign them to a party, and upload a photo.", style: TextStyle(color: Colors.grey)),
+            const Text(
+              "Enter candidate details, assign them to a party, and upload a photo.",
+              style: TextStyle(color: Colors.grey),
+            ),
             const SizedBox(height: 30),
 
             Container(
               padding: const EdgeInsets.all(25),
-              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10)]),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: const [
+                  BoxShadow(color: Colors.black12, blurRadius: 10),
+                ],
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -191,27 +237,62 @@ class _CandidatesRegistrationState extends State<CandidatesRegistration> {
                       child: CircleAvatar(
                         radius: 60,
                         backgroundColor: Colors.grey[200],
-                        backgroundImage: _imageBytes != null ? MemoryImage(_imageBytes!) : null,
-                        child: _imageBytes == null ? const Icon(Icons.camera_alt, size: 40, color: Colors.grey) : null,
+                        backgroundImage: _imageBytes != null
+                            ? MemoryImage(_imageBytes!)
+                            : null,
+                        child: _imageBytes == null
+                            ? const Icon(
+                                Icons.camera_alt,
+                                size: 40,
+                                color: Colors.grey,
+                              )
+                            : null,
                       ),
                     ),
                   ),
-                  const Center(child: Padding(padding: EdgeInsets.only(top: 8), child: Text("Tap to upload photo", style: TextStyle(color: Colors.grey, fontSize: 12)))),
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.only(top: 8),
+                      child: Text(
+                        "Tap to upload photo",
+                        style: TextStyle(color: Colors.grey, fontSize: 12),
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: 30),
 
                   // --- POLL & NAME ---
                   DropdownButtonFormField<int>(
-                    decoration: const InputDecoration(labelText: "Select Election Poll", border: OutlineInputBorder()),
+                    isExpanded: true, // FIX: Prevents overflow
+                    decoration: const InputDecoration(
+                      labelText: "Select Election Poll",
+                      border: OutlineInputBorder(),
+                    ),
                     initialValue: _selectedPollId,
-                    items: _polls.map<DropdownMenuItem<int>>((poll) => DropdownMenuItem(value: poll['poll_id'], child: Text(poll['title']))).toList(),
+                    items: _polls
+                        .map<DropdownMenuItem<int>>(
+                          (poll) => DropdownMenuItem(
+                            value: poll['poll_id'],
+                            child: Text(
+                              poll['title'],
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        )
+                        .toList(),
                     onChanged: (val) => setState(() => _selectedPollId = val),
-                    validator: (value) => value == null ? 'Please select a poll' : null,
+                    validator: (value) =>
+                        value == null ? 'Please select a poll' : null,
                   ),
                   const SizedBox(height: 20),
                   TextFormField(
                     controller: _nameController,
-                    decoration: const InputDecoration(labelText: "Full Name", border: OutlineInputBorder()),
-                    validator: (value) => value!.isEmpty ? 'Name is required' : null,
+                    decoration: const InputDecoration(
+                      labelText: "Full Name",
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (value) =>
+                        value!.isEmpty ? 'Name is required' : null,
                   ),
                   const SizedBox(height: 20),
 
@@ -220,20 +301,51 @@ class _CandidatesRegistrationState extends State<CandidatesRegistration> {
                     children: [
                       Expanded(
                         child: DropdownButtonFormField<String>(
-                          decoration: const InputDecoration(labelText: "Position", border: OutlineInputBorder()),
+                          isExpanded: true, // FIX: Prevents overflow
+                          decoration: const InputDecoration(
+                            labelText: "Position",
+                            border: OutlineInputBorder(),
+                          ),
                           initialValue: _selectedPosition,
-                          items: _positions.map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(),
-                          onChanged: (val) => setState(() => _selectedPosition = val),
-                          validator: (value) => value == null ? 'Required' : null,
+                          items: _positions
+                              .map(
+                                (p) => DropdownMenuItem(
+                                  value: p,
+                                  child: Text(
+                                    p,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (val) =>
+                              setState(() => _selectedPosition = val),
+                          validator: (value) =>
+                              value == null ? 'Required' : null,
                         ),
                       ),
                       const SizedBox(width: 20),
                       Expanded(
                         child: DropdownButtonFormField<String>(
-                          decoration: const InputDecoration(labelText: "Select Party", border: OutlineInputBorder()),
+                          isExpanded: true, // FIX: Prevents overflow
+                          decoration: const InputDecoration(
+                            labelText: "Select Party",
+                            border: OutlineInputBorder(),
+                          ),
                           initialValue: _selectedParty,
-                          items: _parties.map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(),
-                          onChanged: (val) => setState(() => _selectedParty = val!),
+                          items: _parties
+                              .map(
+                                (p) => DropdownMenuItem(
+                                  value: p,
+                                  child: Text(
+                                    p,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (val) =>
+                              setState(() => _selectedParty = val!),
                         ),
                       ),
                     ],
@@ -246,22 +358,54 @@ class _CandidatesRegistrationState extends State<CandidatesRegistration> {
                       Expanded(
                         flex: 2,
                         child: DropdownButtonFormField<String>(
-                          decoration: const InputDecoration(labelText: "Course", border: OutlineInputBorder()),
+                          isExpanded: true, // FIX: Prevents overflow
+                          decoration: const InputDecoration(
+                            labelText: "Course",
+                            border: OutlineInputBorder(),
+                          ),
                           initialValue: _selectedCourse,
-                          items: _courses.map((c) => DropdownMenuItem(value: c, child: Text(c, overflow: TextOverflow.ellipsis))).toList(),
-                          onChanged: (val) => setState(() => _selectedCourse = val),
-                          validator: (value) => value == null ? 'Required' : null,
+                          items: _courses
+                              .map(
+                                (c) => DropdownMenuItem(
+                                  value: c,
+                                  child: Text(
+                                    c,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (val) =>
+                              setState(() => _selectedCourse = val),
+                          validator: (value) =>
+                              value == null ? 'Required' : null,
                         ),
                       ),
                       const SizedBox(width: 20),
                       Expanded(
                         flex: 1,
                         child: DropdownButtonFormField<String>(
-                          decoration: const InputDecoration(labelText: "Year Level", border: OutlineInputBorder()),
+                          isExpanded: true, // FIX: Prevents overflow
+                          decoration: const InputDecoration(
+                            labelText: "Year Level",
+                            border: OutlineInputBorder(),
+                          ),
                           initialValue: _selectedYear,
-                          items: _years.map((y) => DropdownMenuItem(value: y, child: Text(y))).toList(),
-                          onChanged: (val) => setState(() => _selectedYear = val),
-                          validator: (value) => value == null ? 'Required' : null,
+                          items: _years
+                              .map(
+                                (y) => DropdownMenuItem(
+                                  value: y,
+                                  child: Text(
+                                    y,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (val) =>
+                              setState(() => _selectedYear = val),
+                          validator: (value) =>
+                              value == null ? 'Required' : null,
                         ),
                       ),
                     ],
@@ -272,7 +416,11 @@ class _CandidatesRegistrationState extends State<CandidatesRegistration> {
                   TextFormField(
                     controller: _platformController,
                     maxLines: 4,
-                    decoration: const InputDecoration(labelText: "Platform / Description", border: OutlineInputBorder(), alignLabelWithHint: true),
+                    decoration: const InputDecoration(
+                      labelText: "Platform / Description",
+                      border: OutlineInputBorder(),
+                      alignLabelWithHint: true,
+                    ),
                   ),
                   const SizedBox(height: 30),
 
@@ -281,14 +429,25 @@ class _CandidatesRegistrationState extends State<CandidatesRegistration> {
                     width: double.infinity,
                     height: 50,
                     child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF000B6B), foregroundColor: Colors.white),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF000B6B),
+                        foregroundColor: Colors.white,
+                      ),
                       onPressed: _isLoading ? null : _submitForm,
-                      child: _isLoading ? const CircularProgressIndicator(color: Colors.white) : const Text("Register Candidate", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      child: _isLoading
+                          ? const CircularProgressIndicator(color: Colors.white)
+                          : const Text(
+                              "Register Candidate",
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                     ),
-                  )
+                  ),
                 ],
               ),
-            )
+            ),
           ],
         ),
       ),
