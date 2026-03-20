@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Mar 14, 2026 at 12:35 PM
+-- Generation Time: Mar 20, 2026 at 03:57 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -43,31 +43,18 @@ CREATE TABLE `candidates` (
 --
 
 INSERT INTO `candidates` (`candidate_id`, `poll_id`, `name`, `position`, `party_name`, `course_year`, `description_platform`, `photo_url`) VALUES
-(1, 1, 'Alice Thompson', 'President', 'Progressive Party', 'BSIT 4', 'Advocating for better campus Wi-Fi, modernized lab equipment, and student mental health breaks.', NULL),
-(2, 1, 'David Miller', 'Vice President', 'Progressive Party', 'BSCOE 3', 'Focused on creating more extracurricular organizations and strengthening the student council voice.', NULL),
-(3, 1, 'Sophia Davis', 'Secretary', 'Progressive Party', 'BSCS 2', 'Promises 100% transparency in student council meetings with publicly available digital minutes.', NULL),
-(4, 1, 'James Wilson', 'Treasurer', 'Progressive Party', 'BSEE 3', 'Ensuring the student fund is allocated fairly to all departments for their end-of-year events.', NULL),
-(5, 1, 'Olivia Brown', 'Auditor', 'Progressive Party', 'BSCE 4', 'Strict auditing of all organizational budgets to prevent misallocation of student fees.', NULL),
-(6, 1, 'Liam Garcia', 'PIO', 'Progressive Party', 'BSIT 2', 'Creating a centralized student app for live campus announcements and event tracking.', NULL),
-(7, 1, 'Bob Smith', 'President', 'United Students', 'BSCS 4', 'Committed to uniting all departments through university-wide sports fests and hackathons.', NULL),
-(8, 1, 'Fiona Gallagher', 'Vice President', 'United Students', 'BSEE 4', 'Building strong connections between alumni and current students for better job placements.', NULL),
-(9, 1, 'Ian Somerhalder', 'Secretary', 'United Students', 'BSIT 3', 'Implementing a paperless, digital-first approach for all student requests and clearances.', NULL),
-(10, 1, 'Emma Johnson', 'Treasurer', 'United Students', 'BSCOE 2-1', 'Pushing for transparent, real-time financial dashboards accessible to all enrolled students.', NULL),
-(11, 1, 'Noah Martinez', 'Auditor', 'United Students', 'BSCE 3', 'A zero-tolerance policy for budget delays, ensuring organizations get their funds on time.', NULL),
-(12, 1, 'Mia Anderson', 'PIO', 'United Students', 'BSIT 1', 'Revamping the university social media pages to feature student achievements weekly.', NULL),
-(13, 1, 'Charlie Davis', 'President', 'Future Leaders', 'BSCE 4', 'Platform focused on infrastructure: better canteens, clean restrooms, and shaded walkways.', NULL),
-(14, 1, 'Hannah Baker', 'Vice President', 'Future Leaders', 'BSIT 4', 'Bridging the gap between the administration and the student body through monthly town halls.', NULL),
-(15, 1, 'Lucas White', 'Secretary', 'Future Leaders', 'BSCS 3', 'Organizing the student database to make enrollment and ID replacement faster.', NULL),
-(16, 1, 'Ava Taylor', 'Treasurer', 'Future Leaders', 'BSEE 2', 'Lowering ticket prices for university events by securing off-campus corporate sponsorships.', NULL),
-(17, 1, 'Ethan Hunt', 'Auditor', 'Future Leaders', 'BSCOE 4', 'Rigorous background checks on all third-party vendors operating inside the campus.', NULL),
-(18, 1, 'Isabella Thomas', 'PIO', 'Future Leaders', 'BSCE 2', 'Launching a monthly digital newsletter written by the students, for the students.', NULL),
-(19, 1, 'Diana Evans', 'President', 'Innovators Bloc', 'BSCOE 4', 'Tech-driven leadership. Pushing for an e-voting system and automated clearance processes.', NULL),
-(20, 1, 'George Bluth', 'Vice President', 'Innovators Bloc', 'BSIT 3', 'Supporting student startups and providing grants for standout capstone projects.', NULL),
-(21, 1, 'Jessica Day', 'Secretary', 'Innovators Bloc', 'BSEE 3', 'Streamlining communication so students never miss an important deadline again.', NULL),
-(22, 1, 'Mason Clark', 'Treasurer', 'Innovators Bloc', 'BSCS 4', 'Introducing a cashless payment option for the university cafeteria and bookstore.', NULL),
-(23, 1, 'Amelia Lewis', 'Auditor', 'Innovators Bloc', 'BSIT 2', 'Modernizing the tracking of student council expenses using blockchain concepts.', NULL),
-(24, 1, 'Logan Walker', 'PIO', 'Innovators Bloc', 'BSCE 1', 'Establishing an official student podcast to discuss campus life, academics, and pop culture.', NULL),
-(25, 2, 'Mark Fischbach', 'President', 'Example Party 1', 'BS Information Technology - 3rd Year', 'VOTE FOR ME 2027', 'uploads/20260309121522_Untitled_design_(1).png');
+(26, 3, 'John Doe', 'President', 'DIGITS Party', 'BS Information Technology - 3rd Year', 'VOTE FOR ME', NULL),
+(27, 3, 'Jane Doe', 'President', 'SQU Party', 'BS Computer Engineering - 3rd Year', 'VOTE FOR ME ALWAYS', NULL),
+(28, 3, 'Johnny Doe', 'Vice President', 'DIGITS Party', 'BS Information Technology - 3rd Year', 'DON\'T VOTE FOR ME', NULL),
+(29, 3, 'Jenny Doe', 'Vice President', 'SQU Party', 'BS Elementary Education - 3rd Year', 'PLEASE VOTE', NULL),
+(30, 3, 'John John Doe', 'Secretary', 'DIGITS Party', 'BS Information Technology - 3rd Year', 'VOTE NOW', NULL),
+(31, 3, 'JEN JEN DOE', 'Secretary', 'SQU Party', 'BS Secondary Education - 3rd Year', 'VOTE PLEASEEE', NULL),
+(32, 3, 'Joenelle Doe', 'Treasurer', 'DIGITS Party', 'BS Information Technology - 3rd Year', 'JUN JUN VOTE', NULL),
+(33, 3, 'Jessica Doe', 'Treasurer', 'SQU Party', 'BS Computer Engineering - 3rd Year', NULL, NULL),
+(34, 3, 'Jefferson Doe', 'Auditor', 'DIGITS Party', 'BS Tourism Management - 3rd Year', NULL, NULL),
+(35, 3, 'Jane Doe 2nd', 'Auditor', 'SQU Party', 'BA Communication - 3rd Year', NULL, NULL),
+(36, 3, 'Bob Doe', 'PIO', 'DIGITS Party', 'BS Computer Engineering - 3rd Year', NULL, NULL),
+(37, 3, 'Beth Doe', 'PIO', 'SQU Party', 'BS Computer Engineering - 2nd Year', NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -85,8 +72,9 @@ CREATE TABLE `parties` (
 --
 
 INSERT INTO `parties` (`party_id`, `name`) VALUES
-(3, 'Example Party 1'),
-(1, 'Independent');
+(4, 'DIGITS Party'),
+(1, 'Independent'),
+(5, 'SQU Party');
 
 -- --------------------------------------------------------
 
@@ -108,8 +96,7 @@ CREATE TABLE `polls` (
 --
 
 INSERT INTO `polls` (`poll_id`, `title`, `start_time`, `end_time`, `status`, `is_published`) VALUES
-(1, 'ELECTION 2026', '2026-03-13 13:38:00', '2026-03-31 13:38:00', 'Published', 1),
-(2, 'ELECTION 2027', '2026-04-01 23:47:00', '2026-04-02 23:47:00', 'Published', 1);
+(3, 'ELECTION 2026', '2026-03-16 13:00:00', '2026-03-24 16:25:00', 'Published', 1);
 
 -- --------------------------------------------------------
 
@@ -138,7 +125,8 @@ INSERT INTO `users` (`user_id`, `student_number`, `full_name`, `email`, `course`
 (1, '1234567', 'admin', 'admin@gmail.com', 'Bachelor of Science in Information Technology', '$2b$12$vA6OiFcyAsubvvWXREDwH.HqtAsUiT5vSY4mhz8Qjqp3ZbIW/Bi6O', 'Admin', 1, '2026-03-05 05:05:42', NULL),
 (2, '1234569', 'John Doe', 'john@gmail.com', 'Bachelor of Entrepreneurship', '$2b$12$360IOqztfaCmmocJV0/h9.4BM35A9z7fNkKuelUq5wf2256LTFmBS', 'Student', 1, '2026-03-05 06:13:25', NULL),
 (3, '8765431', 'jane', 'jane@gmail.com', 'Bachelor of Arts in English Language', '$2b$12$h0pCbjD.508PV/JF8aUNQOVWoh0nY.7lQIsAfrfCtK6XlFe5EsMIW', 'Student', 1, '2026-03-06 07:15:50', NULL),
-(4, '7654321', 'carl', 'carl@gmail.com', 'Bachelor of Science in Tourism Management', '$2b$12$qpBeD9Ldcrd82e4q4EKL0.aNk2NlxhL1slWGvGKJdvY/aS22fUBeC', 'Student', 1, '2026-03-14 01:17:06', 'uploads/user_20260314171705_116018138_4056146044458962_8949890354613494763_n.jpg');
+(4, '7654321', 'carl', 'carl@gmail.com', 'Bachelor of Science in Tourism Management', '$2b$12$qpBeD9Ldcrd82e4q4EKL0.aNk2NlxhL1slWGvGKJdvY/aS22fUBeC', 'Student', 1, '2026-03-14 01:17:06', 'uploads/user_20260314171705_116018138_4056146044458962_8949890354613494763_n.jpg'),
+(5, '2302184', 'Dorothy Magdaraog', '2302184@lnu.edu.ph', 'Bachelor of Science in Information Technology', '$2b$12$A.cwkOJXL.jOyfOHCR/XIe3ney2rmj7.1f040INCnHihW.0IfaQbK', 'Student', 1, '2026-03-14 23:34:22', NULL);
 
 -- --------------------------------------------------------
 
@@ -153,30 +141,6 @@ CREATE TABLE `votes` (
   `candidate_id` int(11) NOT NULL,
   `cast_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `votes`
---
-
-INSERT INTO `votes` (`vote_id`, `user_id`, `poll_id`, `candidate_id`, `cast_at`) VALUES
-(9, 2, 1, 1, '2026-03-06 06:50:19'),
-(10, 2, 1, 14, '2026-03-06 06:50:19'),
-(11, 2, 1, 21, '2026-03-06 06:50:19'),
-(12, 2, 1, 4, '2026-03-06 06:50:19'),
-(13, 2, 1, 11, '2026-03-06 06:50:19'),
-(14, 2, 1, 12, '2026-03-06 06:50:19'),
-(15, 3, 1, 19, '2026-03-06 07:16:45'),
-(16, 3, 1, 8, '2026-03-06 07:16:45'),
-(17, 3, 1, 21, '2026-03-06 07:16:45'),
-(18, 3, 1, 4, '2026-03-06 07:16:45'),
-(19, 3, 1, 11, '2026-03-06 07:16:45'),
-(20, 3, 1, 24, '2026-03-06 07:16:45'),
-(21, 4, 1, 1, '2026-03-14 01:47:57'),
-(22, 4, 1, 14, '2026-03-14 01:47:57'),
-(23, 4, 1, 21, '2026-03-14 01:47:57'),
-(24, 4, 1, 10, '2026-03-14 01:47:57'),
-(25, 4, 1, 5, '2026-03-14 01:47:57'),
-(26, 4, 1, 18, '2026-03-14 01:47:57');
 
 --
 -- Indexes for dumped tables
@@ -226,25 +190,25 @@ ALTER TABLE `votes`
 -- AUTO_INCREMENT for table `candidates`
 --
 ALTER TABLE `candidates`
-  MODIFY `candidate_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=26;
+  MODIFY `candidate_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=38;
 
 --
 -- AUTO_INCREMENT for table `parties`
 --
 ALTER TABLE `parties`
-  MODIFY `party_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `party_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT for table `polls`
 --
 ALTER TABLE `polls`
-  MODIFY `poll_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `poll_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT for table `votes`
