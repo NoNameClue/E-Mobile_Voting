@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Mar 20, 2026 at 03:57 AM
+-- Generation Time: Mar 20, 2026 at 02:17 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -88,15 +88,16 @@ CREATE TABLE `polls` (
   `start_time` datetime NOT NULL,
   `end_time` datetime NOT NULL,
   `status` varchar(50) DEFAULT 'Draft',
-  `is_published` tinyint(1) DEFAULT 0
+  `is_published` tinyint(1) DEFAULT 0,
+  `is_archived` tinyint(1) DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `polls`
 --
 
-INSERT INTO `polls` (`poll_id`, `title`, `start_time`, `end_time`, `status`, `is_published`) VALUES
-(3, 'ELECTION 2026', '2026-03-16 13:00:00', '2026-03-24 16:25:00', 'Published', 1);
+INSERT INTO `polls` (`poll_id`, `title`, `start_time`, `end_time`, `status`, `is_published`, `is_archived`) VALUES
+(3, 'ELECTION 2026', '2026-03-16 13:00:00', '2026-03-24 16:25:00', 'Published', 1, 0);
 
 -- --------------------------------------------------------
 
@@ -180,7 +181,8 @@ ALTER TABLE `users`
 ALTER TABLE `votes`
   ADD PRIMARY KEY (`vote_id`),
   ADD KEY `poll_id` (`poll_id`),
-  ADD KEY `candidate_id` (`candidate_id`);
+  ADD KEY `candidate_id` (`candidate_id`),
+  ADD KEY `votes_ibfk_1` (`user_id`);
 
 --
 -- AUTO_INCREMENT for dumped tables
@@ -202,7 +204,7 @@ ALTER TABLE `parties`
 -- AUTO_INCREMENT for table `polls`
 --
 ALTER TABLE `polls`
-  MODIFY `poll_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `poll_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT for table `users`
