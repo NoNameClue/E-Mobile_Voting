@@ -414,27 +414,70 @@ class _ManagePollsState extends State<ManagePolls> {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 // If it is not published yet, show the Publish button
-                                if (!isPublished)
+                                // ACTION BUTTONS LOGIC
+                                if (!isPublished) ...[
+                                  // ✅ DRAFT POLL ACTIONS
+
+                                  // 🔥 PUBLISH BUTTON (ONLY HERE)
                                   ElevatedButton.icon(
                                     icon: const Icon(Icons.campaign, size: 18),
                                     label: const Text("Publish"),
                                     style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.green, 
+                                      backgroundColor: Colors.green,
                                       foregroundColor: Colors.white,
                                     ),
                                     onPressed: () => _publishPoll(poll['poll_id']),
-                                  )
-                                // If published, show a simple badge
-                                else
+                                  ),
+
+                                  const SizedBox(width: 8),
+
+                                  IconButton(
+                                    icon: const Icon(Icons.edit, color: Colors.blue),
+                                    tooltip: "Edit Poll",
+                                    onPressed: () => _showPollDialog(existingPoll: poll),
+                                  ),
+
+                                  IconButton(
+                                    icon: const Icon(Icons.delete, color: Colors.red),
+                                    tooltip: "Delete Poll",
+                                    onPressed: () => _confirmDelete(poll['poll_id']),
+                                  ),
+                                ] else ...[
+                                  // ✅ PUBLISHED POLL ACTIONS
+
+                                  // Show published badge
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                                     decoration: BoxDecoration(
                                       color: Colors.green.withOpacity(0.2),
                                       borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(color: Colors.green)
+                                      border: Border.all(color: Colors.green),
                                     ),
-                                    child: const Text("PUBLISHED", style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 12)),
+                                    child: const Text(
+                                      "PUBLISHED",
+                                      style: TextStyle(
+                                        color: Colors.green,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12,
+                                      ),
+                                    ),
                                   ),
+
+                                  const SizedBox(width: 10),
+
+                                  // Archive / Unarchive
+                                  // IconButton(
+                                  //   icon: Icon(
+                                  //     isArchived ? Icons.unarchive : Icons.archive,
+                                  //     color: Colors.grey,
+                                  //   ),
+                                  //   tooltip: isArchived ? "Unarchive Poll" : "Archive Poll",
+                                  //   onPressed: () => _toggleArchivePoll(
+                                  //     poll['poll_id'],
+                                  //     isArchived,
+                                  //   ),
+                                  // ),
+                                ],
                                   
                                 const SizedBox(width: 10),
                                 
