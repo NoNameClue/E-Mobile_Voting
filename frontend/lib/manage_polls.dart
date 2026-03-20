@@ -9,42 +9,12 @@ class ManagePolls extends StatefulWidget {
 
   @override
   State<ManagePolls> createState() => _ManagePollsState();
-  //  Widget build(BuildContext context) {
-  //   return Scaffold(
-  //     body: ResponsiveScreen(
-  //       child: Column(
-  //         crossAxisAlignment: CrossAxisAlignment.start,
-  //         children: [
-  //           const Text(
-  //             "Manage Polls",
-  //             style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-  //           ),
-
-  //           const SizedBox(height: 20),
-
-  //           SingleChildScrollView(
-  //             scrollDirection: Axis.horizontal,
-  //             child: DataTable(
-  //               columns: const [
-  //                 DataColumn(label: Text("Poll Title")),
-  //                 DataColumn(label: Text("Start Date")),
-  //                 DataColumn(label: Text("End Date")),
-  //                 DataColumn(label: Text("Status")),
-  //                 DataColumn(label: Text("Actions")),
-  //               ],
-  //               rows: const [],
-  //             ),
-  //           ),
-  //         ],
-  //       ),
-  //     ),
-  //   );
-  // }
 }
 
 class _ManagePollsState extends State<ManagePolls> {
   List<dynamic> _polls = [];
   bool _isLoading = true;
+  bool _showArchived = false;
 
   @override
   void initState() {
@@ -115,6 +85,190 @@ class _ManagePollsState extends State<ManagePolls> {
         _fetchPolls();
       }
     } catch (e) {}
+  }
+
+  // ===== ADD THESE BELOW _deletePoll() =====
+
+  void _confirmDelete(int pollId) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Confirm Delete"),
+          content: const Text("Are you sure? This cannot be undone."),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Cancel"),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              onPressed: () {
+                Navigator.pop(context);
+                _deletePoll(pollId);
+              },
+              child: const Text("Confirm Delete"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _toggleArchivePoll(int pollId, bool currentlyArchived) async {
+    final url = currentlyArchived
+        ? '${ApiConfig.baseUrl}/api/polls/$pollId/unarchive'
+        : '${ApiConfig.baseUrl}/api/polls/$pollId/archive';
+
+    try {
+      final response = await http.put(Uri.parse(url));
+      if (response.statusCode == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(currentlyArchived ? 'Poll unarchived' : 'Poll archived'),
+          ),
+        );
+        _fetchPolls(); // reload from backend
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to toggle archive status')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Server error')),
+      );
+    }
+  }
+
+  // Future<void> _archivePoll(int pollId) async {
+  //   try {
+  //     final response = await http.put(
+  //       Uri.parse('${ApiConfig.baseUrl}/api/polls/$pollId/archive'),
+  //     );
+
+  //     if (response.statusCode == 200) {
+  //       ScaffoldMessenger.of(context).showSnackBar(
+  //         const SnackBar(content: Text('Poll archived')),
+  //       );
+  //       _fetchPolls();
+  //     }
+  //   } catch (e) {}
+  // }
+
+  // Future<void> _unarchivePoll(int pollId) async {
+  //   try {
+  //     final response = await http.put(
+  //       Uri.parse('${ApiConfig.baseUrl}/api/polls/$pollId'),
+  //       headers: {'Content-Type': 'application/json'},
+  //       body: jsonEncode({'is_archived': false}),
+  //     );
+
+  //     if (response.statusCode == 200) {
+  //       // Update local list so UI reflects the change immediately
+  //       setState(() {
+  //         _polls = _polls.map((poll) {
+  //           if (poll['poll_id'] == pollId) {
+  //             poll['is_archived'] = false; // Mark as active
+  //           }
+  //           return poll;
+  //         }).toList();
+  //       });
+
+  //       ScaffoldMessenger.of(context).showSnackBar(
+  //         const SnackBar(content: Text('Poll unarchived')),
+  //       );
+  //     } else {
+  //       ScaffoldMessenger.of(context).showSnackBar(
+  //         SnackBar(content: Text('Failed to unarchive poll (code ${response.statusCode})')),
+  //       );
+  //     }
+  //   } catch (e) {
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       const SnackBar(content: Text('Failed to unarchive poll')),
+  //     );
+  //   }
+  // }
+
+  void _openPollDetails(int pollId, String title) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          child: FutureBuilder(
+            future: http.get(Uri.parse('${ApiConfig.baseUrl}/api/candidates/$pollId')),
+            builder: (context, snapshot) {
+
+              if (!snapshot.hasData) {
+                return const Padding(
+                  padding: EdgeInsets.all(30),
+                  child: Center(child: CircularProgressIndicator()),
+                );
+              }
+
+              final List candidates = jsonDecode(snapshot.data!.body);
+
+              Map<String, List<dynamic>> grouped = {};
+              for (var c in candidates) {
+                String party = c['party_name'] ?? 'Independent';
+                grouped.putIfAbsent(party, () => []).add(c);
+              }
+
+              return Container(
+                padding: const EdgeInsets.all(20),
+                width: 500,
+                height: 500,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 20),
+
+                    Expanded(
+                      child: ListView(
+                        children: grouped.entries.map((entry) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(entry.key,
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF000B6B),
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+
+                              ...entry.value.map((candidate) {
+                                return ListTile(
+                                  leading: const Icon(Icons.person),
+                                  title: Text(candidate['name']),
+                                  subtitle: Text(candidate['position']),
+                                );
+                              }),
+
+                              const Divider(),
+                            ],
+                          );
+                        }).toList(),
+                      ),
+                    ),
+
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text("Close"),
+                      ),
+                    )
+                  ],
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
   }
 
   Future<DateTime?> _pickDateTime(DateTime? initialDate) async {
@@ -208,13 +362,27 @@ class _ManagePollsState extends State<ManagePolls> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text("Manage Polls", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+              const Text("Manage Polls", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+              Spacer(),
+              IconButton(
+                icon: Icon(
+                  _showArchived ? Icons.list : Icons.archive,
+                  color: Colors.black,
+                ),
+                tooltip: _showArchived ? "Show Active Polls" : "Show Archived Polls",
+                onPressed: () {
+                  setState(() {
+                    _showArchived = !_showArchived;
+                  });
+                },
+              ),
+              const SizedBox(width: 10),
               ElevatedButton.icon(
                 icon: const Icon(Icons.add),
                 label: const Text("Create Poll"),
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.amber, foregroundColor: Colors.black),
                 onPressed: () => _showPollDialog(),
-              )
+              ),
             ],
           ),
           const SizedBox(height: 20),
@@ -228,10 +396,18 @@ class _ManagePollsState extends State<ManagePolls> {
                       itemBuilder: (context, index) {
                         final poll = _polls[index];
                         final bool isPublished = poll['is_published'] == true || poll['is_published'] == 1;
+                        final bool isArchived = poll['is_archived'] == true || poll['is_archived'] == 1;
 
-                        return Card(
-                          margin: const EdgeInsets.only(bottom: 15),
-                          child: ListTile(
+                        // Skip items depending on toggle
+                        if (_showArchived != isArchived) {
+                          return const SizedBox.shrink();
+                        }
+
+                        return InkWell(
+                          onTap: () => _openPollDetails(poll['poll_id'], poll['title']),
+                          child: Card(
+                            margin: const EdgeInsets.only(bottom: 15),
+                            child: ListTile(
                             title: Text(poll['title'], style: const TextStyle(fontWeight: FontWeight.bold)),
                             subtitle: Text('Start: ${poll['start_time'].toString().substring(0, 16)}\nEnd: ${poll['end_time'].toString().substring(0, 16)}'),
                             trailing: Row(
@@ -282,11 +458,46 @@ class _ManagePollsState extends State<ManagePolls> {
                                   }
                                 ),
 
-                                IconButton(icon: const Icon(Icons.edit, color: Colors.blue), onPressed: () => _showPollDialog(existingPoll: poll)),
-                                IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: () => _deletePoll(poll['poll_id'])),
+                                IconButton(
+                                  icon: Icon(
+                                    poll['is_archived'] == true || poll['is_archived'] == 1
+                                        ? Icons.unarchive
+                                        : Icons.archive,
+                                    color: poll['is_archived'] == true || poll['is_archived'] == 1
+                                        ? Colors.green
+                                        : Colors.orange,
+                                  ),
+                                  tooltip: poll['is_archived'] == true || poll['is_archived'] == 1
+                                      ? 'Unarchive Poll'
+                                      : 'Archive Poll',
+                                  onPressed: () => _toggleArchivePoll(
+                                    poll['poll_id'],
+                                    poll['is_archived'] == true || poll['is_archived'] == 1,
+                                  ),
+                                ),
+
+                              //  if (!isPublished && !isArchived)
+                              //   IconButton(
+                              //     icon: const Icon(Icons.edit, color: Colors.blue),
+                              //     onPressed: () => _showPollDialog(existingPoll: poll),
+                              //   ),
+
+                              // if (!isPublished && !isArchived)
+                              //   IconButton(
+                              //     icon: const Icon(Icons.delete, color: Colors.red),
+                              //     onPressed: () => _deletePoll(poll['poll_id']),
+                              //   ),
+
+                              // if (isArchived)
+                              //   IconButton(
+                              //     icon: const Icon(Icons.unarchive, color: Colors.orange),
+                              //     tooltip: 'Unarchive Poll',
+                              //     onPressed: () => _unarchivePoll(poll['poll_id']),
+                              //   ),
                               ],
                             ),
                           ),
+                        ),
                         );
                       },
                     ),

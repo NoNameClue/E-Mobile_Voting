@@ -95,6 +95,7 @@ class Poll(Base):
     end_time = Column(DateTime, nullable=False)
     status = Column(String(50), default="Draft")          # Changed to Draft
     is_published = Column(Boolean, default=False)         # <--- NEW FIELD
+    is_archived = Column(Boolean, default=False)          # <--- NEW FIELD
 
 # --- PYDANTIC SCHEMAS ---
 class LoginRequest(BaseModel):
@@ -815,3 +816,30 @@ def get_my_votes(user_id: int = Depends(get_current_user_id), db: Session = Depe
         })
 
     return list(polls.values())
+
+@app.put("/api/polls/{poll_id}/archive")
+def archive_poll(poll_id: int, db: Session = Depends(get_db)):
+    poll = db.query(Poll).filter(Poll.poll_id == poll_id).first()
+    if not poll:
+        raise HTTPException(status_code=404, detail="Poll not found")
+    if not poll.is_published:
+        raise HTTPException(status_code=403, detail="Only published polls can be archived")
+    poll.is_archived = True
+    db.commit()
+
+    return {"message": "Poll archived successfully."}
+
+@app.put("/api/polls/{poll_id}/unarchive")
+def unarchive_poll(poll_id: int, db: Session = Depends(get_db)):
+    poll = db.query(Poll).filter(Poll.poll_id == poll_id).first()
+    if not poll:
+        raise HTTPException(status_code=404, detail="Poll not found")
+    
+    # Only allow unarchiving if it was previously archived
+    if not poll.is_archived:
+        raise HTTPException(status_code=400, detail="Poll is not archived")
+    
+    poll.is_archived = False
+    db.commit()
+    
+    return {"message": "Poll unarchived successfully."}
