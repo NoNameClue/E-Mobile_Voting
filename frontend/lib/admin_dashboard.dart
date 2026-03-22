@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'api_config.dart';
 
+import 'manage_staffs.dart';
 import 'manage_polls.dart';
 import 'manage_users.dart';
 import 'manage_candidates.dart';
@@ -20,7 +21,8 @@ class AdminDashboard extends StatefulWidget {
 }
 
 class _AdminDashboardState extends State<AdminDashboard> {
-  int selectedIndex = 0;
+  // Navigation State
+  String? _selectedMenuString = "Dashboard";
 
   // Dynamic live values
   int _totalStudents = 0;
@@ -28,9 +30,15 @@ class _AdminDashboardState extends State<AdminDashboard> {
   int _deactivatedStudents = 0;
   bool _isLoadingStats = true;
 
-  final List<String> menuItems = [
+  // RBAC State
+  String _userRole = "Admin";
+  List<String> _userPermissions = [];
+
+  // Master list of all possible screens
+  final List<String> _masterMenuItems = [
     "Dashboard",
     "Users / Account Control",
+    "Manage Election Officers", // Master Admin Only
     "Manage Polls",
     "Manage Candidates",
     "Manage Parties",
@@ -39,10 +47,35 @@ class _AdminDashboardState extends State<AdminDashboard> {
     "Election Result",
   ];
 
+  // The dynamically generated list shown to the user
+  List<String> displayMenuItems = [];
+
   @override
   void initState() {
     super.initState();
+    _loadUserAccess();
     _fetchUserCount();
+  }
+
+  Future<void> _loadUserAccess() async {
+    final prefs = await SharedPreferences.getInstance();
+    
+    _userRole = prefs.getString('role') ?? "Admin"; 
+    
+    String permsString = prefs.getString('permissions') ?? "[]";
+    _userPermissions = List<String>.from(jsonDecode(permsString));
+
+    setState(() {
+      if (_userRole == "Admin") {
+        displayMenuItems = List.from(_masterMenuItems);
+      } else if (_userRole == "Staff") {
+        displayMenuItems = _masterMenuItems.where((item) {
+          if (item == "Manage Election Officers") return false; // Strictly restricted
+          if (item == "Dashboard") return true; // Always allow dashboard view
+          return _userPermissions.contains(item);
+        }).toList();
+      }
+    });
   }
 
   // Fetches users, explicitly excludes Admins, and counts Active vs Deactivated
@@ -67,7 +100,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
         int deactivated = 0;
 
         for (var user in allUsers) {
-          // ONLY count students, completely ignore Admins
+          // ONLY count students, completely ignore Admins/Staff
           if (user['role'] == 'Student') {
             total++;
             // Check if active (handles both boolean true and integer 1)
@@ -111,9 +144,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
       child: Column(
         children: [
           const SizedBox(height: 50),
-          const Text(
-            "ADMIN PANEL",
-            style: TextStyle(
+          Text(
+            _userRole == "Staff" ? "STAFF PANEL" : "ADMIN PANEL",
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 20,
               fontWeight: FontWeight.bold,
@@ -126,7 +159,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
             child: SingleChildScrollView(
               child: Column(
                 children: [
-                  for (int i = 0; i < menuItems.length; i++)
+                  for (int i = 0; i < displayMenuItems.length; i++)
                     Padding(
                       padding: const EdgeInsets.symmetric(
                         vertical: 2,
@@ -134,7 +167,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       ),
                       child: Container(
                         decoration: BoxDecoration(
-                          color: selectedIndex == i
+                          color: _selectedMenuString == displayMenuItems[i]
                               ? Colors.amber
                               : Colors.transparent,
                           borderRadius: BorderRadius.circular(5),
@@ -142,24 +175,24 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         child: ListTile(
                           dense: true,
                           leading: Icon(
-                            _getMenuIcon(i),
-                            color: selectedIndex == i
+                            _getMenuIcon(displayMenuItems[i]),
+                            color: _selectedMenuString == displayMenuItems[i]
                                 ? const Color(0xFF000B6B)
                                 : Colors.white70,
                           ),
                           title: Text(
-                            menuItems[i],
+                            displayMenuItems[i],
                             style: TextStyle(
-                              color: selectedIndex == i
+                              color: _selectedMenuString == displayMenuItems[i]
                                   ? const Color(0xFF000B6B)
                                   : Colors.white,
-                              fontWeight: selectedIndex == i
+                              fontWeight: _selectedMenuString == displayMenuItems[i]
                                   ? FontWeight.bold
                                   : FontWeight.normal,
                             ),
                           ),
                           onTap: () {
-                            setState(() => selectedIndex = i);
+                            setState(() => _selectedMenuString = displayMenuItems[i]);
                             if (!isDesktop) Navigator.pop(context);
                           },
                         ),
@@ -182,24 +215,26 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  // Helper function to assign icons to the sidebar
-  IconData _getMenuIcon(int index) {
-    switch (index) {
-      case 0:
+  // Changed to accept string so icons don't mix up when list is filtered
+  IconData _getMenuIcon(String title) {
+    switch (title) {
+      case "Dashboard":
         return Icons.dashboard;
-      case 1:
+      case "Users / Account Control":
         return Icons.people;
-      case 2:
+      case "Manage Election Officers":
+        return Icons.security; 
+      case "Manage Polls":
         return Icons.how_to_vote;
-      case 3:
+      case "Manage Candidates":
         return Icons.person_pin;
-      case 4:
+      case "Manage Parties":
         return Icons.flag;
-      case 5:
+      case "Registration for Candidates":
         return Icons.app_registration;
-      case 6:
+      case "Live Scoreboard":
         return Icons.bar_chart;
-      case 7:
+      case "Election Result":
         return Icons.assignment_turned_in;
       default:
         return Icons.circle;
@@ -273,11 +308,20 @@ class _AdminDashboardState extends State<AdminDashboard> {
   Widget buildQuickActionButton(
     String title,
     IconData icon,
-    int navigateToIndex,
+    String navigateToTitle,
     Color color,
   ) {
     return InkWell(
-      onTap: () => setState(() => selectedIndex = navigateToIndex),
+      onTap: () {
+        // Only allow navigation if they have permission for that panel
+        if (displayMenuItems.contains(navigateToTitle)) {
+          setState(() => _selectedMenuString = navigateToTitle);
+        } else {
+           ScaffoldMessenger.of(context).showSnackBar(
+             const SnackBar(content: Text("You do not have permission to access this module.", style: TextStyle(color: Colors.white)), backgroundColor: Colors.red)
+           );
+        }
+      },
       borderRadius: BorderRadius.circular(12),
       child: Container(
         width: 160,
@@ -381,25 +425,25 @@ class _AdminDashboardState extends State<AdminDashboard> {
               buildQuickActionButton(
                 "Create New\nElection Poll",
                 Icons.add_chart,
-                2,
+                "Manage Polls",
                 const Color(0xFF000B6B),
               ),
               buildQuickActionButton(
                 "Register\nCandidate",
                 Icons.person_add,
-                5,
+                "Registration for Candidates",
                 Colors.amber.shade700,
               ),
               buildQuickActionButton(
                 "Manage\nUser Accounts",
                 Icons.manage_accounts,
-                1,
+                "Users / Account Control",
                 Colors.teal,
               ),
               buildQuickActionButton(
                 "View Live\nScoreboard",
                 Icons.live_tv,
-                6,
+                "Live Scoreboard",
                 Colors.deepPurple,
               ),
             ],
@@ -448,22 +492,24 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   // Page Routing
   Widget buildContent() {
-    switch (selectedIndex) {
-      case 0:
+    switch (_selectedMenuString) {
+      case "Dashboard":
         return buildDashboardHome();
-      case 1:
+      case "Users / Account Control":
         return const ManageUsers();
-      case 2:
+      case "Manage Election Officers":
+        return const ManageStaffs(); 
+      case "Manage Polls":
         return const ManagePolls();
-      case 3:
+      case "Manage Candidates":
         return const ManageCandidates();
-      case 4:
+      case "Manage Parties":
         return const ManageParties();
-      case 5:
+      case "Registration for Candidates":
         return const CandidatesRegistration();
-      case 6:
+      case "Live Scoreboard":
         return const AdminLiveScoreboard();
-      case 7:
+      case "Election Result":
         return const ElectionResultPage();
       default:
         return buildDashboardHome();
@@ -480,7 +526,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           ? null
           : AppBar(
               backgroundColor: const Color(0xFF000B6B),
-              title: const Text("Admin Panel"),
+              title: const Text("Admin Panel", style: TextStyle(color: Colors.white)),
             ),
       drawer: isDesktop ? null : Drawer(child: buildSidebar(false)),
       body: Row(

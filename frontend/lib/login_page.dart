@@ -4,27 +4,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'auth_layout.dart'; 
 import 'api_config.dart'; 
-// import 'responsive_screen.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
   @override
   State<LoginPage> createState() => _LoginPageState();
-  // Widget build(BuildContext context) {
-  //     return Scaffold(
-  //     body: ResponsiveScreen(
-  //       child: Center(
-  //         child: Column(
-  //           children: [
-  //             Text("Login"),
-  //             LoginPage(),
-  //           ],
-  //         ),
-  //       ),
-  //     ),
-  //   );
-  // }
 }
 
 class _LoginPageState extends State<LoginPage> {
@@ -59,11 +44,50 @@ class _LoginPageState extends State<LoginPage> {
 
       if (response.statusCode == 200) {
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('jwt_token', data['access_token']);
-        await prefs.setString('user_role', data['role']);
+        final token = data['access_token'];
+        
+        await prefs.setString('jwt_token', token);
+
+        // --- JWT DECODING & RBAC LOGIC ---
+// --- JWT DECODING & RBAC LOGIC ---
+        String userRole = 'Student'; // Default fallback
+        final tokenParts = token.split('.');
+        
+        if (tokenParts.length == 3) {
+          final payload = jsonDecode(
+              utf8.decode(base64Url.decode(base64Url.normalize(tokenParts[1]))));
+              
+          userRole = payload['role'] ?? 'Student';
+          
+          await prefs.setString('role', userRole);
+          
+          // --- THE CRITICAL FIX IS HERE ---
+          // Ensure we are getting a valid List, even if the backend sends null or a string by mistake
+          List<dynamic> rawPermissions = [];
+          if (payload['permissions'] != null) {
+            if (payload['permissions'] is String) {
+               // Sometimes SQLAlchemy JSON columns return as a stringified JSON
+               rawPermissions = jsonDecode(payload['permissions']);
+            } else if (payload['permissions'] is List) {
+               rawPermissions = payload['permissions'];
+            }
+          }
+          
+          // Save it to SharedPreferences as a JSON string
+          await prefs.setString('permissions', jsonEncode(rawPermissions)); 
+          // ---------------------------------
+          
+        } else {
+          // Fallback if the token format fails
+          userRole = data['role'] ?? 'Student';
+          await prefs.setString('role', userRole);
+        }
+        // ---------------------------------
 
         if (!mounted) return;
-        if (data['role'] == 'Admin') {
+        
+        // Route Admin AND Staff to the admin dashboard
+        if (userRole == 'Admin' || userRole == 'Staff') {
           Navigator.pushReplacementNamed(context, '/admin_dashboard');
         } else {
           Navigator.pushReplacementNamed(context, '/student_home');
@@ -136,7 +160,7 @@ class _LoginPageState extends State<LoginPage> {
             ),
             const SizedBox(height: 25),
             
-            // Sign In Button (FIXED)
+            // Sign In Button
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(

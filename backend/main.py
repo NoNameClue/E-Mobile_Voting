@@ -1,6 +1,8 @@
 import os
 import shutil
+import time
 from fastapi import Security, FastAPI, HTTPException, Depends, File, UploadFile, Form
+from sqlalchemy import create_engine, Column, Integer, String, Boolean, DateTime, Enum as SQLEnum, JSON
 from fastapi.staticfiles import StaticFiles
 from fastapi.security import HTTPBearer
 from fastapi.middleware.cors import CORSMiddleware
@@ -81,10 +83,15 @@ class User(Base):
     email = Column(String(100), unique=True, index=True)
     course = Column(String(50), nullable=False)
     password_hash = Column(String(255), nullable=False)
-    role = Column(SQLEnum('Admin', 'Student'), default='Student')
+    
+    # --- UPDATED: Added 'Staff' to Enum ---
+    role = Column(SQLEnum('Admin', 'Student', 'Staff'), default='Student') 
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow) 
-    profile_pic_url = Column(String(255), nullable=True) # <--- ADDED
+    profile_pic_url = Column(String(255), nullable=True)
+    
+    # --- ADDED: Permissions column ---
+    permissions = Column(JSON, default=[])
 
 # --- POLL MODEL (UPDATED FOR PUBLISHING) ---
 class Poll(Base):
@@ -102,6 +109,13 @@ class LoginRequest(BaseModel):
     email: str
     password: str
 
+class StaffCreate(BaseModel):
+    full_name: str
+    email: str
+    password: str
+
+class PermissionsUpdate(BaseModel):
+    permissions: list[str]
 class RegisterRequest(BaseModel):
     student_number: str
     full_name: str
@@ -398,13 +412,21 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
     # 3. Verify the password matches the hash
     if not pwd_context.verify(request.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid email or password")
+    
+    access_token_payload = {
+    "sub": user.email,
+    "role": user.role,
+    "permissions": user.permissions if user.permissions else [] 
+}
 
     # 4. Generate the secure JWT Session Token
     expire = datetime.utcnow() + timedelta(hours=2) # Token lasts 2 hours
+    user_perms = user.permissions if user.permissions is not None else []
     token_data = {
         "sub": str(user.user_id),
         "email": user.email,
         "role": user.role,
+        "permissions": user_perms, # <--- VERIFY THIS LINE
         "exp": expire
     }
     token = jwt.encode(token_data, SECRET_KEY, algorithm=ALGORITHM)
@@ -843,3 +865,126 @@ def unarchive_poll(poll_id: int, db: Session = Depends(get_db)):
     db.commit()
     
     return {"message": "Poll unarchived successfully."}
+
+from typing import List
+
+class StaffCreate(BaseModel):
+    full_name: str
+    email: str
+    password: str
+
+class PermissionsUpdate(BaseModel):
+    permissions: List[str]
+
+# 1. Fetch all Staff
+@app.get("/api/officers")
+def get_officers(db: Session = Depends(get_db)):
+    officers = db.query(User).filter(User.role == "Staff").all()
+    # Format to match frontend expectations
+    return [
+        {
+            "user_id": o.user_id, 
+            "full_name": o.full_name, 
+            "email": o.email, 
+            "permissions": o.permissions if o.permissions else [],
+            "profile_pic_url": o.profile_pic_url
+        } 
+        for o in officers
+    ]
+
+# 2. Create a new Staff Member (Updated for Image Upload)
+@app.post("/api/officers")
+async def create_staff(
+    full_name: str = Form(...),
+    email: str = Form(...),
+    password: str = Form(...),
+    photo: Optional[UploadFile] = File(None),
+    db: Session = Depends(get_db)
+):
+    if db.query(User).filter(User.email == email).first():
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    hashed_password = pwd_context.hash(password)
+    dummy_id = f"STAFF-{int(time.time())}"
+    
+    photo_url = None
+    if photo and photo.filename:
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        safe_filename = photo.filename.replace(" ", "_")
+        file_path = f"uploads/staff_{timestamp}_{safe_filename}"
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(photo.file, buffer)
+        photo_url = file_path
+    
+    new_staff = User(
+        student_number=dummy_id,
+        full_name=full_name,
+        email=email,
+        course="N/A (Staff)",
+        password_hash=hashed_password,
+        role="Staff",
+        permissions=[],
+        profile_pic_url=photo_url
+    )
+    db.add(new_staff)
+    db.commit()
+    return {"message": "Staff member created successfully"}
+
+# 3. Edit/Update Staff Details
+@app.put("/api/officers/{user_id}")
+async def update_staff(
+    user_id: int,
+    full_name: str = Form(...),
+    email: str = Form(...),
+    password: Optional[str] = Form(None), # Optional password update
+    photo: Optional[UploadFile] = File(None),
+    db: Session = Depends(get_db)
+):
+    user = db.query(User).filter(User.user_id == user_id, User.role == "Staff").first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Staff not found")
+        
+    # Check if they are changing to an email that is already taken by someone else
+    if email != user.email:
+        existing = db.query(User).filter(User.email == email).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="Email already in use")
+
+    user.full_name = full_name
+    user.email = email
+    
+    if password and password.strip():
+        user.password_hash = pwd_context.hash(password)
+        
+    if photo and photo.filename:
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        safe_filename = photo.filename.replace(" ", "_")
+        file_path = f"uploads/staff_{timestamp}_{safe_filename}"
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(photo.file, buffer)
+        user.profile_pic_url = file_path
+
+    db.commit()
+    return {"message": "Staff updated successfully"}
+
+# 4. Delete Staff Member
+@app.delete("/api/officers/{user_id}")
+def delete_staff(user_id: int, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.user_id == user_id, User.role == "Staff").first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Staff not found")
+        
+    db.delete(user)
+    db.commit()
+    return {"message": "Staff deleted successfully"}
+
+# 5. Update Staff Permissions
+@app.put("/api/officers/{user_id}/permissions")
+def update_permissions(user_id: int, perms: PermissionsUpdate, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.user_id == user_id, User.role == "Staff").first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Staff not found")
+    
+    user.permissions = perms.permissions
+    db.commit()
+    return {"message": "Permissions updated successfully"}
