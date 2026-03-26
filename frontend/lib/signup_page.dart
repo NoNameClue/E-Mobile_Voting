@@ -141,7 +141,7 @@ class _SignupPageState extends State<SignupPage> {
               validator: (value) {
                 if (value == null || value.isEmpty) return 'Email is required';
                 if (!RegExp(r'^.+@.+\.(com|edu\.ph)$').hasMatch(value)) {
-                  return 'Must end in .com or .edu.ph';
+                  return 'Must be a valid email address';
                 }
                 return null;
               },

@@ -44,18 +44,6 @@ class StudentDashboard extends StatefulWidget {
 
   @override
   State<StudentDashboard> createState() => _StudentDashboardState();
-  // Widget build(BuildContext context) {
-  //   return Scaffold(
-  //     body: ResponsiveScreen(
-  //       child: Column(
-  //         children: [
-  //           Text("Student Dashboard", style: TextStyle(fontSize: 24)),
-  //           StudentDashboard(),
-  //         ],
-  //       ),
-  //     ),
-  //   );
-  // }
 }
 
 class _StudentDashboardState extends State<StudentDashboard> {
@@ -276,7 +264,8 @@ class _StudentDashboardState extends State<StudentDashboard> {
           ? null
           : AppBar(
               backgroundColor: primaryColor,
-              title: const Text("Student Portal"),
+              foregroundColor: Colors.white, // FIX: Makes burger icon and text white
+              title: const Text("Student Portal", style: TextStyle(fontWeight: FontWeight.bold)),
             ),
       drawer: isDesktop ? null : Drawer(child: buildSidebar(false)),
       body: Row(
@@ -318,8 +307,9 @@ class _LiveScoreboardViewState extends State<LiveScoreboardView> {
       final pollResponse = await http.get(
         Uri.parse('${ApiConfig.baseUrl}/api/polls'),
       );
-      if (pollResponse.statusCode != 200)
+      if (pollResponse.statusCode != 200) {
         throw Exception("Failed to fetch polls");
+      }
 
       final List<dynamic> polls = jsonDecode(pollResponse.body);
 
@@ -341,8 +331,9 @@ class _LiveScoreboardViewState extends State<LiveScoreboardView> {
       final resultsResponse = await http.get(
         Uri.parse('${ApiConfig.baseUrl}/api/polls/$activePollId/results'),
       );
-      if (resultsResponse.statusCode != 200)
+      if (resultsResponse.statusCode != 200) {
         throw Exception("Failed to fetch results");
+      }
 
       final List<dynamic> liveResults = jsonDecode(resultsResponse.body);
 
@@ -442,8 +433,9 @@ class _LiveScoreboardViewState extends State<LiveScoreboardView> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading)
+    if (_isLoading) {
       return Center(child: CircularProgressIndicator(color: primaryColor));
+    }
 
     if (_errorMessage.isNotEmpty) {
       return Center(
