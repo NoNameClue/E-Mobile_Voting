@@ -314,7 +314,8 @@ def get_students(db: Session = Depends(get_db)):
             "course": student.course,                 # Added
             "created_at": student.created_at.isoformat() if student.created_at else None, # Added
             "role": student.role, 
-            "is_active": student.is_active
+            "is_active": student.is_active,
+            "profile_pic_url": student.profile_pic_url # <--- ADD THIS EXACT LINE
         }
         for student in students
     ]

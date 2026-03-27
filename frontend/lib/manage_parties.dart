@@ -2,66 +2,82 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'api_config.dart';
-// import 'responsive_screen.dart';
 
 class ManageParties extends StatefulWidget {
   const ManageParties({super.key});
 
   @override
   State<ManageParties> createState() => _ManagePartiesState();
-  // Widget build(BuildContext context) {
-  //   return Scaffold(
-  //     body: ResponsiveScreen(
-  //       child: Column(
-  //         crossAxisAlignment: CrossAxisAlignment.start,
-  //         children: [
-  //           const Text(
-  //             "Manage Parties",
-  //             style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-  //           ),
-
-  //           const SizedBox(height: 20),
-
-  //           SingleChildScrollView(
-  //             scrollDirection: Axis.horizontal,
-  //             child: DataTable(
-  //               columns: const [
-  //                 DataColumn(label: Text("Party Name")),
-  //                 DataColumn(label: Text("Description")),
-  //                 DataColumn(label: Text("Members")),
-  //                 DataColumn(label: Text("Actions")),
-  //               ],
-  //               rows: const [],
-  //             ),
-  //           ),
-  //         ],
-  //       ),
-  //     ),
-  //   );
-  // }
 }
 
 class _ManagePartiesState extends State<ManageParties> {
+  List<dynamic> _polls = [];
+  int? _selectedPollId;
   List<dynamic> _parties = [];
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _fetchParties();
+    _fetchData(); 
   }
 
-  Future<void> _fetchParties() async {
+  bool _isCurrentPollEnded() {
+    if (_selectedPollId == null || _polls.isEmpty) return false;
+    final poll = _polls.firstWhere((p) => p['poll_id'] == _selectedPollId, orElse: () => null);
+    return poll != null && poll['status'] == 'Ended';
+  }
+
+  Future<void> _fetchData() async {
     setState(() => _isLoading = true);
     try {
-      final response = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/parties/lineups'));
-      if (response.statusCode == 200) {
+      if (_polls.isEmpty) {
+        final pollRes = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/polls'));
+        if (pollRes.statusCode == 200) {
+          _polls = jsonDecode(pollRes.body);
+          if (_polls.isNotEmpty && _selectedPollId == null) {
+            _selectedPollId = _polls[0]['poll_id'];
+          }
+        }
+      }
+
+      if (_selectedPollId == null) {
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      final partyRes = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/parties/lineups'));
+      final candsRes = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/candidates/$_selectedPollId'));
+
+      if (partyRes.statusCode == 200 && candsRes.statusCode == 200) {
+        List<dynamic> baseParties = jsonDecode(partyRes.body);
+        List<dynamic> candidates = jsonDecode(candsRes.body);
+
+        List<dynamic> updatedParties = [];
+        final standardPositions = ["President", "Vice President", "Secretary", "Treasurer", "Auditor", "PIO"];
+
+        for (var p in baseParties) {
+          Map<String, dynamic> lineup = { for (var pos in standardPositions) pos: null };
+          
+          for (var c in candidates) {
+            if (c['party_name'] == p['party_name'] && lineup.containsKey(c['position'])) {
+              lineup[c['position']] = c['name'];
+            }
+          }
+          
+          updatedParties.add({
+            "party_id": p['party_id'],
+            "party_name": p['party_name'],
+            "lineup": lineup
+          });
+        }
+
         setState(() {
-          _parties = jsonDecode(response.body);
+          _parties = updatedParties;
           _isLoading = false;
         });
       } else {
-        throw Exception('Failed to load parties');
+        throw Exception('Failed to load data');
       }
     } catch (e) {
       setState(() => _isLoading = false);
@@ -80,8 +96,8 @@ class _ManagePartiesState extends State<ManageParties> {
       );
 
       if (response.statusCode == 200) {
-        if (mounted) Navigator.of(context).pop(); // Close modal
-        _fetchParties(); // Refresh list
+        if (mounted) Navigator.of(context).pop(); 
+        _fetchData(); 
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Party created successfully!', style: TextStyle(color: Colors.white)), backgroundColor: Colors.green));
       } else {
         final errorMsg = jsonDecode(response.body)['detail'] ?? 'Failed to create party.';
@@ -94,7 +110,6 @@ class _ManagePartiesState extends State<ManageParties> {
     }
   }
 
-  // --- DELETE LOGIC ---
   Future<void> _deleteParty(int partyId) async {
     try {
       final response = await http.delete(
@@ -102,7 +117,7 @@ class _ManagePartiesState extends State<ManageParties> {
       );
 
       if (response.statusCode == 200) {
-        _fetchParties(); // Refresh list
+        _fetchData(); 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Party deleted successfully!', style: TextStyle(color: Colors.white)), backgroundColor: Colors.green));
         }
@@ -117,7 +132,6 @@ class _ManagePartiesState extends State<ManageParties> {
     }
   }
 
-  // --- DOUBLE CONFIRMATION DIALOG FLOW ---
   void _showDeleteConfirmation1(int partyId, String partyName) {
     showDialog(
       context: context,
@@ -129,8 +143,8 @@ class _ManagePartiesState extends State<ManageParties> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
             onPressed: () {
-              Navigator.pop(context); // Close the first dialog
-              _showDeleteConfirmation2(partyId, partyName); // Open the second dialog
+              Navigator.pop(context); 
+              _showDeleteConfirmation2(partyId, partyName); 
             },
             child: const Text("Yes, Delete"),
           ),
@@ -150,8 +164,8 @@ class _ManagePartiesState extends State<ManageParties> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
             onPressed: () {
-              Navigator.pop(context); // Close the second dialog
-              _deleteParty(partyId);  // Execute the delete API
+              Navigator.pop(context); 
+              _deleteParty(partyId);  
             },
             child: const Text("Yes, I am absolutely sure"),
           ),
@@ -199,15 +213,52 @@ class _ManagePartiesState extends State<ManageParties> {
     );
   }
 
+  Widget _buildPollDropdown() {
+    if (_polls.isEmpty) return const SizedBox.shrink();
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 250), 
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade400),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<int>(
+          isExpanded: true, 
+          value: _selectedPollId,
+          icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF000B6B)),
+          style: const TextStyle(color: Color(0xFF000B6B), fontWeight: FontWeight.bold, fontSize: 16),
+          items: _polls.map<DropdownMenuItem<int>>((poll) {
+            return DropdownMenuItem<int>(
+              value: poll['poll_id'],
+              child: Text(poll['title'] ?? "Election", style: const TextStyle(color: Colors.black87), overflow: TextOverflow.ellipsis),
+            );
+          }).toList(),
+          onChanged: (newPollId) {
+            if (newPollId != null && newPollId != _selectedPollId) {
+              setState(() {
+                _selectedPollId = newPollId;
+              });
+              _fetchData(); 
+            }
+          },
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     bool isMobile = MediaQuery.of(context).size.width < 700;
+    bool isPollEnded = _isCurrentPollEnded(); 
 
     return Padding(
       padding: const EdgeInsets.all(20.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // --- MOBILE OVERFLOW FIX: Changed Row to Wrap ---
           Wrap(
             alignment: WrapAlignment.spaceBetween,
             crossAxisAlignment: WrapCrossAlignment.center,
@@ -215,20 +266,41 @@ class _ManagePartiesState extends State<ManageParties> {
             runSpacing: 15,
             children: [
               const Text("Manage Parties", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
-              ElevatedButton.icon(
-                icon: const Icon(Icons.add),
-                label: const Text("Create Party"),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-                ),
-                onPressed: _showCreatePartyDialog,
-              )
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  _buildPollDropdown(),
+                  Tooltip(
+                    message: isPollEnded ? "You cannot create parties because the poll has ended." : "Create a new party",
+                    child: ElevatedButton.icon(
+                      icon: Icon(Icons.add, color: isPollEnded ? Colors.grey.shade500 : Colors.white),
+                      label: Text(
+                        "Create Party", 
+                        style: TextStyle(color: isPollEnded ? Colors.grey.shade500 : Colors.white, fontWeight: FontWeight.bold)
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: isPollEnded ? Colors.grey.shade300 : Colors.green, 
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                        elevation: isPollEnded ? 0 : 2, 
+                      ),
+                      onPressed: isPollEnded ? null : _showCreatePartyDialog, 
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
           const SizedBox(height: 10),
-          const Text("Create political parties and view their assigned candidate lineups.", style: TextStyle(color: Colors.grey, fontSize: 16)),
+          
+          Text(
+            isPollEnded 
+              ? "This election has ended. Party lineups are permanently locked." 
+              : "Create political parties and view their assigned candidate lineups for the selected election.", 
+            style: TextStyle(color: isPollEnded ? Colors.redAccent : Colors.grey, fontSize: 16, fontWeight: isPollEnded ? FontWeight.bold : FontWeight.normal)
+          ),
+          
           const SizedBox(height: 20),
 
           Expanded(
@@ -241,15 +313,15 @@ class _ManagePartiesState extends State<ManageParties> {
                           crossAxisCount: isMobile ? 1 : 3,
                           crossAxisSpacing: 20,
                           mainAxisSpacing: 20,
-                          childAspectRatio: isMobile ? 1.2 : 0.85,
+                          childAspectRatio: isMobile ? 1.0 : 0.80, 
                         ),
                         itemCount: _parties.length,
                         itemBuilder: (context, index) {
                           final party = _parties[index];
                           final Map<String, dynamic> lineup = party['lineup'];
                           
-                          // Check if this is the Independent party to disable deletion
                           bool isIndependent = party['party_name'].toString().toLowerCase() == "independent";
+                          bool canDelete = !isIndependent && !isPollEnded;
 
                           return Card(
                             elevation: 3,
@@ -260,7 +332,6 @@ class _ManagePartiesState extends State<ManageParties> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  // --- UPDATED CARD HEADER WITH DELETE ICON ---
                                   Row(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -273,18 +344,20 @@ class _ManagePartiesState extends State<ManageParties> {
                                           overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
-                                      if (!isIndependent) // Hide delete for Independent
-                                        IconButton(
-                                          icon: const Icon(Icons.delete, color: Colors.red),
-                                          padding: EdgeInsets.zero,
-                                          constraints: const BoxConstraints(),
-                                          onPressed: () => _showDeleteConfirmation1(party['party_id'], party['party_name']),
+                                      if (!isIndependent) 
+                                        Tooltip(
+                                          message: isPollEnded ? "You cannot delete/edit it because the poll has ended." : "Delete Party",
+                                          child: IconButton(
+                                            icon: Icon(Icons.delete, color: isPollEnded ? Colors.grey.shade400 : Colors.red),
+                                            padding: EdgeInsets.zero,
+                                            constraints: const BoxConstraints(),
+                                            onPressed: isPollEnded ? null : () => _showDeleteConfirmation1(party['party_id'], party['party_name']),
+                                          ),
                                         ),
                                     ],
                                   ),
                                   const Divider(height: 30, thickness: 1),
                                   
-                                  // --- CANDIDATE LINEUP ---
                                   Expanded(
                                     child: ListView(
                                       children: lineup.entries.map((entry) {
@@ -292,24 +365,25 @@ class _ManagePartiesState extends State<ManageParties> {
                                         String? candidateName = entry.value;
 
                                         return Padding(
-                                          padding: const EdgeInsets.only(bottom: 12.0),
+                                          padding: const EdgeInsets.only(bottom: 15.0), 
                                           child: Row(
                                             crossAxisAlignment: CrossAxisAlignment.start,
                                             children: [
-                                              SizedBox(
-                                                width: 100,
+                                              Expanded(
+                                                flex: 2, 
                                                 child: Text(
                                                   position,
-                                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.black87),
+                                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black87),
                                                 ),
                                               ),
-                                              const SizedBox(width: 10),
+                                              const SizedBox(width: 5),
                                               Expanded(
+                                                flex: 3, 
                                                 child: Text(
-                                                  candidateName ?? "[ No Candidate Registered ]",
+                                                  candidateName ?? "No Candidate",
                                                   style: TextStyle(
-                                                    fontSize: 12,
-                                                    color: candidateName == null ? Colors.grey : Colors.black,
+                                                    fontSize: 14, 
+                                                    color: candidateName == null ? Colors.grey : Colors.black87,
                                                     fontStyle: candidateName == null ? FontStyle.italic : FontStyle.normal,
                                                     fontWeight: candidateName != null ? FontWeight.w500 : FontWeight.normal,
                                                   ),

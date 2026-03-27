@@ -1,39 +1,15 @@
-import 'package:flutter/foundation.dart'; // Added for Uint8List
+import 'package:flutter/foundation.dart'; 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:image_picker/image_picker.dart';
 import 'api_config.dart';
-// import 'responsive_screen.dart';
 
 class ManageCandidates extends StatefulWidget {
   const ManageCandidates({super.key});
 
   @override
   State<ManageCandidates> createState() => _ManageCandidatesState();
-  // Widget build(BuildContext context) {
-  //   return Scaffold(
-  //     body: ResponsiveScreen(
-  //       child: Column(
-  //         children: [
-  //           Text("Manage Candidates", style: TextStyle(fontSize: 24)),
-
-  //           SingleChildScrollView(
-  //             scrollDirection: Axis.horizontal,
-  //             child: DataTable(
-  //               columns: [
-  //                 DataColumn(label: Text("Name")),
-  //                 DataColumn(label: Text("Position")),
-  //                 DataColumn(label: Text("Party")),
-  //               ],
-  //               rows: [],
-  //             ),
-  //           ),
-  //         ],
-  //       ),
-  //     ),
-  //   );
-  // }
 }
 
 class _ManageCandidatesState extends State<ManageCandidates> {
@@ -41,7 +17,7 @@ class _ManageCandidatesState extends State<ManageCandidates> {
   int? _selectedPollId;
 
   List<dynamic> _candidates = [];
-  List<dynamic> _parties = []; // Added for fetching parties
+  List<dynamic> _parties = []; 
   bool _isLoading = true;
 
   final List<String> _positions = [
@@ -53,7 +29,6 @@ class _ManageCandidatesState extends State<ManageCandidates> {
     'PIO',
   ];
 
-  // Standard course and year lists for the dropdowns
   final List<String> _courses = [
     'Bachelor of Science in Information Technology',
     'Bachelor of Elementary Education',
@@ -69,7 +44,14 @@ class _ManageCandidatesState extends State<ManageCandidates> {
   void initState() {
     super.initState();
     _fetchPolls();
-    _fetchParties(); // Fetch parties on load
+    _fetchParties(); 
+  }
+
+  // --- HELPER: CHECK IF POLL IS ENDED ---
+  bool _isCurrentPollEnded() {
+    if (_selectedPollId == null || _polls.isEmpty) return false;
+    final poll = _polls.firstWhere((p) => p['poll_id'] == _selectedPollId, orElse: () => null);
+    return poll != null && poll['status'] == 'Ended';
   }
 
   Future<void> _fetchParties() async {
@@ -134,16 +116,14 @@ class _ManageCandidatesState extends State<ManageCandidates> {
       );
       if (response.statusCode == 200) {
         _fetchCandidates();
-        if (mounted)
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('Candidate removed')));
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Candidate removed')));
+        }
       }
     } catch (e) {
-      if (mounted)
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Error deleting candidate')),
-        );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error deleting candidate')));
+      }
     }
   }
 
@@ -153,24 +133,22 @@ class _ManageCandidatesState extends State<ManageCandidates> {
       text: candidate['description_platform'] ?? '',
     );
 
-    // Split Course and Year
     List<String> courseYearParts = candidate['course_year'].split(' - ');
-    String? selectedCourse =
-        courseYearParts.isNotEmpty && _courses.contains(courseYearParts[0])
-        ? courseYearParts[0]
-        : null;
-    String? selectedYear =
-        courseYearParts.length > 1 && _years.contains(courseYearParts[1])
-        ? courseYearParts[1]
-        : null;
+    String? selectedCourse = courseYearParts.isNotEmpty && _courses.contains(courseYearParts[0]) ? courseYearParts[0] : null;
+    String? selectedYear = courseYearParts.length > 1 && _years.contains(courseYearParts[1]) ? courseYearParts[1] : null;
     String? selectedParty = candidate['party_name'];
 
-    // Ensure the selected party actually exists in our fetched list, otherwise default to Independent
-    bool partyExists = _parties.any((p) => p['party_name'] == selectedParty);
-    if (!partyExists && selectedParty != 'Independent')
-      selectedParty = 'Independent';
+    List<String> uniqueParties = ['Independent'];
+    for (var p in _parties) {
+      if (p['party_name'] != null && p['party_name'] != 'Independent') {
+        uniqueParties.add(p['party_name']);
+      }
+    }
 
-    // REPLACE File with XFile & Uint8List for Web compatibility
+    if (!uniqueParties.contains(selectedParty)) {
+      selectedParty = 'Independent';
+    }
+
     XFile? newImage;
     Uint8List? newImageBytes;
 
@@ -204,13 +182,9 @@ class _ManageCandidatesState extends State<ManageCandidates> {
                         backgroundImage: newImageBytes != null
                             ? MemoryImage(newImageBytes!) as ImageProvider
                             : (candidate['photo_url'] != null
-                                  ? NetworkImage(
-                                      '${ApiConfig.baseUrl}/${candidate['photo_url']}',
-                                    )
+                                  ? NetworkImage('${ApiConfig.baseUrl}/${candidate['photo_url']}')
                                   : null),
-                        child:
-                            (newImageBytes == null &&
-                                candidate['photo_url'] == null)
+                        child: (newImageBytes == null && candidate['photo_url'] == null)
                             ? const Icon(Icons.camera_alt, color: Colors.grey)
                             : null,
                       ),
@@ -223,57 +197,33 @@ class _ManageCandidatesState extends State<ManageCandidates> {
                     ),
                     const SizedBox(height: 10),
 
-                    // FIX 1: Added isExpanded and TextOverflow.ellipsis to Party Dropdown
                     DropdownButtonFormField<String>(
                       value: selectedParty,
-                      isExpanded:
-                          true, // Forces dropdown to stay inside its boundaries
+                      isExpanded: true,
                       decoration: const InputDecoration(labelText: 'Party'),
-                      items: [
-                        const DropdownMenuItem(
-                          value: 'Independent',
-                          child: Text('Independent'),
-                        ),
-                        ..._parties.map<DropdownMenuItem<String>>((party) {
-                          return DropdownMenuItem<String>(
-                            value: party['party_name'],
-                            child: Text(
-                              party['party_name'],
-                              overflow: TextOverflow.ellipsis,
-                            ), // Adds '...' if too long
-                          );
-                        }),
-                      ],
-                      onChanged: (val) =>
-                          setStateDialog(() => selectedParty = val),
+                      items: uniqueParties.map<DropdownMenuItem<String>>((String partyName) {
+                        return DropdownMenuItem<String>(
+                          value: partyName,
+                          child: Text(partyName, overflow: TextOverflow.ellipsis),
+                        );
+                      }).toList(),
+                      onChanged: (val) => setStateDialog(() => selectedParty = val),
                     ),
                     const SizedBox(height: 10),
 
-                    // Dropdowns for Course and Year (Side by Side)
                     Row(
                       children: [
                         Expanded(
                           flex: 3,
                           child: DropdownButtonFormField<String>(
                             value: selectedCourse,
-                            isExpanded:
-                                true, // Forces dropdown to stay inside its boundaries
-                            decoration: const InputDecoration(
-                              labelText: 'Course',
-                            ),
-                            items: _courses
-                                .map(
-                                  (c) => DropdownMenuItem(
-                                    value: c,
-                                    child: Text(
-                                      c,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                )
-                                .toList(),
-                            onChanged: (val) =>
-                                setStateDialog(() => selectedCourse = val),
+                            isExpanded: true, 
+                            decoration: const InputDecoration(labelText: 'Course'),
+                            items: _courses.map((c) => DropdownMenuItem(
+                                      value: c,
+                                      child: Text(c, overflow: TextOverflow.ellipsis),
+                                    )).toList(),
+                            onChanged: (val) => setStateDialog(() => selectedCourse = val),
                           ),
                         ),
                         const SizedBox(width: 10),
@@ -281,24 +231,13 @@ class _ManageCandidatesState extends State<ManageCandidates> {
                           flex: 2,
                           child: DropdownButtonFormField<String>(
                             value: selectedYear,
-                            isExpanded:
-                                true, // FIX 2: Added isExpanded to Year Dropdown
-                            decoration: const InputDecoration(
-                              labelText: 'Year',
-                            ),
-                            items: _years
-                                .map(
-                                  (y) => DropdownMenuItem(
-                                    value: y,
-                                    child: Text(
-                                      y,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                )
-                                .toList(),
-                            onChanged: (val) =>
-                                setStateDialog(() => selectedYear = val),
+                            isExpanded: true, 
+                            decoration: const InputDecoration(labelText: 'Year'),
+                            items: _years.map((y) => DropdownMenuItem(
+                                      value: y,
+                                      child: Text(y, overflow: TextOverflow.ellipsis),
+                                    )).toList(),
+                            onChanged: (val) => setStateDialog(() => selectedYear = val),
                           ),
                         ),
                       ],
@@ -326,14 +265,11 @@ class _ManageCandidatesState extends State<ManageCandidates> {
                   onPressed: () async {
                     var req = http.MultipartRequest(
                       'PUT',
-                      Uri.parse(
-                        '${ApiConfig.baseUrl}/api/candidates/${candidate['candidate_id']}',
-                      ),
+                      Uri.parse('${ApiConfig.baseUrl}/api/candidates/${candidate['candidate_id']}'),
                     );
                     req.fields['name'] = nameCtrl.text;
                     req.fields['party_name'] = selectedParty ?? 'Independent';
-                    req.fields['course_year'] =
-                        "$selectedCourse - $selectedYear";
+                    req.fields['course_year'] = "$selectedCourse - $selectedYear";
                     req.fields['description_platform'] = platformCtrl.text;
 
                     if (newImage != null && newImageBytes != null) {
@@ -366,18 +302,15 @@ class _ManageCandidatesState extends State<ManageCandidates> {
 
   @override
   Widget build(BuildContext context) {
-    final filteredCandidates = _candidates
-        .where((c) => c['position'] == _selectedPosition)
-        .toList();
-    // Check if the screen is narrow (like a mobile phone)
+    final filteredCandidates = _candidates.where((c) => c['position'] == _selectedPosition).toList();
     bool isMobile = MediaQuery.of(context).size.width < 700;
+    bool isPollEnded = _isCurrentPollEnded(); // Check if locked
 
     return Padding(
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // FIX 1: Changed Row to Wrap so the dropdown moves to the next line on mobile
           Wrap(
             alignment: WrapAlignment.spaceBetween,
             crossAxisAlignment: WrapCrossAlignment.center,
@@ -402,10 +335,7 @@ class _ManageCandidatesState extends State<ManageCandidates> {
                       items: _polls.map<DropdownMenuItem<int>>((poll) {
                         return DropdownMenuItem<int>(
                           value: poll['poll_id'],
-                          child: Text(
-                            poll['title'],
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
+                          child: Text(poll['title'], style: const TextStyle(fontWeight: FontWeight.bold)),
                         );
                       }).toList(),
                       onChanged: (int? newValue) {
@@ -420,23 +350,24 @@ class _ManageCandidatesState extends State<ManageCandidates> {
             ],
           ),
           const SizedBox(height: 10),
-          const Text(
-            "Edit or remove existing candidates from the selected poll.",
-            style: TextStyle(color: Colors.grey, fontSize: 16),
+          
+          Text(
+            isPollEnded 
+              ? "This election has ended. Candidate editing and removal are permanently locked."
+              : "Edit or remove existing candidates from the selected poll.",
+            style: TextStyle(color: isPollEnded ? Colors.redAccent : Colors.grey, fontSize: 16, fontWeight: isPollEnded ? FontWeight.bold : FontWeight.normal),
           ),
+          
           const SizedBox(height: 20),
 
           Expanded(
-            // FIX 2: Switch between Row (Desktop) and Column (Mobile) dynamically
             child: Flex(
               direction: isMobile ? Axis.vertical : Axis.horizontal,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
                   width: isMobile ? double.infinity : 250,
-                  height: isMobile
-                      ? 80
-                      : null, // Give it a fixed height on mobile so it can scroll horizontally
+                  height: isMobile ? 80 : null, 
                   margin: EdgeInsets.only(
                     right: isMobile ? 0 : 20,
                     bottom: isMobile ? 20 : 0,
@@ -448,24 +379,16 @@ class _ManageCandidatesState extends State<ManageCandidates> {
                       final position = _positions[index];
                       final isSelected = _selectedPosition == position;
                       return InkWell(
-                        onTap: () =>
-                            setState(() => _selectedPosition = position),
+                        onTap: () => setState(() => _selectedPosition = position),
                         child: Container(
                           margin: EdgeInsets.only(
                             bottom: isMobile ? 0 : 10,
                             right: isMobile ? 10 : 0,
                           ),
-                          padding: const EdgeInsets.symmetric(
-                            vertical: 20,
-                            horizontal: 15,
-                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 15),
                           decoration: BoxDecoration(
-                            color: isSelected
-                                ? const Color(0xFFD6D6D6)
-                                : Colors.grey[200],
-                            border: isSelected
-                                ? Border.all(color: Colors.grey, width: 2)
-                                : null,
+                            color: isSelected ? const Color(0xFFD6D6D6) : Colors.grey[200],
+                            border: isSelected ? Border.all(color: Colors.grey, width: 2) : null,
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Center(
@@ -473,9 +396,7 @@ class _ManageCandidatesState extends State<ManageCandidates> {
                               'Candidates for $position',
                               style: TextStyle(
                                 fontSize: 14,
-                                fontWeight: isSelected
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
+                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                               ),
                             ),
                           ),
@@ -494,29 +415,16 @@ class _ManageCandidatesState extends State<ManageCandidates> {
                       children: [
                         Text(
                           '$_selectedPosition Candidates',
-                          style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 20),
                         Expanded(
                           child: _isLoading
                               ? const Center(child: CircularProgressIndicator())
                               : _polls.isEmpty
-                              ? const Center(
-                                  child: Text(
-                                    "Please create a Poll first.",
-                                    style: TextStyle(fontSize: 16),
-                                  ),
-                                )
+                              ? const Center(child: Text("Please create a Poll first.", style: TextStyle(fontSize: 16)))
                               : filteredCandidates.isEmpty
-                              ? const Center(
-                                  child: Text(
-                                    "No candidates added yet.",
-                                    textAlign: TextAlign.center,
-                                  ),
-                                )
+                              ? const Center(child: Text("No candidates added yet.", textAlign: TextAlign.center))
                               : ListView.builder(
                                   itemCount: filteredCandidates.length,
                                   itemBuilder: (context, index) {
@@ -526,49 +434,35 @@ class _ManageCandidatesState extends State<ManageCandidates> {
                                       child: ListTile(
                                         leading: CircleAvatar(
                                           backgroundColor: Colors.grey[300],
-                                          backgroundImage:
-                                              candidate['photo_url'] != null
-                                              ? NetworkImage(
-                                                  '${ApiConfig.baseUrl}/${candidate['photo_url']}',
-                                                )
+                                          backgroundImage: candidate['photo_url'] != null
+                                              ? NetworkImage('${ApiConfig.baseUrl}/${candidate['photo_url']}')
                                               : null,
                                           child: candidate['photo_url'] == null
-                                              ? const Icon(
-                                                  Icons.person,
-                                                  color: Colors.grey,
-                                                )
+                                              ? const Icon(Icons.person, color: Colors.grey)
                                               : null,
                                         ),
                                         title: Text(
                                           candidate['name'],
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16,
-                                          ),
+                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                                         ),
-                                        subtitle: Text(
-                                          '${candidate['party_name']} • ${candidate['course_year']}',
-                                        ),
+                                        subtitle: Text('${candidate['party_name']} • ${candidate['course_year']}'),
+                                        
+                                        // --- UPDATED DISABLED BUTTONS & TOOLTIPS ---
                                         trailing: Row(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
-                                            IconButton(
-                                              icon: const Icon(
-                                                Icons.edit,
-                                                color: Colors.blue,
+                                            Tooltip(
+                                              message: isPollEnded ? "Cannot edit: Poll has ended" : "Edit Candidate",
+                                              child: IconButton(
+                                                icon: Icon(Icons.edit, color: isPollEnded ? Colors.grey : Colors.blue),
+                                                onPressed: isPollEnded ? null : () => _showEditCandidateDialog(candidate),
                                               ),
-                                              onPressed: () =>
-                                                  _showEditCandidateDialog(
-                                                    candidate,
-                                                  ),
                                             ),
-                                            IconButton(
-                                              icon: const Icon(
-                                                Icons.delete,
-                                                color: Colors.red,
-                                              ),
-                                              onPressed: () => _deleteCandidate(
-                                                candidate['candidate_id'],
+                                            Tooltip(
+                                              message: isPollEnded ? "Cannot delete: Poll has ended" : "Delete Candidate",
+                                              child: IconButton(
+                                                icon: Icon(Icons.delete, color: isPollEnded ? Colors.grey : Colors.red),
+                                                onPressed: isPollEnded ? null : () => _deleteCandidate(candidate['candidate_id']),
                                               ),
                                             ),
                                           ],

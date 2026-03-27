@@ -151,13 +151,11 @@ class _ElectionResultPageState extends State<ElectionResultPage> {
   // ===========================================================================
   // PRINT TO PDF LOGIC
   // ===========================================================================
-  Future<void> _generatePdfAndPrint() async {
+Future<void> _generatePdfAndPrint() async {
     if (_reportData == null) return;
 
     final pdf = pw.Document();
-    String pollTitle = _polls.firstWhere(
-      (p) => p['poll_id'] == _selectedPollId,
-    )['title'];
+    String pollTitle = _polls.firstWhere((p) => p['poll_id'] == _selectedPollId)['title'];
 
     pdf.addPage(
       pw.MultiPage(
@@ -171,20 +169,8 @@ class _ElectionResultPageState extends State<ElectionResultPage> {
               child: pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
-                  pw.Text(
-                    'Official Election Report',
-                    style: pw.TextStyle(
-                      fontSize: 24,
-                      fontWeight: pw.FontWeight.bold,
-                    ),
-                  ),
-                  pw.Text(
-                    pollTitle,
-                    style: const pw.TextStyle(
-                      fontSize: 16,
-                      color: PdfColors.grey700,
-                    ),
-                  ),
+                  pw.Text('Official Election Report', style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold)),
+                  pw.Text(pollTitle, style: const pw.TextStyle(fontSize: 14, color: PdfColors.grey700)),
                   pw.SizedBox(height: 10),
                 ],
               ),
@@ -194,108 +180,62 @@ class _ElectionResultPageState extends State<ElectionResultPage> {
             // SUMMARY BOX
             pw.Container(
               padding: const pw.EdgeInsets.all(10),
-              decoration: pw.BoxDecoration(
-                border: pw.Border.all(color: PdfColors.grey),
-                borderRadius: const pw.BorderRadius.all(pw.Radius.circular(5)),
-              ),
+              decoration: pw.BoxDecoration(border: pw.Border.all(color: PdfColors.grey), borderRadius: const pw.BorderRadius.all(pw.Radius.circular(5))),
               child: pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
                 children: [
-                  pw.Column(
-                    children: [
-                      pw.Text('Active Students'),
-                      pw.Text(
-                        '${_reportData!['summary']['total_active_students']}',
-                        style: pw.TextStyle(
-                          fontWeight: pw.FontWeight.bold,
-                          fontSize: 18,
-                        ),
-                      ),
-                    ],
-                  ),
-                  pw.Column(
-                    children: [
-                      pw.Text('Ballots Cast'),
-                      pw.Text(
-                        '${_reportData!['summary']['total_voters']}',
-                        style: pw.TextStyle(
-                          fontWeight: pw.FontWeight.bold,
-                          fontSize: 18,
-                        ),
-                      ),
-                    ],
-                  ),
-                  pw.Column(
-                    children: [
-                      pw.Text('Turnout'),
-                      pw.Text(
-                        '${_reportData!['summary']['turnout_percentage']}%',
-                        style: pw.TextStyle(
-                          fontWeight: pw.FontWeight.bold,
-                          fontSize: 18,
-                        ),
-                      ),
-                    ],
-                  ),
+                  pw.Column(children: [pw.Text('Active Students'), pw.Text('${_reportData!['summary']['total_active_students']}', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 16))]),
+                  pw.Column(children: [pw.Text('Ballots Cast'), pw.Text('${_reportData!['summary']['total_voters']}', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 16))]),
+                  pw.Column(children: [pw.Text('Turnout'), pw.Text('${_reportData!['summary']['turnout_percentage']}%', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 16))]),
                 ],
               ),
             ),
-            pw.SizedBox(height: 30),
+            pw.SizedBox(height: 20),
 
-            // CANDIDATE TABLES
-            ...(_reportData!['results'] as List).map((positionData) {
-              return pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  pw.Text(
-                    positionData['position'].toUpperCase(),
-                    style: pw.TextStyle(
-                      fontSize: 14,
-                      fontWeight: pw.FontWeight.bold,
-                      color: PdfColors.blue900,
-                    ),
-                  ),
-                  pw.SizedBox(height: 5),
+            // --- SCALABLE COMPACT TABLES (2 PER PAGE) ---
+            pw.Wrap(
+              spacing: 0,
+              runSpacing: 20, // Forces spacing between tables
+              children: (_reportData!['results'] as List).map((positionData) {
+                return pw.Container(
+                  width: double.infinity, // Ensures it takes full width of A4
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text(
+                        positionData['position'].toUpperCase(),
+                        style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900),
+                      ),
+                      pw.SizedBox(height: 5),
 
-                  // PDF Table
-                  pw.TableHelper.fromTextArray(
-                    context: context,
-                    headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-                    headerDecoration: const pw.BoxDecoration(
-                      color: PdfColors.grey200,
-                    ),
-                    data: <List<String>>[
-                      <String>[
-                        'Rank',
-                        'Candidate Name',
-                        'Party',
-                        'Votes',
-                        'Percentage',
-                      ],
-                      ...((positionData['candidates'] as List).map(
-                        (c) => [
-                          '#${c['rank']}',
-                          c['name'] + (c['is_winner'] ? ' (Winner)' : ''),
-                          c['party_name'],
-                          c['votes'].toString(),
-                          '${c['percentage']}%',
+                      // SCALABLE PDF TABLE
+                      pw.TableHelper.fromTextArray(
+                        context: context,
+                        cellStyle: const pw.TextStyle(fontSize: 10), // Scaled down text to fit better
+                        headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10),
+                        headerDecoration: const pw.BoxDecoration(color: PdfColors.grey200),
+                        data: <List<String>>[
+                          <String>['Rank', 'Candidate Name', 'Party', 'Votes', 'Percentage'],
+                          ...((positionData['candidates'] as List).map((c) => [
+                                '#${c['rank']}',
+                                c['name'] + (c['is_winner'] ? ' (Winner)' : ''),
+                                c['party_name'],
+                                c['votes'].toString(),
+                                '${c['percentage']}%',
+                              ])),
                         ],
-                      )),
+                      ),
                     ],
                   ),
-                  pw.SizedBox(height: 20),
-                ],
-              );
-            }),
+                );
+              }).toList(),
+            ),
           ];
         },
       ),
     );
 
-    // This triggers the browser's native print dialog with the generated PDF
-    await Printing.layoutPdf(
-      onLayout: (PdfPageFormat format) async => pdf.save(),
-    );
+    await Printing.layoutPdf(onLayout: (PdfPageFormat format) async => pdf.save());
   }
 
   // ===========================================================================

@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart'; // ADDED
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'api_config.dart';
 import 'voting_page.dart';
 import 'my_votes_view.dart';
 import 'view_parties.dart';
-// import 'responsive_screen.dart';
 
 // ========================================================================
 // 1. DATA MODELS
@@ -149,13 +148,13 @@ class _StudentDashboardState extends State<StudentDashboard> {
 
                   // DYNAMIC PROFILE PICTURE
                   CircleAvatar(
-                    radius: 30,
+                    radius: 50,
                     backgroundColor: Colors.white,
                     backgroundImage: _profilePicUrl != null
                         ? NetworkImage('${ApiConfig.baseUrl}/$_profilePicUrl')
                         : null,
                     child: _profilePicUrl == null
-                        ? const Icon(Icons.person, size: 40, color: Colors.grey)
+                        ? const Icon(Icons.person, size: 60, color: Colors.grey)
                         : null,
                   ),
                   const SizedBox(height: 10),
@@ -264,7 +263,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
           ? null
           : AppBar(
               backgroundColor: primaryColor,
-              foregroundColor: Colors.white, // FIX: Makes burger icon and text white
+              foregroundColor: Colors.white,
               title: const Text("Student Portal", style: TextStyle(fontWeight: FontWeight.bold)),
             ),
       drawer: isDesktop ? null : Drawer(child: buildSidebar(false)),
@@ -294,42 +293,60 @@ class _LiveScoreboardViewState extends State<LiveScoreboardView> {
   bool _isLoading = true;
   String _errorMessage = '';
 
+  List<dynamic> _availablePolls = [];
+  int? _selectedPollId;
+
   final Color primaryColor = const Color(0xFF000B6B);
 
   @override
   void initState() {
     super.initState();
-    _fetchLiveResults();
+    _fetchInitialData();
   }
 
-  Future<void> _fetchLiveResults() async {
+  Future<void> _fetchInitialData() async {
     try {
-      final pollResponse = await http.get(
-        Uri.parse('${ApiConfig.baseUrl}/api/polls'),
-      );
-      if (pollResponse.statusCode != 200) {
+      final pollResponse = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/polls'));
+      if (pollResponse.statusCode == 200) {
+        final List<dynamic> allPolls = jsonDecode(pollResponse.body);
+        
+        _availablePolls = allPolls.where((p) => 
+          (p['is_published'] == 1 || p['is_published'] == true) && 
+          (p['is_archived'] == 0 || p['is_archived'] == false) && 
+          p['status'] != 'Ended'
+        ).toList();
+
+        if (_availablePolls.isNotEmpty) {
+          var activePoll = _availablePolls.firstWhere((p) => p['status'] != 'Ended', orElse: () => _availablePolls.first);
+          _selectedPollId = activePoll['poll_id'];
+          
+          await _fetchResultsForPoll(_selectedPollId!);
+        } else {
+          setState(() {
+            _isLoading = false;
+            _errorMessage = "No active elections right now.";
+          });
+        }
+      } else {
         throw Exception("Failed to fetch polls");
       }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = "Could not connect to the server.";
+      });
+    }
+  }
 
-      final List<dynamic> polls = jsonDecode(pollResponse.body);
+  Future<void> _fetchResultsForPoll(int pollId) async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = '';
+    });
 
-      final publishedPoll = polls.firstWhere(
-        (p) => p['is_published'] == true || p['is_published'] == 1,
-        orElse: () => null,
-      );
-
-      if (publishedPoll == null) {
-        setState(() {
-          _isLoading = false;
-          _errorMessage = "No active elections right now.";
-        });
-        return;
-      }
-
-      int activePollId = publishedPoll['poll_id'];
-
+    try {
       final resultsResponse = await http.get(
-        Uri.parse('${ApiConfig.baseUrl}/api/polls/$activePollId/results'),
+        Uri.parse('${ApiConfig.baseUrl}/api/polls/$pollId/results'),
       );
       if (resultsResponse.statusCode != 200) {
         throw Exception("Failed to fetch results");
@@ -354,6 +371,7 @@ class _LiveScoreboardViewState extends State<LiveScoreboardView> {
               id: c['candidate_id'],
               name: c['name'],
               party: c['party_name'] ?? 'Independent',
+              photoUrl: c['photo_url'], 
               votes: c['votes'],
               percentage: c['percentage'],
             ),
@@ -371,12 +389,13 @@ class _LiveScoreboardViewState extends State<LiveScoreboardView> {
 
       setState(() {
         _rankingsData = formattedRankings;
+        _currentPositionIndex = 0; 
         _isLoading = false;
       });
     } catch (e) {
       setState(() {
         _isLoading = false;
-        _errorMessage = "Could not connect to the server.";
+        _errorMessage = "Could not fetch results for this poll.";
       });
     }
   }
@@ -433,173 +452,214 @@ class _LiveScoreboardViewState extends State<LiveScoreboardView> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return Center(child: CircularProgressIndicator(color: primaryColor));
-    }
-
-    if (_errorMessage.isNotEmpty) {
-      return Center(
-        child: Text(
-          _errorMessage,
-          style: const TextStyle(fontSize: 20, color: Colors.grey),
-        ),
-      );
-    }
-
-    final currentRanking = _rankingsData[_currentPositionIndex];
-    final candidates = currentRanking.candidates;
-
-    // --- RESPONSIVE CHECK ---
     bool isMobile = MediaQuery.of(context).size.width < 900;
 
-    // UI SECTION 1: PODIUM
-    Widget podiumSection = SingleChildScrollView(
-      // <-- Added Scroll view here
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.start,
-        children: [
+    // --- MOBILE OVERFLOW FIX: Row changed to Wrap ---
+    Widget headerRow = Wrap(
+      alignment: WrapAlignment.spaceBetween,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 15,
+      runSpacing: 15,
+      children: [
+        Text(
+          "Dashboard",
+          style: TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.bold,
+            color: primaryColor,
+          ),
+        ),
+        if (_availablePolls.isNotEmpty)
           Container(
-            width: isMobile ? double.infinity : 350,
+            constraints: const BoxConstraints(maxWidth: 250),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: Colors.grey.shade300),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.arrow_left),
-                  onPressed: _currentPositionIndex == 0
-                      ? null
-                      : _goToPreviousPosition,
-                ),
-                Flexible(
-                  child: Text(
-                    currentRanking.positionName.toUpperCase(),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                    textAlign: TextAlign.center,
-                    overflow: TextOverflow.ellipsis,
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<int>(
+                isExpanded: true,
+                value: _selectedPollId,
+                icon: Icon(Icons.arrow_drop_down, color: primaryColor),
+                style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold),
+                items: _availablePolls.map((poll) {
+                  return DropdownMenuItem<int>(
+                    value: poll['poll_id'],
+                    child: Text(poll["title"] ?? "Election", style: const TextStyle(color: Colors.black87), overflow: TextOverflow.ellipsis),
+                  );
+                }).toList(),
+                onChanged: (newPollId) {
+                  if (newPollId != null && newPollId != _selectedPollId) {
+                    setState(() => _selectedPollId = newPollId);
+                    _fetchResultsForPoll(newPollId);
+                  }
+                },
+              ),
+            ),
+          ),
+      ],
+    );
+
+    // --- 2. BODY CONTENT AREA ---
+    Widget bodyContent;
+
+    if (_isLoading) {
+      bodyContent = Center(child: CircularProgressIndicator(color: primaryColor));
+    } else if (_errorMessage.isNotEmpty) {
+      bodyContent = Center(
+        child: Text(
+          _errorMessage,
+          style: const TextStyle(fontSize: 20, color: Colors.grey),
+        ),
+      );
+    } else if (_rankingsData.isEmpty) {
+      bodyContent = const Center(
+        child: Text(
+          "No data available for this poll.",
+          style: TextStyle(fontSize: 20, color: Colors.grey),
+        ),
+      );
+    } else {
+      final currentRanking = _rankingsData[_currentPositionIndex];
+      final candidates = currentRanking.candidates;
+
+      Widget podiumSection = SingleChildScrollView(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: [
+            Container(
+              width: isMobile ? double.infinity : 350,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey.shade300),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_left),
+                    onPressed: _currentPositionIndex == 0
+                        ? null
+                        : _goToPreviousPosition,
                   ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.arrow_right),
-                  onPressed: _currentPositionIndex == _rankingsData.length - 1
-                      ? null
-                      : _goToNextPosition,
-                ),
+                  Flexible(
+                    child: Text(
+                      currentRanking.positionName.toUpperCase(),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                      textAlign: TextAlign.center,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.arrow_right),
+                    onPressed: _currentPositionIndex == _rankingsData.length - 1
+                        ? null
+                        : _goToNextPosition,
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: isMobile ? 30 : 60),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                if (candidates.length >= 2)
+                  _buildPodiumPerson(candidates[1], 2, isMobile),
+                if (candidates.isNotEmpty)
+                  _buildPodiumPerson(candidates[0], 1, isMobile),
+                if (candidates.length >= 3)
+                  _buildPodiumPerson(candidates[2], 3, isMobile),
               ],
             ),
-          ),
-
-          // Reduced the gap so it doesn't push off the screen on laptops
-          SizedBox(height: isMobile ? 30 : 60),
-
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              if (candidates.length >= 2)
-                _buildPodiumPerson(candidates[1], 2, isMobile),
-              if (candidates.isNotEmpty)
-                _buildPodiumPerson(candidates[0], 1, isMobile),
-              if (candidates.length >= 3)
-                _buildPodiumPerson(candidates[2], 3, isMobile),
-            ],
-          ),
-          const SizedBox(height: 20),
-          const Text(
-            "top 3 candidates for the\nposition",
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 16, color: Colors.grey),
-          ),
-        ],
-      ),
-    );
-
-    // UI SECTION 2: OTHER CANDIDATES LIST
-    Widget otherCandidatesSection = Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            "other candidates for the position",
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-          ),
-          const SizedBox(height: 20),
-          Expanded(
-            child: ListView.builder(
-              itemCount: candidates.length > 3 ? candidates.length - 3 : 0,
-              itemBuilder: (context, index) {
-                final candidate = candidates[index + 3];
-                return _buildOtherCandidateListTile(candidate);
-              },
+            const SizedBox(height: 20),
+            const Text(
+              "top 3 candidates for the\nposition",
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 16, color: Colors.grey),
             ),
+          ],
+        ),
+      );
+
+      Widget otherCandidatesSection = Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "other candidates for the position",
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            const SizedBox(height: 20),
+            Expanded(
+              child: ListView.builder(
+                itemCount: candidates.length > 3 ? candidates.length - 3 : 0,
+                itemBuilder: (context, index) {
+                  final candidate = candidates[index + 3];
+                  return _buildOtherCandidateListTile(candidate);
+                },
+              ),
+            ),
+          ],
+        ),
+      );
+
+      if (candidates.isEmpty) {
+        bodyContent = const Center(
+          child: Text(
+            "No candidates assigned to this position yet.",
+            style: TextStyle(fontSize: 18, color: Colors.grey),
           ),
-        ],
-      ),
-    );
+        );
+      } else if (isMobile) {
+        bodyContent = Column(
+          children: [
+            podiumSection,
+            const SizedBox(height: 30),
+            Expanded(child: otherCandidatesSection),
+          ],
+        );
+      } else {
+        bodyContent = Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(flex: 2, child: podiumSection),
+            const SizedBox(width: 40),
+            Expanded(flex: 1, child: otherCandidatesSection),
+          ],
+        );
+      }
+    }
 
     return Padding(
       padding: EdgeInsets.all(isMobile ? 15.0 : 30.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            "Dashboard",
-            style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: primaryColor,
-            ),
-          ),
+          headerRow,
           const SizedBox(height: 30),
-
-          Expanded(
-            child: candidates.isEmpty
-                ? const Center(
-                    child: Text(
-                      "No candidates assigned to this position yet.",
-                      style: TextStyle(fontSize: 18, color: Colors.grey),
-                    ),
-                  )
-                : isMobile
-                ? Column(
-                    children: [
-                      podiumSection,
-                      const SizedBox(height: 30),
-                      Expanded(child: otherCandidatesSection),
-                    ],
-                  )
-                : Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(flex: 2, child: podiumSection),
-                      const SizedBox(width: 40),
-                      Expanded(flex: 1, child: otherCandidatesSection),
-                    ],
-                  ),
-          ),
+          Expanded(child: bodyContent),
         ],
       ),
     );
   }
 
-  // --- PASS isMobile TO ADJUST AVATAR SIZES FOR SMALL SCREENS ---
   Widget _buildPodiumPerson(
     CandidateResult candidate,
     int rank,
     bool isMobile,
   ) {
-    // Slightly smaller avatars on mobile so they don't squish
     double avatarRadius = rank == 1
         ? (isMobile ? 50 : 60)
         : (isMobile ? 40 : 50);
@@ -612,7 +672,12 @@ class _LiveScoreboardViewState extends State<LiveScoreboardView> {
           CircleAvatar(
             radius: avatarRadius,
             backgroundColor: Colors.white,
-            child: Icon(Icons.person, size: iconSize, color: Colors.grey),
+            backgroundImage: candidate.photoUrl != null
+                ? NetworkImage('${ApiConfig.baseUrl}/${candidate.photoUrl}')
+                : null,
+            child: candidate.photoUrl == null
+                ? Icon(Icons.person, size: iconSize, color: Colors.grey)
+                : null,
           ),
           const SizedBox(height: 15),
           Text(
@@ -657,7 +722,16 @@ class _LiveScoreboardViewState extends State<LiveScoreboardView> {
       padding: const EdgeInsets.only(bottom: 20.0),
       child: Row(
         children: [
-          const CircleAvatar(radius: 25, backgroundColor: Colors.grey),
+          CircleAvatar(
+            radius: 25, 
+            backgroundColor: Colors.grey,
+            backgroundImage: candidate.photoUrl != null
+                ? NetworkImage('${ApiConfig.baseUrl}/${candidate.photoUrl}')
+                : null,
+            child: candidate.photoUrl == null
+                ? const Icon(Icons.person, color: Colors.white)
+                : null,
+          ),
           const SizedBox(width: 15),
           Expanded(
             child: Column(

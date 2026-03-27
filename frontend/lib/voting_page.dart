@@ -17,6 +17,7 @@ class _VotingPageState extends State<VotingPage> {
   final Color primaryColor = const Color(0xFF000B6B);
 
   // Voting Data States
+  List<dynamic> _polls = []; // Stores all published polls for the dropdown
   Map<String, int?> _selectedCandidates = {}; 
   Map<String, List<dynamic>> _candidatesByPosition = {};
   List<String> _positionNames = [];
@@ -48,41 +49,67 @@ class _VotingPageState extends State<VotingPage> {
     _initializeVotingSession();
   }
 
-  // --- CORE LOGIC ---
+  // --- 1. FETCH ALL POLLS & START SESSION ---
   Future<void> _initializeVotingSession() async {
     try {
-      // 1. Find the Active Published Poll
       final pollResponse = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/polls'));
       if (pollResponse.statusCode != 200) throw Exception("Failed to fetch polls");
       
-      final List<dynamic> polls = jsonDecode(pollResponse.body);
-      final publishedPoll = polls.firstWhere(
-        (p) => p['is_published'] == true || p['is_published'] == 1,
-        orElse: () => null,
-      );
-
-      if (publishedPoll == null) {
+      final List<dynamic> allPolls = jsonDecode(pollResponse.body);
+      
+      // Filter out only published polls for the dropdown
+      _polls = allPolls.where((p) => p['is_published'] == true || p['is_published'] == 1).toList();
+      
+      if (_polls.isEmpty) {
         setState(() { _isLoading = false; _errorMessage = "No active elections right now."; });
         return;
       }
 
-      _activePollId = publishedPoll['poll_id'];
-      _activePollTitle = publishedPoll['title']; 
+      // Automatically select the first poll that hasn't ended (or just the first one if all are ended)
+      final defaultPoll = _polls.firstWhere(
+        (p) => p['status'] != 'Ended',
+        orElse: () => _polls.first,
+      );
+
+      await _loadPollData(defaultPoll);
+
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = "Failed to load voting data.";
+      });
+    }
+  }
+
+  // --- 2. LOAD DATA FOR THE SELECTED POLL ---
+  Future<void> _loadPollData(Map<String, dynamic> poll) async {
+    setState(() => _isLoading = true);
+
+    try {
+      _activePollId = poll['poll_id'];
+      _activePollTitle = poll['title']; 
       
-      // 2. Check if Poll is Expired
-      if (publishedPoll['status'] == 'Ended') {
+      // Reset states when switching polls
+      _selectedCandidates.clear();
+      _isJustSubmitted = false;
+      _hasAlreadyVoted = false;
+      _isExpired = false;
+      _errorMessage = null;
+
+      // Check if Poll is Expired
+      if (poll['status'] == 'Ended') {
         setState(() { _isExpired = true; _isLoading = false; });
         return; 
       }
 
-      // 3. Check if User Already Voted
+      // Check if User Already Voted
       bool voted = await ApiService.checkVoteStatus(_activePollId!);
       if (voted) {
         setState(() { _hasAlreadyVoted = true; _isLoading = false; });
         return; 
       }
 
-      // 4. Fetch and Group Candidates
+      // Fetch and Group Candidates
       List rawCandidates = await ApiService.fetchCandidates(_activePollId!);
       Map<String, List<dynamic>> grouped = {};
 
@@ -103,7 +130,7 @@ class _VotingPageState extends State<VotingPage> {
     } catch (e) {
       setState(() {
         _isLoading = false;
-        _errorMessage = "Failed to load voting data.";
+        _errorMessage = "Failed to load poll data.";
       });
     }
   }
@@ -241,176 +268,260 @@ class _VotingPageState extends State<VotingPage> {
     );
   }
 
-  // --- UI BUILDING ---
-  @override
-  Widget build(BuildContext context) {
-    if (_isLoading) return Center(child: CircularProgressIndicator(color: primaryColor));
-    if (_errorMessage != null) return Center(child: Text(_errorMessage!, style: const TextStyle(fontSize: 18)));
+  // --- UI WIDGETS ---
 
-    // Status 1: Expired
-    if (_isExpired) {
-      return _buildStatusScreen(Icons.timer_off, Colors.red, "This ballot has expired.", "Voting is no longer allowed for this election.");
-    }
-
-    // Status 2: Already Voted
-    if (_hasAlreadyVoted && !_isJustSubmitted) {
-      return _buildStatusScreen(Icons.how_to_vote, primaryColor, "Already Voted", "You have already successfully cast your ballot for:\n$_activePollTitle", showBackButton: true);
-    }
-
-    // Status 3: Just Finished Voting
-    if (_isJustSubmitted) {
-      return _buildStatusScreen(Icons.check_circle, Colors.green, "Thank You For Voting!", "Your ballot has been successfully recorded.", showBackButton: true);
-    }
-
-    // Status 4: Empty Ballot
-    if (_positionNames.isEmpty) {
-      return _buildStatusScreen(Icons.ballot_outlined, Colors.grey, "No Candidates Available", "Candidates have not been added to this election yet.");
-    }
-
-    // --- MAIN GOOGLE-FORM VOTING UI ---
-    return Scaffold(
-      backgroundColor: const Color(0xFFE5E5E5),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 800), // Keeps it from getting too wide on Desktop
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 30, 20, 10),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text("Official Ballot", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: primaryColor)),
-                    Text(_activePollTitle, style: const TextStyle(fontSize: 16, color: Colors.grey)),
-                  ],
-                ),
+  Widget _buildHeader() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 30, 20, 10),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text("Official Ballot", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: primaryColor)),
+                Text(_activePollTitle, style: const TextStyle(fontSize: 16, color: Colors.grey), overflow: TextOverflow.ellipsis),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          
+          // --- THE NEW DROPDOWN MENU ---
+          if (_polls.isNotEmpty)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey.shade300),
               ),
-              Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                  itemCount: _positionNames.length,
-                  itemBuilder: (context, index) {
-                    final positionName = _positionNames[index];
-                    final candidates = _candidatesByPosition[positionName] ?? [];
-                    
-                    // Add padding to the very last card so the FloatingActionButton doesn't cover it
-                    double bottomMargin = (index == _positionNames.length - 1) ? 100 : 25;
-
-                    return Card(
-                      margin: EdgeInsets.only(bottom: bottomMargin),
-                      elevation: 2,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              positionName.toUpperCase(), 
-                              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: primaryColor)
-                            ),
-                            const Divider(height: 30),
-                            
-                            ...candidates.map((candidate) {
-                              return Container(
-                                margin: const EdgeInsets.only(bottom: 8),
-                                decoration: BoxDecoration(
-                                  color: _selectedCandidates[positionName] == candidate['candidate_id'] 
-                                      ? primaryColor.withOpacity(0.05) 
-                                      : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(
-                                    color: _selectedCandidates[positionName] == candidate['candidate_id'] 
-                                        ? primaryColor.withOpacity(0.3) 
-                                        : Colors.transparent
-                                  )
-                                ),
-                                child: RadioListTile<int>(
-                                  activeColor: primaryColor,
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                                  
-                                  // --- CHANGE: Photo and Info Icon placed here to show on LEFT ---
-                                  secondary: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      CircleAvatar(
-                                        backgroundColor: Colors.grey[300],
-                                        backgroundImage: candidate['photo_url'] != null ? NetworkImage('${ApiConfig.baseUrl}/${candidate['photo_url']}') : null,
-                                        child: candidate['photo_url'] == null ? const Icon(Icons.person, color: Colors.white) : null,
-                                      ),
-                                      IconButton(
-                                        icon: const Icon(Icons.info_outline, color: Colors.grey),
-                                        tooltip: "View Platform",
-                                        onPressed: () => _showCandidateBio(candidate),
-                                      ),
-                                    ],
-                                  ),
-                                  
-                                  // --- CHANGE: Places Radio Button on the RIGHT ---
-                                  controlAffinity: ListTileControlAffinity.trailing,
-                                  
-                                  title: Text(candidate['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
-                                  subtitle: Text('${candidate['party_name'] ?? 'Independent'} • ${candidate['course_year'] ?? ''}'),
-                                  
-                                  value: candidate['candidate_id'],
-                                  groupValue: _selectedCandidates[positionName],
-                                  onChanged: (val) {
-                                    setState(() => _selectedCandidates[positionName] = val);
-                                  },
-                                ),
-                              );
-                            }),
-
-                            // --- Abstain Option ---
-                            Container(
-                              margin: const EdgeInsets.only(top: 8),
-                              decoration: BoxDecoration(
-                                color: _selectedCandidates[positionName] == ABSTAIN_ID 
-                                      ? Colors.grey.withOpacity(0.1) 
-                                      : Colors.transparent,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: RadioListTile<int>(
-                                activeColor: Colors.grey,
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                                
-                                // Leading Spacer to match candidate alignment
-                                secondary: const Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    CircleAvatar(backgroundColor: Colors.transparent, child: Icon(Icons.do_not_disturb, color: Colors.grey)),
-                                    SizedBox(width: 48), // Matches the width of the info IconButton to align text perfectly
-                                  ],
-                                ),
-                                
-                                // Radio on the right
-                                controlAffinity: ListTileControlAffinity.trailing,
-                                
-                                title: const Text("Abstain", style: TextStyle(fontStyle: FontStyle.italic, color: Colors.grey)),
-                                subtitle: const Text("Skip voting for this position", style: TextStyle(color: Colors.grey, fontSize: 12)),
-                                value: ABSTAIN_ID,
-                                groupValue: _selectedCandidates[positionName],
-                                onChanged: (val) {
-                                  setState(() => _selectedCandidates[positionName] = val);
-                                },
-                              ),
-                            )
-                          ],
-                        ),
-                      ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<int>(
+                  value: _activePollId,
+                  icon: Icon(Icons.arrow_drop_down, color: primaryColor),
+                  style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold),
+                  items: _polls.map((poll) {
+                    return DropdownMenuItem<int>(
+                      value: poll["poll_id"],
+                      child: Text(poll["title"] ?? "Election", style: const TextStyle(color: Colors.black87)),
                     );
+                  }).toList(),
+                  onChanged: (newPollId) {
+                    if (newPollId != null && newPollId != _activePollId) {
+                      final newPoll = _polls.firstWhere((p) => p['poll_id'] == newPollId);
+                      _loadPollData(newPoll);
+                    }
                   },
                 ),
               ),
-            ],
-          ),
-        ),
+            ),
+        ],
       ),
+    );
+  }
+
+  Widget _buildVotingList() {
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      itemCount: _positionNames.length,
+      itemBuilder: (context, index) {
+        final positionName = _positionNames[index];
+        final candidates = _candidatesByPosition[positionName] ?? [];
+        
+        // Add padding to the very last card so the FloatingActionButton doesn't cover it
+        double bottomMargin = (index == _positionNames.length - 1) ? 100 : 25;
+
+        return Card(
+          margin: EdgeInsets.only(bottom: bottomMargin),
+          elevation: 2,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  positionName.toUpperCase(), 
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: primaryColor)
+                ),
+                const Divider(height: 30),
+                
+                ...candidates.map((candidate) {
+                  final isSelected = _selectedCandidates[positionName] == candidate['candidate_id'];
+
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    decoration: BoxDecoration(
+                      color: isSelected ? primaryColor.withOpacity(0.05) : Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: isSelected ? primaryColor.withOpacity(0.3) : Colors.transparent
+                      )
+                    ),
+                    child: RadioListTile<int>(
+                      activeColor: primaryColor,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      
+                      // Left Side (Photo and Info)
+                      secondary: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CircleAvatar(
+                            backgroundColor: Colors.grey[300],
+                            backgroundImage: candidate['photo_url'] != null ? NetworkImage('${ApiConfig.baseUrl}/${candidate['photo_url']}') : null,
+                            child: candidate['photo_url'] == null ? const Icon(Icons.person, color: Colors.white) : null,
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.info_outline, color: Colors.grey),
+                            tooltip: "View Platform",
+                            onPressed: () => _showCandidateBio(candidate),
+                          ),
+                        ],
+                      ),
+                      
+                      // Right Side Radio Button
+                      controlAffinity: ListTileControlAffinity.trailing,
+                      
+                      title: Text(candidate['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
+                      subtitle: Text('${candidate['party_name'] ?? 'Independent'} • ${candidate['course_year'] ?? ''}'),
+                      
+                      value: candidate['candidate_id'],
+                      groupValue: _selectedCandidates[positionName],
+                      onChanged: (val) {
+                        setState(() => _selectedCandidates[positionName] = val);
+                      },
+                    ),
+                  );
+                }),
+
+                // --- Abstain Option ---
+                Container(
+                  margin: const EdgeInsets.only(top: 8),
+                  decoration: BoxDecoration(
+                    color: _selectedCandidates[positionName] == ABSTAIN_ID 
+                          ? Colors.grey.withOpacity(0.1) 
+                          : Colors.transparent,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: RadioListTile<int>(
+                    activeColor: Colors.grey,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    
+                    // Leading Spacer to match candidate alignment
+                    secondary: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CircleAvatar(backgroundColor: Colors.transparent, child: Icon(Icons.do_not_disturb, color: Colors.grey)),
+                        SizedBox(width: 48), 
+                      ],
+                    ),
+                    
+                    controlAffinity: ListTileControlAffinity.trailing,
+                    title: const Text("Abstain", style: TextStyle(fontStyle: FontStyle.italic, color: Colors.grey)),
+                    subtitle: const Text("Skip voting for this position", style: TextStyle(color: Colors.grey, fontSize: 12)),
+                    value: ABSTAIN_ID,
+                    groupValue: _selectedCandidates[positionName],
+                    onChanged: (val) {
+                      setState(() => _selectedCandidates[positionName] = val);
+                    },
+                  ),
+                )
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    Widget bodyContent;
+
+    // --- DECIDE WHICH SCREEN TO SHOW IN THE BODY ---
+    if (_isLoading) {
+      bodyContent = Center(child: CircularProgressIndicator(color: primaryColor));
+    } else if (_errorMessage != null) {
+      bodyContent = Center(child: Text(_errorMessage!, style: const TextStyle(fontSize: 18)));
+    } else if (_isExpired) {
+      bodyContent = Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.timer_off, size: 80, color: Colors.red),
+            const SizedBox(height: 20),
+            const Text("This ballot has expired.", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            const Text("Voting is no longer allowed for this election.", style: TextStyle(color: Colors.grey)),
+          ],
+        ),
+      );
+    } else if (_hasAlreadyVoted && !_isJustSubmitted) {
+      bodyContent = Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.how_to_vote, size: 80, color: primaryColor),
+            const SizedBox(height: 20),
+            const Text("Already Voted", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            Text("You have already successfully cast your ballot for:\n$_activePollTitle", textAlign: TextAlign.center, style: const TextStyle(fontSize: 16, color: Colors.grey)),
+            const SizedBox(height: 40),
+            ElevatedButton.icon(
+              onPressed: widget.onReturnToDashboard,
+              icon: const Icon(Icons.arrow_back),
+              label: const Text("Go back to dashboard"),
+              style: ElevatedButton.styleFrom(backgroundColor: primaryColor, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14)),
+            )
+          ],
+        ),
+      );
+    } else if (_isJustSubmitted) {
+      bodyContent = Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.check_circle, size: 80, color: Colors.green),
+            const SizedBox(height: 20),
+            const Text("Thank You For Voting!", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            const Text("Your ballot has been successfully recorded.", style: TextStyle(fontSize: 16, color: Colors.grey)),
+            const SizedBox(height: 40),
+            ElevatedButton.icon(
+              onPressed: widget.onReturnToDashboard, 
+              icon: const Icon(Icons.arrow_back),
+              label: const Text("Go back to dashboard"),
+              style: ElevatedButton.styleFrom(backgroundColor: primaryColor, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14)),
+            )
+          ],
+        ),
+      );
+    } else if (_positionNames.isEmpty) {
+      bodyContent = Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.ballot_outlined, size: 90, color: Colors.grey),
+            const SizedBox(height: 20),
+            const Text("No Candidates Available", style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600, color: Colors.grey)),
+            const Text("Candidates have not been added to this election yet.", style: TextStyle(fontSize: 14, color: Colors.grey)),
+          ],
+        ),
+      );
+    } else {
+      // Show the actual Google-Form style voting list
+      bodyContent = _buildVotingList();
+    }
+
+    // --- MAIN SCAFFOLD WRAPPER ---
+    return Scaffold(
+      backgroundColor: const Color(0xFFE5E5E5),
       
-      // --- FLOATING SUBMIT BUTTON ---
+      // Submit Button Rules: Must be Active, Not already voted, loaded, AND has selected all
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton: _hasSelectedAll 
+      floatingActionButton: (_hasSelectedAll && !_isExpired && !_hasAlreadyVoted && !_isJustSubmitted && !_isLoading && _positionNames.isNotEmpty) 
           ? FloatingActionButton.extended(
               onPressed: _showVoteConfirmationDialog,
               backgroundColor: Colors.green,
@@ -419,30 +530,19 @@ class _VotingPageState extends State<VotingPage> {
               label: const Text("SUBMIT BALLOT", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
             )
           : null,
-    );
-  }
-
-  // Reusable widget for Status Screens (Expired, Finished, Empty)
-  Widget _buildStatusScreen(IconData icon, Color color, String title, String subtitle, {bool showBackButton = false}) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 80, color: color),
-          const SizedBox(height: 20),
-          Text(title, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
-          const SizedBox(height: 10),
-          Text(subtitle, textAlign: TextAlign.center, style: const TextStyle(fontSize: 16, color: Colors.grey)),
-          if (showBackButton) ...[
-            const SizedBox(height: 40),
-            ElevatedButton.icon(
-              onPressed: widget.onReturnToDashboard,
-              icon: const Icon(Icons.arrow_back),
-              label: const Text("Go back to dashboard"),
-              style: ElevatedButton.styleFrom(backgroundColor: primaryColor, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14)),
-            )
-          ]
-        ],
+          
+      // Ensure the top header and dropdown is always visible NO MATTER the status of the poll!
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 800),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildHeader(),
+              Expanded(child: bodyContent),
+            ],
+          ),
+        ),
       ),
     );
   }

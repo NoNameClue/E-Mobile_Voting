@@ -2,30 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'api_config.dart';
-// import 'responsive_screen.dart';
 
 class ManageUsers extends StatefulWidget {
   const ManageUsers({super.key});
 
   @override
   State<ManageUsers> createState() => _ManageUsersState();
-  // Widget build(BuildContext context) {
-  //   return Scaffold(
-  //     body: ResponsiveScreen(
-  //       child: Column(
-  //         children: [
-  //           Text("Manage Users", style: TextStyle(fontSize: 24)),
-  //           ManageUsers(),
-  //         ],
-  //       ),
-  //     ),
-  //   );
-  // }
 }
 
 class _ManageUsersState extends State<ManageUsers> {
   List<dynamic> _allStudents = [];
-  List<dynamic> _filteredStudents = []; // Holds the search results
+  List<dynamic> _filteredStudents = []; 
   final TextEditingController _searchController = TextEditingController();
   bool _isLoading = true;
 
@@ -48,7 +35,7 @@ class _ManageUsersState extends State<ManageUsers> {
       if (response.statusCode == 200) {
         setState(() {
           _allStudents = jsonDecode(response.body);
-          _filteredStudents = _allStudents; // Initially, show everyone
+          _filteredStudents = _allStudents; 
           _isLoading = false;
         });
       }
@@ -66,7 +53,6 @@ class _ManageUsersState extends State<ManageUsers> {
     if (enteredKeyword.isEmpty) {
       results = _allStudents;
     } else {
-      // Filter ONLY by the student_number
       results = _allStudents.where((student) {
         final studentId = student['student_number'].toString().toLowerCase();
         return studentId.contains(enteredKeyword.toLowerCase());
@@ -79,7 +65,6 @@ class _ManageUsersState extends State<ManageUsers> {
   }
 
   Future<void> _toggleStudentStatus(int userId, bool currentStatus) async {
-    // Optimistic UI update (update both lists so the switch flips immediately)
     setState(() {
       final mainIndex = _allStudents.indexWhere((s) => s['user_id'] == userId);
       if (mainIndex != -1) _allStudents[mainIndex]['is_active'] = !currentStatus;
@@ -92,14 +77,13 @@ class _ManageUsersState extends State<ManageUsers> {
       final response = await http.put(Uri.parse('${ApiConfig.baseUrl}/api/admin/students/$userId/toggle'));
       
       if (response.statusCode != 200) {
-        // Revert if API fails
         _fetchStudents();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to update status')));
         }
       }
     } catch (e) {
-      _fetchStudents(); // Revert on error
+      _fetchStudents(); 
     }
   }
 
@@ -125,7 +109,6 @@ class _ManageUsersState extends State<ManageUsers> {
           const Text("Manage student access. Deactivate accounts for graduated students.", style: TextStyle(color: Colors.grey, fontSize: 16)),
           const SizedBox(height: 20),
           
-          // --- NEW SEARCH BAR ---
           TextField(
             controller: _searchController,
             onChanged: (value) => _runSearch(value),
@@ -150,7 +133,7 @@ class _ManageUsersState extends State<ManageUsers> {
               : _filteredStudents.isEmpty 
                   ? const Center(child: Text('No students found matching that ID.', style: TextStyle(fontSize: 16)))
                   : ListView.builder(
-                      itemCount: _filteredStudents.length, // Uses the filtered list now
+                      itemCount: _filteredStudents.length, 
                       itemBuilder: (context, index) {
                         final student = _filteredStudents[index];
                         final bool isActive = student['is_active'];
@@ -162,10 +145,32 @@ class _ManageUsersState extends State<ManageUsers> {
                           child: Padding(
                             padding: const EdgeInsets.symmetric(vertical: 8.0),
                             child: ListTile(
-                              leading: CircleAvatar(
-                                radius: 25,
-                                backgroundColor: isActive ? Colors.green.withOpacity(0.2) : Colors.red.withOpacity(0.2),
-                                child: Icon(Icons.person, color: isActive ? Colors.green : Colors.red, size: 30),
+                              // --- PROFILE PICTURE WITH STATUS BADGE ---
+                              leading: Stack(
+                                children: [
+                                  CircleAvatar(
+                                    radius: 25,
+                                    backgroundColor: Colors.grey[300],
+                                    backgroundImage: student['profile_pic_url'] != null 
+                                        ? NetworkImage('${ApiConfig.baseUrl}/${student['profile_pic_url']}')
+                                        : null,
+                                    child: student['profile_pic_url'] == null 
+                                        ? Icon(Icons.person, color: isActive ? Colors.green : Colors.red, size: 30)
+                                        : null,
+                                  ),
+                                  Positioned(
+                                    bottom: 0,
+                                    right: 0,
+                                    child: CircleAvatar(
+                                      radius: 8,
+                                      backgroundColor: Colors.white, // Border for the dot
+                                      child: CircleAvatar(
+                                        radius: 6,
+                                        backgroundColor: isActive ? Colors.green : Colors.red, // The actual status color
+                                      ),
+                                    ),
+                                  )
+                                ],
                               ),
                               title: Text(
                                 '${student['full_name']} (${student['student_number']})', 

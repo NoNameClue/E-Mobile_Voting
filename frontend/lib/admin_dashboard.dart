@@ -30,9 +30,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
   int _deactivatedStudents = 0;
   bool _isLoadingStats = true;
 
-  // RBAC State
+  // RBAC & Profile States
   String _userRole = "Admin";
   List<String> _userPermissions = [];
+  String _userName = "Loading...";
+  String _userId = "";
+  String? _profilePicUrl;
 
   // Master list of all possible screens
   final List<String> _masterMenuItems = [
@@ -54,6 +57,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
   void initState() {
     super.initState();
     _loadUserAccess();
+    _fetchUserProfile(); // Fetch the logged-in profile data
     _fetchUserCount();
   }
 
@@ -78,11 +82,41 @@ class _AdminDashboardState extends State<AdminDashboard> {
     });
   }
 
+  // --- NEW: Fetch Profile Picture and Info ---
+  Future<void> _fetchUserProfile() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('jwt_token') ?? '';
+
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/api/users/me'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (mounted) {
+          setState(() {
+            _userName = data['full_name'] ?? (_userRole == 'Admin' ? 'Admin' : 'Staff');
+            _userId = data['student_number'] ?? '';
+            _profilePicUrl = data['profile_pic_url'];
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _userName = _userRole;
+        });
+      }
+    }
+  }
+
   // Fetches users, explicitly excludes Admins, and counts Active vs Deactivated
   Future<void> _fetchUserCount() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token') ?? '';
+      final token = prefs.getString('jwt_token') ?? ''; // FIX: Use 'jwt_token'
 
       final response = await http.get(
         Uri.parse('${ApiConfig.baseUrl}/api/users'),
@@ -119,18 +153,18 @@ class _AdminDashboardState extends State<AdminDashboard> {
           _isLoadingStats = false;
         });
       } else {
-        print("Failed to fetch users. Status: ${response.statusCode}");
         setState(() => _isLoadingStats = false);
       }
     } catch (e) {
-      print("Network error: $e");
       setState(() => _isLoadingStats = false);
     }
   }
 
   void logout() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('token'); // Clear JWT
+    await prefs.remove('jwt_token'); // Clear JWT
+    await prefs.remove('role'); 
+    await prefs.remove('permissions'); 
     if (!mounted) return;
     Navigator.pushReplacementNamed(context, '/login');
   }
@@ -154,6 +188,26 @@ class _AdminDashboardState extends State<AdminDashboard> {
             ),
           ),
           const SizedBox(height: 30),
+
+          // --- NEW: Profile Section in Sidebar ---
+          CircleAvatar(
+            radius: 50,
+            backgroundColor: Colors.white,
+            backgroundImage: _profilePicUrl != null
+                ? NetworkImage('${ApiConfig.baseUrl}/$_profilePicUrl')
+                : null,
+            child: _profilePicUrl == null
+                ? const Icon(Icons.person, size: 60, color: Colors.grey)
+                : null,
+          ),
+          const SizedBox(height: 10),
+          Text(
+            "$_userName\nID: $_userId",
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.white),
+          ),
+          const SizedBox(height: 30),
+          // -------------------------------------
 
           Expanded(
             child: SingleChildScrollView(
@@ -215,7 +269,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  // Changed to accept string so icons don't mix up when list is filtered
   IconData _getMenuIcon(String title) {
     switch (title) {
       case "Dashboard":
@@ -241,7 +294,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
     }
   }
 
-  // Enhanced Stat Card with Icons and Colors
   Widget buildStatCard(String title, String value, IconData icon, Color color) {
     return Container(
       width: 260,
@@ -304,7 +356,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  // Quick Action Button Widget
   Widget buildQuickActionButton(
     String title,
     IconData icon,
@@ -313,7 +364,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
   ) {
     return InkWell(
       onTap: () {
-        // Only allow navigation if they have permission for that panel
         if (displayMenuItems.contains(navigateToTitle)) {
           setState(() => _selectedMenuString = navigateToTitle);
         } else {
@@ -355,7 +405,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  // The main Dashboard view
   Widget buildDashboardHome() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(30),
@@ -377,7 +426,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
           ),
           const SizedBox(height: 30),
 
-          // --- STATS ROW ---
           const Text(
             "Student Demographics",
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
@@ -412,7 +460,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
           const Divider(),
           const SizedBox(height: 30),
 
-          // --- QUICK ACTIONS ROW ---
           const Text(
             "Quick Actions",
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
@@ -451,7 +498,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
           const SizedBox(height: 40),
 
-          // --- SYSTEM STATUS BANNER ---
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
@@ -490,7 +536,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  // Page Routing
   Widget buildContent() {
     switch (_selectedMenuString) {
       case "Dashboard":
@@ -526,6 +571,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           ? null
           : AppBar(
               backgroundColor: const Color(0xFF000B6B),
+              foregroundColor: Colors.white, // FIX: Makes burger icon and text white
               title: const Text("Admin Panel", style: TextStyle(color: Colors.white)),
             ),
       drawer: isDesktop ? null : Drawer(child: buildSidebar(false)),

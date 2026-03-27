@@ -48,7 +48,6 @@ class _ManageStaffsState extends State<ManageStaffs> {
     }
   }
 
-  // --- DELETE LOGIC ---
   Future<void> _deleteStaff(int userId) async {
     bool confirm = await showDialog(
       context: context,
@@ -79,13 +78,11 @@ class _ManageStaffsState extends State<ManageStaffs> {
     }
   }
 
-  // --- CREATE / EDIT MODAL LOGIC ---
   void _showStaffModal({Map<String, dynamic>? existingStaff}) {
     final bool isEditing = existingStaff != null;
 
-    // FIX: Added '!' to existingStaff to bypass null safety checks
-    final TextEditingController nameCtrl = TextEditingController(text: isEditing ? existingStaff!['full_name'] : '');
-    final TextEditingController emailCtrl = TextEditingController(text: isEditing ? existingStaff!['email'] : '');
+    final TextEditingController nameCtrl = TextEditingController(text: isEditing ? existingStaff['full_name'] : '');
+    final TextEditingController emailCtrl = TextEditingController(text: isEditing ? existingStaff['email'] : '');
     final TextEditingController passCtrl = TextEditingController();
     final TextEditingController confirmCtrl = TextEditingController();
     
@@ -119,7 +116,6 @@ class _ManageStaffsState extends State<ManageStaffs> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Photo Picker
                   GestureDetector(
                     onTap: () => pickImage(setModalState),
                     child: CircleAvatar(
@@ -127,12 +123,10 @@ class _ManageStaffsState extends State<ManageStaffs> {
                       backgroundColor: Colors.grey[200],
                       backgroundImage: imageBytes != null 
                           ? MemoryImage(imageBytes!) 
-                          // FIX: Added '!' to existingStaff
-                          : (isEditing && existingStaff!['profile_pic_url'] != null 
-                              ? NetworkImage('${ApiConfig.baseUrl}/${existingStaff!['profile_pic_url']}') 
+                          : (isEditing && existingStaff['profile_pic_url'] != null 
+                              ? NetworkImage('${ApiConfig.baseUrl}/${existingStaff['profile_pic_url']}') 
                               : null) as ImageProvider?,
-                      // FIX: Added '!' to existingStaff
-                      child: imageBytes == null && (isEditing == false || existingStaff!['profile_pic_url'] == null)
+                      child: imageBytes == null && (!isEditing || existingStaff['profile_pic_url'] == null)
                           ? const Icon(Icons.camera_alt, size: 30, color: Colors.grey)
                           : null,
                     ),
@@ -185,7 +179,6 @@ class _ManageStaffsState extends State<ManageStaffs> {
               ElevatedButton(
                 style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF000B6B), foregroundColor: Colors.white),
                 onPressed: isSaving ? null : () async {
-                  // Validations
                   if (nameCtrl.text.isEmpty || emailCtrl.text.isEmpty) {
                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Name and Email are required")));
                     return;
@@ -202,9 +195,8 @@ class _ManageStaffsState extends State<ManageStaffs> {
                   setModalState(() => isSaving = true);
                   
                   try {
-                    // FIX: Added '!' to existingStaff
                     Uri uri = isEditing 
-                        ? Uri.parse('${ApiConfig.baseUrl}/api/officers/${existingStaff!['user_id']}')
+                        ? Uri.parse('${ApiConfig.baseUrl}/api/officers/${existingStaff['user_id']}')
                         : Uri.parse('${ApiConfig.baseUrl}/api/officers');
                     
                     var request = http.MultipartRequest(isEditing ? 'PUT' : 'POST', uri);
@@ -250,7 +242,6 @@ class _ManageStaffsState extends State<ManageStaffs> {
     );
   }
 
-  // --- PERMISSIONS LOGIC ---
   void _showPermissionsModal(Map<String, dynamic> staff) {
     List<String> currentPermissions = List<String>.from(staff['permissions'] ?? []);
 
@@ -313,15 +304,19 @@ class _ManageStaffsState extends State<ManageStaffs> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          // --- MOBILE OVERFLOW FIX: Changed Row to Wrap ---
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 15,
+            runSpacing: 15,
             children: [
               const Text("Manage Election Officers", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
               ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.amber, foregroundColor: const Color(0xFF000B6B)),
                 icon: const Icon(Icons.add),
                 label: const Text("Create Staff"),
-                onPressed: () => _showStaffModal(), // Call without arguments to create
+                onPressed: () => _showStaffModal(),
               ),
             ],
           ),
@@ -338,18 +333,18 @@ class _ManageStaffsState extends State<ManageStaffs> {
                       return ListTile(
                         contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                         leading: CircleAvatar(
-                          backgroundColor: const Color(0xFF000B6B), 
+                          radius: 25,
+                          backgroundColor: Colors.grey[300], 
                           backgroundImage: staff['profile_pic_url'] != null 
                               ? NetworkImage('${ApiConfig.baseUrl}/${staff['profile_pic_url']}')
                               : null,
                           child: staff['profile_pic_url'] == null 
-                              ? const Icon(Icons.security, color: Colors.white)
+                              ? const Icon(Icons.security, color: Colors.white, size: 30)
                               : null,
                         ),
                         title: Text(staff['full_name'], style: const TextStyle(fontWeight: FontWeight.bold)),
                         subtitle: Text(staff['email']),
                         
-                        // Using a popup menu so it fits nicely on all screen sizes
                         trailing: PopupMenuButton<String>(
                           icon: const Icon(Icons.more_vert),
                           onSelected: (value) {
