@@ -87,7 +87,7 @@ class User(Base):
     # --- UPDATED: Added 'Staff' to Enum ---
     role = Column(SQLEnum('Admin', 'Student', 'Staff'), default='Student') 
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow) 
+    created_at = Column(DateTime, default=datetime.now) 
     profile_pic_url = Column(String(255), nullable=True)
     
     # --- ADDED: Permissions column ---
@@ -170,7 +170,7 @@ class Vote(Base):
     user_id = Column(Integer, nullable=False)
     poll_id = Column(Integer, nullable=False)
     candidate_id = Column(Integer, nullable=False)
-    cast_at = Column(DateTime, default=datetime.utcnow)
+    cast_at = Column(DateTime, default=datetime.now)
 
 class VoteRequest(BaseModel):
     poll_id: int
@@ -192,7 +192,7 @@ class PartyCreate(BaseModel):
 @app.get("/api/polls")
 def get_polls(db: Session = Depends(get_db)):
     polls = db.query(Poll).all()
-    current_time = datetime.utcnow()
+    current_time = datetime.now()
     
     for p in polls:
         # Automatically expire polls if end_time has passed
@@ -421,7 +421,7 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
 }
 
     # 4. Generate the secure JWT Session Token
-    expire = datetime.utcnow() + timedelta(hours=2) # Token lasts 2 hours
+    expire = datetime.now() + timedelta(hours=2) # Token lasts 2 hours
     user_perms = user.permissions if user.permissions is not None else []
     token_data = {
         "sub": str(user.user_id),

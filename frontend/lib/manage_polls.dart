@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'api_config.dart';
-// import 'responsive_screen.dart';
 
 class ManagePolls extends StatefulWidget {
   const ManagePolls({super.key});
@@ -46,7 +45,7 @@ class _ManagePollsState extends State<ManagePolls> {
       'title': title,
       'start_time': start.toIso8601String(),
       'end_time': end.toIso8601String(),
-      'status': 'Draft' // Always default to draft when saving/editing
+      'status': 'Draft' 
     });
 
     try {
@@ -63,9 +62,7 @@ class _ManagePollsState extends State<ManagePolls> {
     }
   }
 
-  // --- NEW PUBLISH FUNCTION ---
   Future<void> _publishPoll(int pollId) async {
-    // Optional: You could add a confirmation dialog here before publishing
     try {
       final response = await http.put(Uri.parse('${ApiConfig.baseUrl}/api/polls/$pollId/publish'));
       if (response.statusCode == 200) {
@@ -86,8 +83,6 @@ class _ManagePollsState extends State<ManagePolls> {
       }
     } catch (e) {}
   }
-
-  // ===== ADD THESE BELOW _deletePoll() =====
 
   void _confirmDelete(int pollId) {
     showDialog(
@@ -128,10 +123,10 @@ class _ManagePollsState extends State<ManagePolls> {
             content: Text(currentlyArchived ? 'Poll unarchived' : 'Poll archived'),
           ),
         );
-        _fetchPolls(); // reload from backend
+        _fetchPolls(); 
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to toggle archive status')),
+          const SnackBar(content: Text('Failed to toggle archive status')),
         );
       }
     } catch (e) {
@@ -140,55 +135,6 @@ class _ManagePollsState extends State<ManagePolls> {
       );
     }
   }
-
-  // Future<void> _archivePoll(int pollId) async {
-  //   try {
-  //     final response = await http.put(
-  //       Uri.parse('${ApiConfig.baseUrl}/api/polls/$pollId/archive'),
-  //     );
-
-  //     if (response.statusCode == 200) {
-  //       ScaffoldMessenger.of(context).showSnackBar(
-  //         const SnackBar(content: Text('Poll archived')),
-  //       );
-  //       _fetchPolls();
-  //     }
-  //   } catch (e) {}
-  // }
-
-  // Future<void> _unarchivePoll(int pollId) async {
-  //   try {
-  //     final response = await http.put(
-  //       Uri.parse('${ApiConfig.baseUrl}/api/polls/$pollId'),
-  //       headers: {'Content-Type': 'application/json'},
-  //       body: jsonEncode({'is_archived': false}),
-  //     );
-
-  //     if (response.statusCode == 200) {
-  //       // Update local list so UI reflects the change immediately
-  //       setState(() {
-  //         _polls = _polls.map((poll) {
-  //           if (poll['poll_id'] == pollId) {
-  //             poll['is_archived'] = false; // Mark as active
-  //           }
-  //           return poll;
-  //         }).toList();
-  //       });
-
-  //       ScaffoldMessenger.of(context).showSnackBar(
-  //         const SnackBar(content: Text('Poll unarchived')),
-  //       );
-  //     } else {
-  //       ScaffoldMessenger.of(context).showSnackBar(
-  //         SnackBar(content: Text('Failed to unarchive poll (code ${response.statusCode})')),
-  //       );
-  //     }
-  //   } catch (e) {
-  //     ScaffoldMessenger.of(context).showSnackBar(
-  //       const SnackBar(content: Text('Failed to unarchive poll')),
-  //     );
-  //   }
-  // }
 
   void _openPollDetails(int pollId, String title) {
     showDialog(
@@ -354,6 +300,12 @@ class _ManagePollsState extends State<ManagePolls> {
 
   @override
   Widget build(BuildContext context) {
+    bool hasActivePoll = _polls.any((poll) {
+      if (poll['end_time'] == null) return false;
+      DateTime endDate = DateTime.parse(poll['end_time']);
+      return endDate.isAfter(DateTime.now());
+    });
+
     return Padding(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -377,11 +329,20 @@ class _ManagePollsState extends State<ManagePolls> {
                 },
               ),
               const SizedBox(width: 10),
-              ElevatedButton.icon(
-                icon: const Icon(Icons.add),
-                label: const Text("Create Poll"),
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.amber, foregroundColor: Colors.black),
-                onPressed: () => _showPollDialog(),
+              
+              Tooltip(
+                message: hasActivePoll 
+                  ? "An election is already active or drafted. Please wait until it ends or delete it." 
+                  : "Create a new election",
+                child: ElevatedButton.icon(
+                  icon: const Icon(Icons.add),
+                  label: const Text("Create Poll"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: hasActivePoll ? Colors.grey.shade400 : Colors.amber, 
+                    foregroundColor: hasActivePoll ? Colors.grey.shade700 : Colors.black
+                  ),
+                  onPressed: hasActivePoll ? null : () => _showPollDialog(),
+                ),
               ),
             ],
           ),
@@ -397,8 +358,15 @@ class _ManagePollsState extends State<ManagePolls> {
                         final poll = _polls[index];
                         final bool isPublished = poll['is_published'] == true || poll['is_published'] == 1;
                         final bool isArchived = poll['is_archived'] == true || poll['is_archived'] == 1;
+                        
+                        // --- 🛠️ EXPIRED CHECK ---
+                        bool isExpired = false;
+                        if (poll['end_time'] != null) {
+                          DateTime endTime = DateTime.parse(poll['end_time']);
+                          isExpired = endTime.isBefore(DateTime.now());
+                        }
+                        // -------------------------
 
-                        // Skip items depending on toggle
                         if (_showArchived != isArchived) {
                           return const SizedBox.shrink();
                         }
@@ -413,12 +381,7 @@ class _ManagePollsState extends State<ManagePolls> {
                             trailing: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                // If it is not published yet, show the Publish button
-                                // ACTION BUTTONS LOGIC
                                 if (!isPublished) ...[
-                                  // ✅ DRAFT POLL ACTIONS
-
-                                  // 🔥 PUBLISH BUTTON (ONLY HERE)
                                   ElevatedButton.icon(
                                     icon: const Icon(Icons.campaign, size: 18),
                                     label: const Text("Publish"),
@@ -428,60 +391,51 @@ class _ManagePollsState extends State<ManagePolls> {
                                     ),
                                     onPressed: () => _publishPoll(poll['poll_id']),
                                   ),
-
                                   const SizedBox(width: 8),
-
                                   IconButton(
                                     icon: const Icon(Icons.edit, color: Colors.blue),
                                     tooltip: "Edit Poll",
                                     onPressed: () => _showPollDialog(existingPoll: poll),
                                   ),
-
                                   IconButton(
                                     icon: const Icon(Icons.delete, color: Colors.red),
                                     tooltip: "Delete Poll",
                                     onPressed: () => _confirmDelete(poll['poll_id']),
                                   ),
                                 ] else ...[
-                                  // ✅ PUBLISHED POLL ACTIONS
-
-                                  // Show published badge
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                    decoration: BoxDecoration(
-                                      color: Colors.green.withOpacity(0.2),
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(color: Colors.green),
-                                    ),
-                                    child: const Text(
-                                      "PUBLISHED",
-                                      style: TextStyle(
-                                        color: Colors.green,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 12,
+                                  // --- 🛠️ RED EXPIRED BADGE vs GREEN PUBLISHED BADGE ---
+                                  if (isExpired)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: Colors.red.withOpacity(0.2),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(color: Colors.red),
+                                      ),
+                                      child: const Text(
+                                        "EXPIRED",
+                                        style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 12),
+                                      ),
+                                    )
+                                  else
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: Colors.green.withOpacity(0.2),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(color: Colors.green),
+                                      ),
+                                      child: const Text(
+                                        "PUBLISHED",
+                                        style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 12),
                                       ),
                                     ),
-                                  ),
-
                                   const SizedBox(width: 10),
-
-                                  // Archive / Unarchive
-                                  // IconButton(
-                                  //   icon: Icon(
-                                  //     isArchived ? Icons.unarchive : Icons.archive,
-                                  //     color: Colors.grey,
-                                  //   ),
-                                  //   tooltip: isArchived ? "Unarchive Poll" : "Archive Poll",
-                                  //   onPressed: () => _toggleArchivePoll(
-                                  //     poll['poll_id'],
-                                  //     isArchived,
-                                  //   ),
-                                  // ),
+                                  // -----------------------------------------------------
                                 ],
                                   
                                 const SizedBox(width: 10),
                                 
-                                // NEW INFO SUMMARY BUTTON ADDED HERE
                                 IconButton(
                                   icon: const Icon(Icons.info, color: Colors.amber), 
                                   onPressed: () async {
@@ -518,25 +472,6 @@ class _ManagePollsState extends State<ManagePolls> {
                                     poll['is_archived'] == true || poll['is_archived'] == 1,
                                   ),
                                 ),
-
-                              //  if (!isPublished && !isArchived)
-                              //   IconButton(
-                              //     icon: const Icon(Icons.edit, color: Colors.blue),
-                              //     onPressed: () => _showPollDialog(existingPoll: poll),
-                              //   ),
-
-                              // if (!isPublished && !isArchived)
-                              //   IconButton(
-                              //     icon: const Icon(Icons.delete, color: Colors.red),
-                              //     onPressed: () => _deletePoll(poll['poll_id']),
-                              //   ),
-
-                              // if (isArchived)
-                              //   IconButton(
-                              //     icon: const Icon(Icons.unarchive, color: Colors.orange),
-                              //     tooltip: 'Unarchive Poll',
-                              //     onPressed: () => _unarchivePoll(poll['poll_id']),
-                              //   ),
                               ],
                             ),
                           ),

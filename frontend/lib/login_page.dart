@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'auth_layout.dart'; 
 import 'api_config.dart'; 
+import 'widgets/realtime_clock.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -17,7 +18,7 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   
-  bool _isLoading = false; // <-- Ensures it doesn't start in a loading state
+  bool _isLoading = false; 
   bool _obscurePassword = true; 
   String _errorMessage = '';
 
@@ -30,7 +31,6 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     try {
-      // Added a 10-second timeout so the app doesn't hang if Python isn't running
       final response = await http.post(
         Uri.parse('${ApiConfig.baseUrl}/api/login'),
         headers: {'Content-Type': 'application/json'},
@@ -48,9 +48,7 @@ class _LoginPageState extends State<LoginPage> {
         
         await prefs.setString('jwt_token', token);
 
-        // --- JWT DECODING & RBAC LOGIC ---
-// --- JWT DECODING & RBAC LOGIC ---
-        String userRole = 'Student'; // Default fallback
+        String userRole = 'Student'; 
         final tokenParts = token.split('.');
         
         if (tokenParts.length == 3) {
@@ -61,32 +59,24 @@ class _LoginPageState extends State<LoginPage> {
           
           await prefs.setString('role', userRole);
           
-          // --- THE CRITICAL FIX IS HERE ---
-          // Ensure we are getting a valid List, even if the backend sends null or a string by mistake
           List<dynamic> rawPermissions = [];
           if (payload['permissions'] != null) {
             if (payload['permissions'] is String) {
-               // Sometimes SQLAlchemy JSON columns return as a stringified JSON
                rawPermissions = jsonDecode(payload['permissions']);
             } else if (payload['permissions'] is List) {
                rawPermissions = payload['permissions'];
             }
           }
           
-          // Save it to SharedPreferences as a JSON string
           await prefs.setString('permissions', jsonEncode(rawPermissions)); 
-          // ---------------------------------
           
         } else {
-          // Fallback if the token format fails
           userRole = data['role'] ?? 'Student';
           await prefs.setString('role', userRole);
         }
-        // ---------------------------------
 
         if (!mounted) return;
         
-        // Route Admin AND Staff to the admin dashboard
         if (userRole == 'Admin' || userRole == 'Staff') {
           Navigator.pushReplacementNamed(context, '/admin_dashboard');
         } else {
@@ -113,6 +103,7 @@ class _LoginPageState extends State<LoginPage> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            
             const Text('Welcome Back', style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             const Text('Please enter your university details to sign in and vote.', style: TextStyle(color: Colors.white70, fontSize: 14)),
@@ -124,34 +115,31 @@ class _LoginPageState extends State<LoginPage> {
                 child: Text(_errorMessage, style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold))
               ),
 
-            // Standardized Email Field
             TextFormField(
               controller: _emailController,
-              style: const TextStyle(color: Colors.black87), // Changed text to black
+              style: const TextStyle(color: Colors.black87), 
               decoration: InputDecoration(
                 hintText: 'University Email',
-                hintStyle: const TextStyle(color: Colors.black54), // Changed hint to dark grey
+                hintStyle: const TextStyle(color: Colors.black54), 
                 filled: true,
-                fillColor: Colors.white, // Changed background to solid white
+                fillColor: Colors.white, 
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
               ),
               validator: (value) => value == null || value.isEmpty ? 'Email is required' : null,
             ),
             const SizedBox(height: 15),
 
-            // Standardized Password Field with Toggle
             TextFormField(
               controller: _passwordController,
               obscureText: _obscurePassword,
-              style: const TextStyle(color: Colors.black87), // Changed text to black
+              style: const TextStyle(color: Colors.black87), 
               decoration: InputDecoration(
                 hintText: 'Password',
-                hintStyle: const TextStyle(color: Colors.black54), // Changed hint to dark grey
+                hintStyle: const TextStyle(color: Colors.black54), 
                 filled: true,
-                fillColor: Colors.white, // Changed background to solid white
+                fillColor: Colors.white, 
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
                 suffixIcon: IconButton(
-                  // Changed icon color to dark grey so it's visible on white
                   icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility, color: Colors.black54),
                   onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                 ),
@@ -160,13 +148,12 @@ class _LoginPageState extends State<LoginPage> {
             ),
             const SizedBox(height: 25),
             
-            // Sign In Button
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.amber,
-                  disabledBackgroundColor: Colors.amber.withOpacity(0.7), // Prevents button from going dark!
+                  disabledBackgroundColor: Colors.amber.withOpacity(0.7), 
                   foregroundColor: const Color(0xFF000B6B),
                   padding: const EdgeInsets.symmetric(vertical: 18),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

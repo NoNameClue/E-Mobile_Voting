@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'widgets/realtime_clock.dart';
 
 class AuthLayout extends StatelessWidget {
   final Widget formContent;
@@ -32,7 +33,12 @@ class AuthLayout extends StatelessWidget {
               children: [
                 CircleAvatar(backgroundColor: Colors.white, radius: 18, child: Text('Logo', style: TextStyle(color: Colors.black, fontSize: 10))),
                 SizedBox(width: 15),
-                Text('Leyte Normal University\nSystem Name', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                // Wrapped in Expanded so it pushes the clock to the right edge
+                Expanded(
+                  child: Text('Leyte Normal University\nSystem Name', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                ),
+                // 🕒 CLOCK ADDED HERE FOR MOBILE HEADER
+                RealtimeClock(textColor: Colors.white, isCenterAligned: false),
               ],
             ),
           ),
@@ -100,6 +106,10 @@ class AuthLayout extends StatelessWidget {
                   ),
                   Row(
                     children: [
+                      // 🕒 CLOCK ADDED EXACTLY WHERE REQUESTED!
+                      const RealtimeClock(textColor: Colors.white, isCenterAligned: false),
+                      const SizedBox(width: 40), 
+                      
                       InteractiveNavText(text: 'ABOUT US', onTap: () {}),
                       const SizedBox(width: 30),
                       InteractiveNavText(text: 'FAQs', onTap: () {}),
@@ -170,7 +180,7 @@ class _InteractiveNavTextState extends State<InteractiveNavText> {
       onExit: (_) => setState(() => isHovered = false),
       child: GestureDetector(
         onTap: widget.onTap,
-        child: Text(widget.text, style: TextStyle(fontSize: 16, color: isHovered ? Colors.yellow : Colors.white, fontWeight: FontWeight.w500)),
+        child: Text(widget.text, style: TextStyle(fontSize: 16, color: isHovered ? Colors.amber : Colors.white, fontWeight: FontWeight.w500)),
       ),
     );
   }

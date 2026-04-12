@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'api_config.dart';
+import 'widgets/realtime_clock.dart';
 
 import 'manage_staffs.dart';
 import 'manage_polls.dart';
@@ -21,27 +22,23 @@ class AdminDashboard extends StatefulWidget {
 }
 
 class _AdminDashboardState extends State<AdminDashboard> {
-  // Navigation State
   String? _selectedMenuString = "Dashboard";
 
-  // Dynamic live values
   int _totalStudents = 0;
   int _activeStudents = 0;
   int _deactivatedStudents = 0;
   bool _isLoadingStats = true;
 
-  // RBAC & Profile States
   String _userRole = "Admin";
   List<String> _userPermissions = [];
   String _userName = "Loading...";
   String _userId = "";
   String? _profilePicUrl;
 
-  // Master list of all possible screens
   final List<String> _masterMenuItems = [
     "Dashboard",
     "Users / Account Control",
-    "Manage Election Officers", // Master Admin Only
+    "Manage Election Officers", 
     "Manage Polls",
     "Manage Candidates",
     "Manage Parties",
@@ -50,14 +47,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
     "Election Result",
   ];
 
-  // The dynamically generated list shown to the user
   List<String> displayMenuItems = [];
 
   @override
   void initState() {
     super.initState();
     _loadUserAccess();
-    _fetchUserProfile(); // Fetch the logged-in profile data
+    _fetchUserProfile(); 
     _fetchUserCount();
   }
 
@@ -74,15 +70,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
         displayMenuItems = List.from(_masterMenuItems);
       } else if (_userRole == "Staff") {
         displayMenuItems = _masterMenuItems.where((item) {
-          if (item == "Manage Election Officers") return false; // Strictly restricted
-          if (item == "Dashboard") return true; // Always allow dashboard view
+          if (item == "Manage Election Officers") return false; 
+          if (item == "Dashboard") return true; 
           return _userPermissions.contains(item);
         }).toList();
       }
     });
   }
 
-  // --- NEW: Fetch Profile Picture and Info ---
   Future<void> _fetchUserProfile() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('jwt_token') ?? '';
@@ -112,11 +107,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
     }
   }
 
-  // Fetches users, explicitly excludes Admins, and counts Active vs Deactivated
   Future<void> _fetchUserCount() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('jwt_token') ?? ''; // FIX: Use 'jwt_token'
+      final token = prefs.getString('jwt_token') ?? ''; 
 
       final response = await http.get(
         Uri.parse('${ApiConfig.baseUrl}/api/users'),
@@ -134,10 +128,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
         int deactivated = 0;
 
         for (var user in allUsers) {
-          // ONLY count students, completely ignore Admins/Staff
           if (user['role'] == 'Student') {
             total++;
-            // Check if active (handles both boolean true and integer 1)
             if (user['is_active'] == true || user['is_active'] == 1) {
               active++;
             } else {
@@ -162,14 +154,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   void logout() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('jwt_token'); // Clear JWT
+    await prefs.remove('jwt_token'); 
     await prefs.remove('role'); 
     await prefs.remove('permissions'); 
     if (!mounted) return;
     Navigator.pushReplacementNamed(context, '/login');
   }
-
-  // --- UI COMPONENTS ---
 
   Widget buildSidebar(bool isDesktop) {
     return Container(
@@ -189,7 +179,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
           ),
           const SizedBox(height: 30),
 
-          // --- NEW: Profile Section in Sidebar ---
           CircleAvatar(
             radius: 50,
             backgroundColor: Colors.white,
@@ -206,8 +195,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
             textAlign: TextAlign.center,
             style: const TextStyle(color: Colors.white),
           ),
-          const SizedBox(height: 30),
-          // -------------------------------------
+          
+          const SizedBox(height: 20),
+          // --- CLOCK PLACEMENT FOR ADMIN SIDEBAR ---
+          const RealtimeClock(textColor: Colors.white, isCenterAligned: true),
+          const SizedBox(height: 20),
 
           Expanded(
             child: SingleChildScrollView(
@@ -271,26 +263,16 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   IconData _getMenuIcon(String title) {
     switch (title) {
-      case "Dashboard":
-        return Icons.dashboard;
-      case "Users / Account Control":
-        return Icons.people;
-      case "Manage Election Officers":
-        return Icons.security; 
-      case "Manage Polls":
-        return Icons.how_to_vote;
-      case "Manage Candidates":
-        return Icons.person_pin;
-      case "Manage Parties":
-        return Icons.flag;
-      case "Registration for Candidates":
-        return Icons.app_registration;
-      case "Live Scoreboard":
-        return Icons.bar_chart;
-      case "Election Result":
-        return Icons.assignment_turned_in;
-      default:
-        return Icons.circle;
+      case "Dashboard": return Icons.dashboard;
+      case "Users / Account Control": return Icons.people;
+      case "Manage Election Officers": return Icons.security; 
+      case "Manage Polls": return Icons.how_to_vote;
+      case "Manage Candidates": return Icons.person_pin;
+      case "Manage Parties": return Icons.flag;
+      case "Registration for Candidates": return Icons.app_registration;
+      case "Live Scoreboard": return Icons.bar_chart;
+      case "Election Result": return Icons.assignment_turned_in;
+      default: return Icons.circle;
     }
   }
 
@@ -538,26 +520,16 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   Widget buildContent() {
     switch (_selectedMenuString) {
-      case "Dashboard":
-        return buildDashboardHome();
-      case "Users / Account Control":
-        return const ManageUsers();
-      case "Manage Election Officers":
-        return const ManageStaffs(); 
-      case "Manage Polls":
-        return const ManagePolls();
-      case "Manage Candidates":
-        return const ManageCandidates();
-      case "Manage Parties":
-        return const ManageParties();
-      case "Registration for Candidates":
-        return const CandidatesRegistration();
-      case "Live Scoreboard":
-        return const AdminLiveScoreboard();
-      case "Election Result":
-        return const ElectionResultPage();
-      default:
-        return buildDashboardHome();
+      case "Dashboard": return buildDashboardHome();
+      case "Users / Account Control": return const ManageUsers();
+      case "Manage Election Officers": return const ManageStaffs(); 
+      case "Manage Polls": return const ManagePolls();
+      case "Manage Candidates": return const ManageCandidates();
+      case "Manage Parties": return const ManageParties();
+      case "Registration for Candidates": return const CandidatesRegistration();
+      case "Live Scoreboard": return const AdminLiveScoreboard();
+      case "Election Result": return const ElectionResultPage();
+      default: return buildDashboardHome();
     }
   }
 
@@ -571,7 +543,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           ? null
           : AppBar(
               backgroundColor: const Color(0xFF000B6B),
-              foregroundColor: Colors.white, // FIX: Makes burger icon and text white
+              foregroundColor: Colors.white, 
               title: const Text("Admin Panel", style: TextStyle(color: Colors.white)),
             ),
       drawer: isDesktop ? null : Drawer(child: buildSidebar(false)),

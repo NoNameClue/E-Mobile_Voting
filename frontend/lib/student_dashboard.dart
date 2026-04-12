@@ -6,6 +6,7 @@ import 'api_config.dart';
 import 'voting_page.dart';
 import 'my_votes_view.dart';
 import 'view_parties.dart';
+import 'widgets/realtime_clock.dart';
 
 // ========================================================================
 // 1. DATA MODELS
@@ -49,7 +50,6 @@ class _StudentDashboardState extends State<StudentDashboard> {
   int selectedIndex = 0;
   final Color primaryColor = const Color(0xFF000B6B);
 
-  // Profile States
   String _studentName = "Loading...";
   String _studentId = "";
   String? _profilePicUrl;
@@ -66,10 +66,9 @@ class _StudentDashboardState extends State<StudentDashboard> {
   @override
   void initState() {
     super.initState();
-    _fetchUserProfile(); // Fetch user data on load
+    _fetchUserProfile(); 
   }
 
-  // Fetch the logged-in user's profile
   Future<void> _fetchUserProfile() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('jwt_token') ?? '';
@@ -101,7 +100,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
 
   void logout() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.clear(); // Clear token on logout
+    await prefs.clear(); 
     if (!mounted) return;
     Navigator.pushReplacementNamed(context, '/login');
   }
@@ -112,7 +111,6 @@ class _StudentDashboardState extends State<StudentDashboard> {
       color: primaryColor,
       child: Column(
         children: [
-          // --- TOP SECTION (Scrollable) ---
           Expanded(
             child: SingleChildScrollView(
               child: Column(
@@ -146,7 +144,6 @@ class _StudentDashboardState extends State<StudentDashboard> {
                   ),
                   const SizedBox(height: 40),
 
-                  // DYNAMIC PROFILE PICTURE
                   CircleAvatar(
                     radius: 50,
                     backgroundColor: Colors.white,
@@ -159,15 +156,17 @@ class _StudentDashboardState extends State<StudentDashboard> {
                   ),
                   const SizedBox(height: 10),
 
-                  // DYNAMIC NAME & ID
                   Text(
                     "$_studentName\nID: $_studentId",
                     textAlign: TextAlign.center,
                     style: const TextStyle(color: Colors.white),
                   ),
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 20),
 
-                  // NAVIGATION MENU WITH HIGHLIGHT BAR
+                  // --- CLOCK PLACEMENT FOR STUDENT SIDEBAR ---
+                  const RealtimeClock(textColor: Colors.white, isCenterAligned: true),
+                  const SizedBox(height: 20),
+
                   for (int i = 0; i < menuItems.length; i++)
                     Padding(
                       padding: const EdgeInsets.symmetric(
@@ -205,7 +204,6 @@ class _StudentDashboardState extends State<StudentDashboard> {
             ),
           ),
 
-          // --- BOTTOM SECTION (Anchored) ---
           const Divider(color: Colors.white54, height: 1),
           ListTile(
             leading: const Icon(Icons.logout, color: Colors.white),
@@ -226,8 +224,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
 
   Widget buildContent() {
     switch (selectedIndex) {
-      case 0:
-        return const LiveScoreboardView();
+      case 0: return const LiveScoreboardView();
       case 1:
         return VotingPage(
           onReturnToDashboard: () {
@@ -236,10 +233,8 @@ class _StudentDashboardState extends State<StudentDashboard> {
             });
           },
         );
-      case 2:
-        return const ViewParties();
-      case 3:
-        return const MyVotesView();
+      case 2: return const ViewParties();
+      case 3: return const MyVotesView();
       case 4:
         return const Center(
           child: Text("FAQs", style: TextStyle(fontSize: 24)),
@@ -310,14 +305,19 @@ class _LiveScoreboardViewState extends State<LiveScoreboardView> {
       if (pollResponse.statusCode == 200) {
         final List<dynamic> allPolls = jsonDecode(pollResponse.body);
         
-        _availablePolls = allPolls.where((p) => 
-          (p['is_published'] == 1 || p['is_published'] == true) && 
-          (p['is_archived'] == 0 || p['is_archived'] == false) && 
-          p['status'] != 'Ended'
-        ).toList();
+        // --- 🛠️ UPDATED LOGIC: Allows Expired/Ended Polls to show in Dropdown ---
+        _availablePolls = allPolls.where((p) {
+          final isPublished = p['is_published'] == 1 || p['is_published'] == true;
+          final isArchived = p['is_archived'] == 1 || p['is_archived'] == true;
+          
+          // Keep polls as long as they are published and NOT archived.
+          // This allows students to view the final results of ended elections.
+          return isPublished && !isArchived;
+        }).toList();
+        // --------------------------------------------------------------------------
 
         if (_availablePolls.isNotEmpty) {
-          var activePoll = _availablePolls.firstWhere((p) => p['status'] != 'Ended', orElse: () => _availablePolls.first);
+          var activePoll = _availablePolls.first;
           _selectedPollId = activePoll['poll_id'];
           
           await _fetchResultsForPoll(_selectedPollId!);
@@ -454,7 +454,6 @@ class _LiveScoreboardViewState extends State<LiveScoreboardView> {
   Widget build(BuildContext context) {
     bool isMobile = MediaQuery.of(context).size.width < 900;
 
-    // --- MOBILE OVERFLOW FIX: Row changed to Wrap ---
     Widget headerRow = Wrap(
       alignment: WrapAlignment.spaceBetween,
       crossAxisAlignment: WrapCrossAlignment.center,
@@ -485,9 +484,20 @@ class _LiveScoreboardViewState extends State<LiveScoreboardView> {
                 icon: Icon(Icons.arrow_drop_down, color: primaryColor),
                 style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold),
                 items: _availablePolls.map((poll) {
+                  // --- 🛠️ DYNAMIC LABEL: Shows "(Ended)" next to the title if expired ---
+                  bool isExpired = false;
+                  if (poll['end_time'] != null) {
+                    DateTime endTime = DateTime.parse(poll['end_time']);
+                    isExpired = endTime.isBefore(DateTime.now());
+                  }
+                  String displayTitle = poll["title"] ?? "Election";
+                  if (isExpired || poll['status'] == 'Ended') {
+                    displayTitle = "$displayTitle (Ended)";
+                  }
+
                   return DropdownMenuItem<int>(
                     value: poll['poll_id'],
-                    child: Text(poll["title"] ?? "Election", style: const TextStyle(color: Colors.black87), overflow: TextOverflow.ellipsis),
+                    child: Text(displayTitle, style: const TextStyle(color: Colors.black87), overflow: TextOverflow.ellipsis),
                   );
                 }).toList(),
                 onChanged: (newPollId) {
@@ -502,7 +512,6 @@ class _LiveScoreboardViewState extends State<LiveScoreboardView> {
       ],
     );
 
-    // --- 2. BODY CONTENT AREA ---
     Widget bodyContent;
 
     if (_isLoading) {
