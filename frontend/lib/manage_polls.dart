@@ -314,12 +314,12 @@ class _ManagePollsState extends State<ManagePolls> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text("Manage Polls", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+              const Text("Manage Polls", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
               Spacer(),
               IconButton(
                 icon: Icon(
                   _showArchived ? Icons.list : Icons.archive,
-                  color: Colors.black,
+                  color: Colors.white
                 ),
                 tooltip: _showArchived ? "Show Active Polls" : "Show Archived Polls",
                 onPressed: () {
@@ -338,8 +338,8 @@ class _ManagePollsState extends State<ManagePolls> {
                   icon: const Icon(Icons.add),
                   label: const Text("Create Poll"),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: hasActivePoll ? Colors.grey.shade400 : Colors.amber, 
-                    foregroundColor: hasActivePoll ? Colors.grey.shade700 : Colors.black
+                    backgroundColor: hasActivePoll ? Colors.grey.shade500 : Colors.amber, 
+                    foregroundColor: hasActivePoll ? Colors.grey.shade700 : Colors.white
                   ),
                   onPressed: hasActivePoll ? null : () => _showPollDialog(),
                 ),

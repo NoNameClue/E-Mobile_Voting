@@ -241,9 +241,9 @@ class _AdminLiveScoreboardState extends State<AdminLiveScoreboard> {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: const [
-                  Icon(Icons.bar_chart, size: 30, color: Color(0xFF000B6B)),
+                  Icon(Icons.bar_chart, size: 30, color: Color.fromARGB(255, 28, 116, 18)),
                   SizedBox(width: 10),
-                  Text("Live Scoreboard", style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
+                  Text("Live Scoreboard", style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.white)),
                 ],
               ),
               if (_polls.isNotEmpty)

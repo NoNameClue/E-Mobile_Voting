@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'api_config.dart';
 import 'widgets/realtime_clock.dart';
+import 'widgets/system_background.dart'; // <-- ADDED BACKGROUND IMPORT
 
 import 'manage_staffs.dart';
 import 'manage_polls.dart';
@@ -167,7 +168,49 @@ class _AdminDashboardState extends State<AdminDashboard> {
       color: const Color(0xFF000B6B),
       child: Column(
         children: [
-          const SizedBox(height: 50),
+          const SizedBox(height: 30),
+          
+          // ==========================================
+          // ADDED LNU LOGO AND SYSTEM NAME HEADER
+          // ==========================================
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 15.0),
+            child: Row(
+              children: [
+                const CircleAvatar(
+                  backgroundColor: Colors.transparent,
+                  radius: 20,
+                  backgroundImage: AssetImage('assets/images/lnu_logo.png'),
+                ),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Leyte Normal University',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        '(System Name)',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 30),
+          // ==========================================
+
           Text(
             _userRole == "Staff" ? "STAFF PANEL" : "ADMIN PANEL",
             style: const TextStyle(
@@ -197,7 +240,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
           ),
           
           const SizedBox(height: 20),
-          // --- CLOCK PLACEMENT FOR ADMIN SIDEBAR ---
           const RealtimeClock(textColor: Colors.white, isCenterAligned: true),
           const SizedBox(height: 20),
 
@@ -398,7 +440,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
             style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF000B6B),
+              color: Colors.white,
             ),
           ),
           const SizedBox(height: 5),
@@ -410,7 +452,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
           const Text(
             "Student Demographics",
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
           ),
           const SizedBox(height: 15),
           Wrap(
@@ -444,7 +486,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
           const Text(
             "Quick Actions",
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
           ),
           const SizedBox(height: 15),
           Wrap(
@@ -538,7 +580,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     bool isDesktop = MediaQuery.of(context).size.width > 900;
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: Colors.transparent, // Background is transparent
       appBar: isDesktop
           ? null
           : AppBar(
@@ -547,11 +589,15 @@ class _AdminDashboardState extends State<AdminDashboard> {
               title: const Text("Admin Panel", style: TextStyle(color: Colors.white)),
             ),
       drawer: isDesktop ? null : Drawer(child: buildSidebar(false)),
-      body: Row(
-        children: [
-          if (isDesktop) buildSidebar(true),
-          Expanded(child: buildContent()),
-        ],
+      body: SystemBackground(
+        opacity: 1.0,           // Image is fully solid
+        darkenOverlay: 0.70,    // Image is tinted 70% darker
+        child: Row(
+          children: [
+            if (isDesktop) buildSidebar(true),
+            Expanded(child: buildContent()),
+          ],
+        ),
       ),
     );
   }

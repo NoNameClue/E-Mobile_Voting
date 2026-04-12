@@ -265,7 +265,7 @@ class _ManagePartiesState extends State<ManageParties> {
             spacing: 15,
             runSpacing: 15,
             children: [
-              const Text("Manage Parties", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+              const Text("Manage Parties", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white)),
               Wrap(
                 spacing: 10,
                 runSpacing: 10,

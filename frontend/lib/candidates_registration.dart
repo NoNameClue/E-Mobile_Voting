@@ -176,7 +176,7 @@ class _CandidatesRegistrationState extends State<CandidatesRegistration> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text("Register New Candidate", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+            const Text("Register New Candidate", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white)),
             const SizedBox(height: 10),
             Text(
               isPollEnded 

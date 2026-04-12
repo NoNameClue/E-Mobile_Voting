@@ -248,7 +248,7 @@ class _MyVotesViewState extends State<MyVotesView> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text("My Votes", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: primaryColor)),
+              Text("My Votes", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white)),
               if (_polls.isNotEmpty)
                 Container(
                   constraints: const BoxConstraints(maxWidth: 250),

@@ -157,7 +157,7 @@ class _ViewPartiesState extends State<ViewParties> {
             spacing: 15,
             runSpacing: 15,
             children: [
-              const Text("View Parties", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF000B6B))),
+              const Text("View Parties", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white)),
               if (_polls.isNotEmpty)
                 Container(
                   constraints: BoxConstraints(maxWidth: isMobile ? MediaQuery.of(context).size.width - 30 : 250), 

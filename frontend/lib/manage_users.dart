@@ -104,7 +104,7 @@ class _ManageUsersState extends State<ManageUsers> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text("Users / Account Control", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+          const Text("Users / Account Control", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white)),
           const SizedBox(height: 5),
           const Text("Manage student access. Deactivate accounts for graduated students.", style: TextStyle(color: Colors.grey, fontSize: 16)),
           const SizedBox(height: 20),

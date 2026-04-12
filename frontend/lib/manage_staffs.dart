@@ -311,7 +311,7 @@ class _ManageStaffsState extends State<ManageStaffs> {
             spacing: 15,
             runSpacing: 15,
             children: [
-              const Text("Manage Election Officers", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+              const Text("Manage Election Officers", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white)),
               ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.amber, foregroundColor: const Color(0xFF000B6B)),
                 icon: const Icon(Icons.add),

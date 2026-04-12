@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'widgets/realtime_clock.dart';
+import 'widgets/system_background.dart'; // <-- ADDED THIS IMPORT!
 
 class AuthLayout extends StatelessWidget {
   final Widget formContent;
@@ -11,10 +12,15 @@ class AuthLayout extends StatelessWidget {
     final bool isMobile = MediaQuery.of(context).size.width < 800;
 
     return Scaffold(
-      backgroundColor: isMobile ? Colors.white : const Color(0xFFE5E5E5),
-      body: SafeArea(
-        // Pass context to the web layout so it can measure screen height
-        child: isMobile ? _buildMobileLayout() : _buildWebLayout(context),
+      // 1. Make the scaffold background transparent so the image is visible
+      backgroundColor: Colors.transparent, 
+      
+      // 2. Wrap the SafeArea in your new SystemBackground widget!
+      body: SystemBackground(
+        child: SafeArea(
+          // Pass context to the web layout so it can measure screen height
+          child: isMobile ? _buildMobileLayout() : _buildWebLayout(context),
+        ),
       ),
     );
   }
@@ -129,7 +135,8 @@ class AuthLayout extends StatelessWidget {
                     child: Container(
                       height: 500, // Fixed height for the banner
                       margin: const EdgeInsets.only(right: 40),
-                      decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(12)),
+                      // Made this box slightly transparent so the background image shows through it!
+                      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.8), borderRadius: BorderRadius.circular(12)),
                       child: const Center(child: Text('SLOGAN/WELCOME WORDS\nPUT A PICTURE HERE AS WELL', textAlign: TextAlign.center, style: TextStyle(fontSize: 18, color: Colors.black54, fontWeight: FontWeight.bold))),
                     ),
                   ),
@@ -154,7 +161,7 @@ class AuthLayout extends StatelessWidget {
             // Footer
             const Padding(
               padding: EdgeInsets.all(15.0),
-              child: Text('V1.2026.03126 | LNUVotingSystem', style: TextStyle(color: Colors.grey, fontSize: 14)),
+              child: Text('V1.2026.03126 | LNUVotingSystem', style: TextStyle(color: Colors.white, fontSize: 14)), // Changed to white to be readable on the background
             )
           ],
         ),

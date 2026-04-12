@@ -319,7 +319,7 @@ class _ManageCandidatesState extends State<ManageCandidates> {
             children: [
               const Text(
                 "Manage Candidates",
-                style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
+                style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.white),
               ),
               if (_polls.isNotEmpty)
                 Container(

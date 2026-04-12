@@ -7,6 +7,7 @@ import 'voting_page.dart';
 import 'my_votes_view.dart';
 import 'view_parties.dart';
 import 'widgets/realtime_clock.dart';
+import 'widgets/system_background.dart';
 
 // ========================================================================
 // 1. DATA MODELS
@@ -116,17 +117,18 @@ class _StudentDashboardState extends State<StudentDashboard> {
               child: Column(
                 children: [
                   const SizedBox(height: 20),
+                  
+                  // ==========================================
+                  // ADDED LNU LOGO HEADER HERE
+                  // ==========================================
                   const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 15),
                     child: Row(
                       children: [
                         CircleAvatar(
-                          backgroundColor: Colors.white,
+                          backgroundColor: Colors.transparent,
                           radius: 20,
-                          child: Text(
-                            'Logo',
-                            style: TextStyle(color: Colors.black, fontSize: 10),
-                          ),
+                          backgroundImage: AssetImage('assets/images/lnu_logo.png'),
                         ),
                         SizedBox(width: 10),
                         Expanded(
@@ -142,6 +144,8 @@ class _StudentDashboardState extends State<StudentDashboard> {
                       ],
                     ),
                   ),
+                  // ==========================================
+                  
                   const SizedBox(height: 40),
 
                   CircleAvatar(
@@ -163,7 +167,6 @@ class _StudentDashboardState extends State<StudentDashboard> {
                   ),
                   const SizedBox(height: 20),
 
-                  // --- CLOCK PLACEMENT FOR STUDENT SIDEBAR ---
                   const RealtimeClock(textColor: Colors.white, isCenterAligned: true),
                   const SizedBox(height: 20),
 
@@ -237,11 +240,11 @@ class _StudentDashboardState extends State<StudentDashboard> {
       case 3: return const MyVotesView();
       case 4:
         return const Center(
-          child: Text("FAQs", style: TextStyle(fontSize: 24)),
+          child: Text("FAQs", style: TextStyle(fontSize: 24, color: Colors.white)),
         );
       case 5:
         return const Center(
-          child: Text("About Us", style: TextStyle(fontSize: 24)),
+          child: Text("About Us", style: TextStyle(fontSize: 24, color: Colors.white)),
         );
       default:
         return const LiveScoreboardView();
@@ -253,7 +256,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
     bool isDesktop = MediaQuery.of(context).size.width > 900;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFE5E5E5),
+      backgroundColor: Colors.transparent, 
       appBar: isDesktop
           ? null
           : AppBar(
@@ -262,11 +265,15 @@ class _StudentDashboardState extends State<StudentDashboard> {
               title: const Text("Student Portal", style: TextStyle(fontWeight: FontWeight.bold)),
             ),
       drawer: isDesktop ? null : Drawer(child: buildSidebar(false)),
-      body: Row(
-        children: [
-          if (isDesktop) buildSidebar(true),
-          Expanded(child: buildContent()),
-        ],
+      body: SystemBackground(
+        opacity: 1.0,           
+        darkenOverlay: 0.70,    
+        child: Row(
+          children: [
+            if (isDesktop) buildSidebar(true),
+            Expanded(child: buildContent()),
+          ],
+        ),
       ),
     );
   }
@@ -305,16 +312,12 @@ class _LiveScoreboardViewState extends State<LiveScoreboardView> {
       if (pollResponse.statusCode == 200) {
         final List<dynamic> allPolls = jsonDecode(pollResponse.body);
         
-        // --- 🛠️ UPDATED LOGIC: Allows Expired/Ended Polls to show in Dropdown ---
         _availablePolls = allPolls.where((p) {
           final isPublished = p['is_published'] == 1 || p['is_published'] == true;
           final isArchived = p['is_archived'] == 1 || p['is_archived'] == true;
           
-          // Keep polls as long as they are published and NOT archived.
-          // This allows students to view the final results of ended elections.
           return isPublished && !isArchived;
         }).toList();
-        // --------------------------------------------------------------------------
 
         if (_availablePolls.isNotEmpty) {
           var activePoll = _availablePolls.first;
@@ -460,12 +463,12 @@ class _LiveScoreboardViewState extends State<LiveScoreboardView> {
       spacing: 15,
       runSpacing: 15,
       children: [
-        Text(
+        const Text(
           "Dashboard",
           style: TextStyle(
             fontSize: 28,
             fontWeight: FontWeight.bold,
-            color: primaryColor,
+            color: Colors.white,
           ),
         ),
         if (_availablePolls.isNotEmpty)
@@ -484,7 +487,6 @@ class _LiveScoreboardViewState extends State<LiveScoreboardView> {
                 icon: Icon(Icons.arrow_drop_down, color: primaryColor),
                 style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold),
                 items: _availablePolls.map((poll) {
-                  // --- 🛠️ DYNAMIC LABEL: Shows "(Ended)" next to the title if expired ---
                   bool isExpired = false;
                   if (poll['end_time'] != null) {
                     DateTime endTime = DateTime.parse(poll['end_time']);
@@ -515,86 +517,84 @@ class _LiveScoreboardViewState extends State<LiveScoreboardView> {
     Widget bodyContent;
 
     if (_isLoading) {
-      bodyContent = Center(child: CircularProgressIndicator(color: primaryColor));
+      bodyContent = const Center(child: CircularProgressIndicator(color: Colors.white)); 
     } else if (_errorMessage.isNotEmpty) {
       bodyContent = Center(
         child: Text(
           _errorMessage,
-          style: const TextStyle(fontSize: 20, color: Colors.grey),
+          style: const TextStyle(fontSize: 20, color: Colors.white), 
         ),
       );
     } else if (_rankingsData.isEmpty) {
       bodyContent = const Center(
         child: Text(
           "No data available for this poll.",
-          style: TextStyle(fontSize: 20, color: Colors.grey),
+          style: TextStyle(fontSize: 20, color: Colors.white), 
         ),
       );
     } else {
       final currentRanking = _rankingsData[_currentPositionIndex];
       final candidates = currentRanking.candidates;
 
-      Widget podiumSection = SingleChildScrollView(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: [
-            Container(
-              width: isMobile ? double.infinity : 350,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.grey.shade300),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_left),
-                    onPressed: _currentPositionIndex == 0
-                        ? null
-                        : _goToPreviousPosition,
-                  ),
-                  Flexible(
-                    child: Text(
-                      currentRanking.positionName.toUpperCase(),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                      textAlign: TextAlign.center,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.arrow_right),
-                    onPressed: _currentPositionIndex == _rankingsData.length - 1
-                        ? null
-                        : _goToNextPosition,
-                  ),
-                ],
-              ),
+      Widget podiumSection = Column(
+        children: [
+          Container(
+            width: isMobile ? double.infinity : 350,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey.shade300),
             ),
-            SizedBox(height: isMobile ? 30 : 60),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              crossAxisAlignment: CrossAxisAlignment.end,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                if (candidates.length >= 2)
-                  _buildPodiumPerson(candidates[1], 2, isMobile),
-                if (candidates.isNotEmpty)
-                  _buildPodiumPerson(candidates[0], 1, isMobile),
-                if (candidates.length >= 3)
-                  _buildPodiumPerson(candidates[2], 3, isMobile),
+                IconButton(
+                  icon: const Icon(Icons.arrow_left),
+                  onPressed: _currentPositionIndex == 0 ? null : _goToPreviousPosition,
+                ),
+                Flexible(
+                  child: Text(
+                    currentRanking.positionName.toUpperCase(),
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    textAlign: TextAlign.center,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.arrow_right),
+                  onPressed: _currentPositionIndex == _rankingsData.length - 1 ? null : _goToNextPosition,
+                ),
               ],
             ),
-            const SizedBox(height: 20),
-            const Text(
-              "top 3 candidates for the\nposition",
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 16, color: Colors.grey),
+          ),
+          
+          Expanded(
+            child: Center(
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        if (candidates.length >= 2) _buildPodiumPerson(candidates[1], 2, isMobile),
+                        if (candidates.isNotEmpty) _buildPodiumPerson(candidates[0], 1, isMobile),
+                        if (candidates.length >= 3) _buildPodiumPerson(candidates[2], 3, isMobile),
+                      ],
+                    ),
+                    const SizedBox(height: 30),
+                    const Text(
+                      "top 3 candidates for the\nposition",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 16, color: Colors.white70), 
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ],
-        ),
+          ),
+        ],
       );
 
       Widget otherCandidatesSection = Container(
@@ -628,15 +628,15 @@ class _LiveScoreboardViewState extends State<LiveScoreboardView> {
         bodyContent = const Center(
           child: Text(
             "No candidates assigned to this position yet.",
-            style: TextStyle(fontSize: 18, color: Colors.grey),
+            style: TextStyle(fontSize: 18, color: Colors.white), 
           ),
         );
       } else if (isMobile) {
         bodyContent = Column(
           children: [
-            podiumSection,
-            const SizedBox(height: 30),
-            Expanded(child: otherCandidatesSection),
+            Expanded(flex: 5, child: podiumSection), 
+            const SizedBox(height: 20),
+            Expanded(flex: 4, child: otherCandidatesSection),
           ],
         );
       } else {
@@ -694,13 +694,14 @@ class _LiveScoreboardViewState extends State<LiveScoreboardView> {
             style: TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: isMobile ? 14 : 16,
+              color: Colors.white, 
             ),
             textAlign: TextAlign.center,
           ),
           Text(
             candidate.party,
             style: TextStyle(
-              color: Colors.black54,
+              color: Colors.white70, 
               fontSize: isMobile ? 10 : 12,
             ),
             textAlign: TextAlign.center,
@@ -709,13 +710,13 @@ class _LiveScoreboardViewState extends State<LiveScoreboardView> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: primaryColor.withOpacity(0.1),
+              color: Colors.white.withValues(alpha: 0.1), 
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
               "${candidate.votes} Votes",
-              style: TextStyle(
-                color: primaryColor,
+              style: const TextStyle(
+                color: Colors.white, 
                 fontWeight: FontWeight.bold,
                 fontSize: 12,
               ),
