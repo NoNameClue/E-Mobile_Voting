@@ -17,7 +17,6 @@ class _VotingPageState extends State<VotingPage> {
   final Color primaryColor = const Color(0xFF000B6B);
 
   // Voting Data States
-  List<dynamic> _polls = []; 
   Map<String, int?> _selectedCandidates = {}; 
   Map<String, List<dynamic>> _candidatesByPosition = {};
   List<String> _positionNames = [];
@@ -53,19 +52,28 @@ class _VotingPageState extends State<VotingPage> {
       if (pollResponse.statusCode != 200) throw Exception("Failed to fetch polls");
       
       final List<dynamic> allPolls = jsonDecode(pollResponse.body);
-      _polls = allPolls.where((p) => p['is_published'] == true || p['is_published'] == 1).toList();
       
-      if (_polls.isEmpty) {
-        setState(() { _isLoading = false; _errorMessage = "No active elections right now."; });
+      // Auto-detect the single active poll (Published, Not Archived, Not Ended)
+      final activePolls = allPolls.where((p) {
+        final isPublished = p['is_published'] == true || p['is_published'] == 1;
+        final isArchived = p['is_archived'] == true || p['is_archived'] == 1;
+        final isEnded = p['status'] == 'Ended';
+        
+        return isPublished && !isArchived && !isEnded;
+      }).toList();
+      
+      if (activePolls.isEmpty) {
+        setState(() { 
+          _isLoading = false; 
+          _errorMessage = "There are no active elections right now."; 
+        });
         return;
       }
 
-      final defaultPoll = _polls.firstWhere(
-        (p) => p['status'] != 'Ended',
-        orElse: () => _polls.first,
-      );
+      // Automatically load the active poll
+      final activePoll = activePolls.first;
+      await _loadPollData(activePoll);
 
-      await _loadPollData(defaultPoll);
     } catch (e) {
       setState(() {
         _isLoading = false;
@@ -90,6 +98,7 @@ class _VotingPageState extends State<VotingPage> {
         return; 
       }
 
+      // Verify if the student has already voted in this active poll
       bool voted = await ApiService.checkVoteStatus(_activePollId!);
       if (voted) {
         setState(() { _hasAlreadyVoted = true; _isLoading = false; });
@@ -213,7 +222,13 @@ class _VotingPageState extends State<VotingPage> {
     } else if (_isExpired) {
       bodyContent = _buildStatusView(Icons.timer_off, "Ballot Expired", "Voting is no longer allowed.", Colors.redAccent);
     } else if (_hasAlreadyVoted && !_isJustSubmitted) {
-      bodyContent = _buildStatusView(Icons.how_to_vote, "Already Voted", "Your ballot has been recorded.", Colors.amber);
+      // 🛠️ Updated to show the friendly dynamic message when already voted
+      bodyContent = _buildStatusView(
+        Icons.how_to_vote, 
+        "Already Voted", 
+        "You have already voted for $_activePollTitle! Thank you for participating.", 
+        Colors.amber
+      );
     } else if (_isJustSubmitted) {
       bodyContent = _buildStatusView(Icons.check_circle, "Submitted!", "Thank you for voting.", Colors.greenAccent);
     } else if (_positionNames.isEmpty) {
@@ -223,7 +238,6 @@ class _VotingPageState extends State<VotingPage> {
     }
 
     return Scaffold(
-      // 1. THIS IS THE MAGIC LINE! Transparent so the Dashboard's background shows!
       backgroundColor: Colors.transparent, 
       
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
@@ -236,7 +250,6 @@ class _VotingPageState extends State<VotingPage> {
             )
           : null,
           
-      // 2. NO SYSTEM BACKGROUND HERE! Just the content.
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 800),
@@ -289,30 +302,7 @@ class _VotingPageState extends State<VotingPage> {
               ],
             ),
           ),
-          if (_polls.isNotEmpty)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<int>(
-                  value: _activePollId,
-                  icon: Icon(Icons.arrow_drop_down, color: primaryColor),
-                  style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold),
-                  items: _polls.map((poll) {
-                    return DropdownMenuItem<int>(
-                      value: poll["poll_id"],
-                      child: Text(poll["title"] ?? "Election", style: const TextStyle(color: Colors.black87)),
-                    );
-                  }).toList(),
-                  onChanged: (newPollId) {
-                    if (newPollId != null && newPollId != _activePollId) {
-                      final newPoll = _polls.firstWhere((p) => p['poll_id'] == newPollId);
-                      _loadPollData(newPoll);
-                    }
-                  },
-                ),
-              ),
-            ),
+          // Dropdown completely removed here!
         ],
       ),
     );

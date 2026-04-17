@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'widgets/realtime_clock.dart';
-import 'widgets/system_background.dart'; // <-- ADDED THIS IMPORT!
+import 'widgets/system_background.dart';
 
 class AuthLayout extends StatelessWidget {
   final Widget formContent;
@@ -12,13 +12,9 @@ class AuthLayout extends StatelessWidget {
     final bool isMobile = MediaQuery.of(context).size.width < 800;
 
     return Scaffold(
-      // 1. Make the scaffold background transparent so the image is visible
       backgroundColor: Colors.transparent, 
-      
-      // 2. Wrap the SafeArea in your new SystemBackground widget!
       body: SystemBackground(
         child: SafeArea(
-          // Pass context to the web layout so it can measure screen height
           child: isMobile ? _buildMobileLayout() : _buildWebLayout(context),
         ),
       ),
@@ -34,17 +30,26 @@ class AuthLayout extends StatelessWidget {
         children: [
           Container(
             color: const Color(0xFF000B6B),
-            padding: const EdgeInsets.all(15),
-            child: const Row(
+            padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
+            child: Row(
               children: [
-                CircleAvatar(backgroundColor: Colors.white, radius: 18, child: Text('Logo', style: TextStyle(color: Colors.black, fontSize: 10))),
-                SizedBox(width: 15),
-                // Wrapped in Expanded so it pushes the clock to the right edge
-                Expanded(
-                  child: Text('Leyte Normal University\nSystem Name', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                // 🛠️ FORCED LARGER LOGO FOR MOBILE
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    image: const DecorationImage(
+                      image: AssetImage('assets/images/lnu_logo.png'),
+                      fit: BoxFit.cover, // Forces it to fill the box
+                    ),
+                  ),
                 ),
-                // 🕒 CLOCK ADDED HERE FOR MOBILE HEADER
-                RealtimeClock(textColor: Colors.white, isCenterAligned: false),
+                const SizedBox(width: 15),
+                const Expanded(
+                  child: Text('Leyte Normal University\n(System Name)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                ),
+                const RealtimeClock(textColor: Colors.white, isCenterAligned: false),
               ],
             ),
           ),
@@ -80,12 +85,11 @@ class AuthLayout extends StatelessWidget {
   }
 
   // ==========================================
-  // WEB / CHROME LAYOUT (NOW FULLY SCROLLABLE)
+  // WEB / CHROME LAYOUT 
   // ==========================================
   Widget _buildWebLayout(BuildContext context) {
     return SingleChildScrollView(
       child: Container(
-        // Ensures the layout covers the whole screen even if content is small
         constraints: BoxConstraints(minHeight: MediaQuery.of(context).size.height),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -97,25 +101,34 @@ class AuthLayout extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Row(
+                  Row(
                     children: [
-                      CircleAvatar(backgroundColor: Colors.white, radius: 20, child: Text('Logo', style: TextStyle(color: Colors.black, fontSize: 12))),
-                      SizedBox(width: 15),
-                      Column(
+                      // 🛠️ FORCED MASSIVE LOGO FOR WEB
+                      Container(
+                        width: 85,
+                        height: 85,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          image: const DecorationImage(
+                            image: AssetImage('assets/images/lnu_logo.png'),
+                            fit: BoxFit.cover, // Forces it to fill the box
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 20),
+                      const Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Leyte Normal University', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                          Text('(System Name)', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                          Text('Leyte Normal University', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+                          Text('(System Name)', style: TextStyle(color: Colors.white70, fontSize: 14)),
                         ],
                       )
                     ],
                   ),
                   Row(
                     children: [
-                      // 🕒 CLOCK ADDED EXACTLY WHERE REQUESTED!
                       const RealtimeClock(textColor: Colors.white, isCenterAligned: false),
                       const SizedBox(width: 40), 
-                      
                       InteractiveNavText(text: 'ABOUT US', onTap: () {}),
                       const SizedBox(width: 30),
                       InteractiveNavText(text: 'FAQs', onTap: () {}),
@@ -125,17 +138,16 @@ class AuthLayout extends StatelessWidget {
               ),
             ),
             
-            // Body Area (No longer restricted by height constraints!)
+            // Body Area
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 40),
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start, // Allows form to grow naturally
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
                     child: Container(
-                      height: 500, // Fixed height for the banner
+                      height: 500, 
                       margin: const EdgeInsets.only(right: 40),
-                      // Made this box slightly transparent so the background image shows through it!
                       decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.8), borderRadius: BorderRadius.circular(12)),
                       child: const Center(child: Text('SLOGAN/WELCOME WORDS\nPUT A PICTURE HERE AS WELL', textAlign: TextAlign.center, style: TextStyle(fontSize: 18, color: Colors.black54, fontWeight: FontWeight.bold))),
                     ),
@@ -161,7 +173,7 @@ class AuthLayout extends StatelessWidget {
             // Footer
             const Padding(
               padding: EdgeInsets.all(15.0),
-              child: Text('V1.2026.03126 | LNUVotingSystem', style: TextStyle(color: Colors.white, fontSize: 14)), // Changed to white to be readable on the background
+              child: Text('V1.2026.03126 | LNUVotingSystem', style: TextStyle(color: Colors.white, fontSize: 14)),
             )
           ],
         ),

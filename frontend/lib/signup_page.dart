@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart'; 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // <-- ADDED: Required for inputFormatters
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:image_picker/image_picker.dart';
@@ -174,11 +175,12 @@ class _SignupPageState extends State<SignupPage> {
             
             ModernTextField(
               controller: _emailController,
-              hintText: 'University Email',
+              hintText: 'LNU Email',
               validator: (value) {
                 if (value == null || value.isEmpty) return 'Email is required';
-                if (!RegExp(r'^.+@.+\.(com|edu\.ph)$').hasMatch(value)) {
-                  return 'Must end in .com or .edu.ph';
+                // 🛠️ MODIFIED: Strictly require @lnu.edu.ph
+                if (!value.trim().toLowerCase().endsWith('@lnu.edu.ph')) {
+                  return 'Must end in @lnu.edu.ph';
                 }
                 return null;
               },
@@ -189,12 +191,25 @@ class _SignupPageState extends State<SignupPage> {
               children: [
                 Expanded(
                   flex: 2, 
-                  child: ModernTextField(
+                  // 🛠️ MODIFIED: Swapped to TextFormField to use inputFormatters natively
+                  child: TextFormField(
                     controller: _studentIdController,
-                    hintText: 'Student ID',
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(7), // Stops typing at 7 characters
+                    ],
+                    style: const TextStyle(color: Colors.black87),
+                    decoration: InputDecoration(
+                      hintText: 'Student ID',
+                      hintStyle: const TextStyle(color: Colors.black54),
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                    ),
                     validator: (value) {
                       if (value == null || value.isEmpty) return 'Required';
-                      if (!RegExp(r'^\d{7}$').hasMatch(value)) return 'Must be 7 digits';
+                      if (value.trim().length != 7) return 'Must be exactly 7 digits';
                       return null;
                     },
                   ),

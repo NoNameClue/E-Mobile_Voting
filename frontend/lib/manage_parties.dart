@@ -46,7 +46,8 @@ class _ManagePartiesState extends State<ManageParties> {
         return;
       }
 
-      final partyRes = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/parties/lineups'));
+      // 🛠️ FIX 1: Changed from /api/parties/lineups to /api/parties
+      final partyRes = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/parties'));
       final candsRes = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/candidates/$_selectedPollId'));
 
       if (partyRes.statusCode == 200 && candsRes.statusCode == 200) {
@@ -92,7 +93,8 @@ class _ManagePartiesState extends State<ManageParties> {
       final response = await http.post(
         Uri.parse('${ApiConfig.baseUrl}/api/parties'),
         headers: {"Content-Type": "application/json"},
-        body: jsonEncode({"name": partyName}),
+        // 🛠️ FIX 2: Changed "name" to "party_name" so Python accepts it
+        body: jsonEncode({"party_name": partyName}),
       );
 
       if (response.statusCode == 200) {

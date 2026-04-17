@@ -18,7 +18,7 @@ class _MyVotesViewState extends State<MyVotesView> {
   Map<String, dynamic>? _selectedPoll;
   bool _isLoading = true;
 
-  // New states for the side panel
+  // States for the side panel
   dynamic _displayingCandidate;
   Map<String, dynamic> _candidateStats = {};
   
@@ -39,15 +39,15 @@ class _MyVotesViewState extends State<MyVotesView> {
       if (pollResponse.statusCode == 200) {
         final List<dynamic> allPolls = jsonDecode(pollResponse.body);
         
-        // Only show published & non-archived polls in the dropdown
+        // 🛠️ THE FIX: Only filter by 'is_published'. 
+        // We removed the 'is_archived == 0' check so past elections remain visible!
         _polls = allPolls.where((p) => 
-          (p['is_published'] == 1 || p['is_published'] == true) && 
-          (p['is_archived'] == 0 || p['is_archived'] == false)
+          (p['is_published'] == 1 || p['is_published'] == true)
         ).toList();
 
         if (_polls.isNotEmpty) {
-          // Default to the first active poll if possible
-          _selectedPoll = _polls.firstWhere((p) => p['status'] != 'Ended', orElse: () => _polls.first);
+          // Default to the first active poll if possible, otherwise just the first one in the list
+          _selectedPoll = _polls.firstWhere((p) => p['status'] != 'Ended' && p['is_archived'] != 1, orElse: () => _polls.first);
         }
       }
 
@@ -90,7 +90,7 @@ class _MyVotesViewState extends State<MyVotesView> {
         }
       }
 
-      // 2. Fetch the live stats for the poll
+      // 2. Fetch the live/final stats for the poll
       final statsResponse = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/polls/$pollId/results'));
       Map<String, dynamic> stats = {};
       
@@ -142,7 +142,7 @@ class _MyVotesViewState extends State<MyVotesView> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return Center(child: CircularProgressIndicator(color: primaryColor));
+      return Center(child: CircularProgressIndicator(color: Colors.white)); // Updated color for dark background
     }
 
     bool isMobile = MediaQuery.of(context).size.width < 900;
@@ -155,32 +155,32 @@ class _MyVotesViewState extends State<MyVotesView> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.how_to_vote_outlined, size: 90, color: Colors.grey),
+            Icon(Icons.how_to_vote_outlined, size: 90, color: Colors.white54),
             SizedBox(height: 20),
-            Text("No Elections Found", style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600, color: Colors.grey)),
+            Text("No Elections Found", style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600, color: Colors.white)),
             SizedBox(height: 10),
-            Text("There are no published elections available right now.", style: TextStyle(fontSize: 14, color: Colors.grey)),
+            Text("There are no published elections available right now.", style: TextStyle(fontSize: 14, color: Colors.white70)),
           ],
         ),
       );
     } else if (!_hasVotedInSelectedPoll) {
-      bool isEnded = _selectedPoll!['status'] == 'Ended';
+      bool isEnded = _selectedPoll!['status'] == 'Ended' || _selectedPoll!['is_archived'] == 1 || _selectedPoll!['is_archived'] == true;
       mainContent = Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(isEnded ? Icons.timer_off : Icons.pending_actions, size: 90, color: isEnded ? Colors.redAccent : Colors.grey),
+            Icon(isEnded ? Icons.timer_off : Icons.pending_actions, size: 90, color: isEnded ? Colors.redAccent : Colors.white54),
             const SizedBox(height: 20),
             Text(
-              isEnded ? "Election Ended" : "No Ballot Cast",
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: isEnded ? Colors.redAccent : Colors.grey),
+              isEnded ? "Election Concluded" : "No Ballot Cast",
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: isEnded ? Colors.redAccent : Colors.white),
             ),
             const SizedBox(height: 10),
             Text(
               isEnded 
-                  ? "This election has ended. You did not participate." 
+                  ? "This election has ended. You did not participate in this poll." 
                   : "You have not voted in this election yet. Go to the Vote tab to cast your ballot!",
-              style: const TextStyle(fontSize: 14, color: Colors.grey),
+              style: const TextStyle(fontSize: 14, color: Colors.white70),
               textAlign: TextAlign.center,
             ),
           ],
@@ -248,7 +248,7 @@ class _MyVotesViewState extends State<MyVotesView> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text("My Votes", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white)),
+              const Text("My Votes", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white)),
               if (_polls.isNotEmpty)
                 Container(
                   constraints: const BoxConstraints(maxWidth: 250),
@@ -265,9 +265,18 @@ class _MyVotesViewState extends State<MyVotesView> {
                       icon: Icon(Icons.arrow_drop_down, color: primaryColor),
                       style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold),
                       items: _polls.map((poll) {
+                        
+                        // 🛠️ UI UPGRADE: Add (Archived) or (Ended) to the title so students know the status
+                        String displayTitle = poll["title"] ?? "Election";
+                        if (poll['is_archived'] == 1 || poll['is_archived'] == true) {
+                          displayTitle = "$displayTitle (Archived)";
+                        } else if (poll['status'] == 'Ended') {
+                          displayTitle = "$displayTitle (Ended)";
+                        }
+
                         return DropdownMenuItem<Map<String, dynamic>>(
                           value: poll as Map<String, dynamic>,
-                          child: Text(poll["title"] ?? "Election", style: const TextStyle(color: Colors.black87), overflow: TextOverflow.ellipsis),
+                          child: Text(displayTitle, style: const TextStyle(color: Colors.black87), overflow: TextOverflow.ellipsis),
                         );
                       }).toList(),
                       onChanged: _onPollChanged,

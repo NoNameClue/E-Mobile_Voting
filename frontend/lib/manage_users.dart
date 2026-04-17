@@ -42,146 +42,166 @@ class _ManageUsersState extends State<ManageUsers> {
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to load students')));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to load users')));
       }
     }
-  }
-
-  // --- SEARCH LOGIC ---
-  void _runSearch(String enteredKeyword) {
-    List<dynamic> results = [];
-    if (enteredKeyword.isEmpty) {
-      results = _allStudents;
-    } else {
-      results = _allStudents.where((student) {
-        final studentId = student['student_number'].toString().toLowerCase();
-        return studentId.contains(enteredKeyword.toLowerCase());
-      }).toList();
-    }
-
-    setState(() {
-      _filteredStudents = results;
-    });
   }
 
   Future<void> _toggleStudentStatus(int userId, bool currentStatus) async {
-    setState(() {
-      final mainIndex = _allStudents.indexWhere((s) => s['user_id'] == userId);
-      if (mainIndex != -1) _allStudents[mainIndex]['is_active'] = !currentStatus;
-
-      final filteredIndex = _filteredStudents.indexWhere((s) => s['user_id'] == userId);
-      if (filteredIndex != -1) _filteredStudents[filteredIndex]['is_active'] = !currentStatus;
-    });
-
+    final bool newStatus = !currentStatus;
     try {
-      final response = await http.put(Uri.parse('${ApiConfig.baseUrl}/api/admin/students/$userId/toggle'));
-      
-      if (response.statusCode != 200) {
-        _fetchStudents();
+      final response = await http.put(
+        Uri.parse('${ApiConfig.baseUrl}/api/admin/students/$userId/toggle'),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"is_active": newStatus}),
+      );
+
+      if (response.statusCode == 200) {
+        setState(() {
+          // Update in main list
+          final indexAll = _allStudents.indexWhere((s) => s['user_id'] == userId);
+          if (indexAll != -1) {
+            _allStudents[indexAll]['is_active'] = newStatus;
+          }
+          // Update in filtered list so UI refreshes immediately
+          final indexFiltered = _filteredStudents.indexWhere((s) => s['user_id'] == userId);
+          if (indexFiltered != -1) {
+            _filteredStudents[indexFiltered]['is_active'] = newStatus;
+          }
+        });
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to update status')));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('User account ${newStatus ? 'activated' : 'deactivated'}.')),
+          );
         }
+      } else {
+        throw Exception("Failed");
       }
     } catch (e) {
-      _fetchStudents(); 
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to update status')));
+      }
     }
   }
 
   String _formatDate(String? isoDate) {
-    if (isoDate == null) return "Unknown";
+    if (isoDate == null) return "N/A";
     try {
-      final dt = DateTime.parse(isoDate);
-      return "${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} at ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}";
+      final d = DateTime.parse(isoDate);
+      return "${d.month}/${d.day}/${d.year}";
     } catch (e) {
-      return "Invalid Date";
+      return isoDate;
     }
+  }
+
+  // 🛠️ FIX: Now searches both Name and ID
+  void _filterStudents(String query) {
+    if (query.isEmpty) {
+      setState(() => _filteredStudents = _allStudents);
+      return;
+    }
+    final lowerQuery = query.toLowerCase();
+    setState(() {
+      _filteredStudents = _allStudents.where((student) {
+        final name = student['full_name']?.toString().toLowerCase() ?? '';
+        final studentId = student['student_number']?.toString().toLowerCase() ?? '';
+        
+        // Return true if either the name OR the student ID contains the search query
+        return name.contains(lowerQuery) || studentId.contains(lowerQuery);
+      }).toList();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    int total = _allStudents.length;
+    int active = _allStudents.where((s) => s['is_active'] == true).length;
+    int deactivated = total - active;
+    bool isMobile = MediaQuery.of(context).size.width < 700;
+
     return Padding(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(isMobile ? 15.0 : 30.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text("Users / Account Control", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white)),
+          // Header
+          const Text("Users & Account Control", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white)),
           const SizedBox(height: 5),
-          const Text("Manage student access. Deactivate accounts for graduated students.", style: TextStyle(color: Colors.grey, fontSize: 16)),
+          const Text("Manage student access and deactivate accounts if necessary.", style: TextStyle(color: Colors.white70, fontSize: 16)),
           const SizedBox(height: 20),
-          
-          TextField(
-            controller: _searchController,
-            onChanged: (value) => _runSearch(value),
-            decoration: InputDecoration(
-              labelText: 'Search by Student ID Number',
-              hintText: 'e.g. 1234567',
-              prefixIcon: const Icon(Icons.search, color: Color(0xFF000B6B)),
-              filled: true,
-              fillColor: Colors.white,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
+
+          // Stats Cards
+          Wrap(
+            spacing: 20,
+            runSpacing: 20,
+            children: [
+              _buildStatCard("Total Students", total.toString(), Icons.people, Colors.blue),
+              _buildStatCard("Active Accounts", active.toString(), Icons.check_circle, Colors.green),
+              _buildStatCard("Deactivated", deactivated.toString(), Icons.cancel, Colors.red),
+            ],
+          ),
+          const SizedBox(height: 25),
+
+          // Search Bar
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 15),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+              boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 5)],
+            ),
+            child: TextField(
+              controller: _searchController,
+              onChanged: _filterStudents,
+              decoration: const InputDecoration(
+                border: InputBorder.none,
+                // 🛠️ FIX: Updated placeholder text
+                hintText: 'Search by Name or ID...',
+                icon: Icon(Icons.search, color: Colors.grey),
               ),
-              contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 20),
             ),
           ),
           const SizedBox(height: 20),
-          
+
+          // List of Students
           Expanded(
-            child: _isLoading 
-              ? const Center(child: CircularProgressIndicator())
-              : _filteredStudents.isEmpty 
-                  ? const Center(child: Text('No students found matching that ID.', style: TextStyle(fontSize: 16)))
-                  : ListView.builder(
-                      itemCount: _filteredStudents.length, 
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _filteredStudents.isEmpty
+                    ? const Center(child: Text("No students found.", style: TextStyle(color: Colors.white, fontSize: 18)))
+                    : ListView.builder(
+                      itemCount: _filteredStudents.length,
                       itemBuilder: (context, index) {
                         final student = _filteredStudents[index];
-                        final bool isActive = student['is_active'];
+                        final isActive = student['is_active'] == true;
 
                         return Card(
                           margin: const EdgeInsets.only(bottom: 15),
-                          elevation: 2,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8.0),
+                          child: Opacity(
+                            opacity: isActive ? 1.0 : 0.6, // Dim the card if deactivated
                             child: ListTile(
-                              // --- PROFILE PICTURE WITH STATUS BADGE ---
-                              leading: Stack(
-                                children: [
-                                  CircleAvatar(
-                                    radius: 25,
-                                    backgroundColor: Colors.grey[300],
-                                    backgroundImage: student['profile_pic_url'] != null 
-                                        ? NetworkImage('${ApiConfig.baseUrl}/${student['profile_pic_url']}')
-                                        : null,
-                                    child: student['profile_pic_url'] == null 
-                                        ? Icon(Icons.person, color: isActive ? Colors.green : Colors.red, size: 30)
-                                        : null,
-                                  ),
-                                  Positioned(
-                                    bottom: 0,
-                                    right: 0,
-                                    child: CircleAvatar(
-                                      radius: 8,
-                                      backgroundColor: Colors.white, // Border for the dot
-                                      child: CircleAvatar(
-                                        radius: 6,
-                                        backgroundColor: isActive ? Colors.green : Colors.red, // The actual status color
-                                      ),
-                                    ),
-                                  )
-                                ],
+                              contentPadding: const EdgeInsets.all(15),
+                              leading: CircleAvatar(
+                                radius: 25,
+                                backgroundColor: isActive ? const Color(0xFF000B6B) : Colors.grey,
+                                backgroundImage: student['profile_pic_url'] != null && student['profile_pic_url'].toString().isNotEmpty
+                                    ? NetworkImage('${ApiConfig.baseUrl}/${student['profile_pic_url']}')
+                                    : null,
+                                child: student['profile_pic_url'] == null || student['profile_pic_url'].toString().isEmpty
+                                    ? const Icon(Icons.person, color: Colors.white)
+                                    : null,
                               ),
                               title: Text(
-                                '${student['full_name']} (${student['student_number']})', 
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)
+                                student['full_name'] ?? 'Unknown',
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, decoration: isActive ? TextDecoration.none : TextDecoration.lineThrough),
                               ),
                               subtitle: Padding(
                                 padding: const EdgeInsets.only(top: 8.0),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text('Email: ${student['email'] ?? 'N/A'}', style: const TextStyle(color: Colors.black87)),
+                                    Text('ID: ${student['student_number'] ?? 'N/A'}', style: const TextStyle(color: Colors.black87)),
                                     const SizedBox(height: 4),
                                     Text('Course: ${student['course'] ?? 'N/A'}', style: const TextStyle(color: Colors.black87)),
                                     const SizedBox(height: 4),
@@ -208,6 +228,31 @@ class _ManageUsersState extends State<ManageUsers> {
                       },
                     ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatCard(String title, String count, IconData icon, Color color) {
+    return Container(
+      width: 200,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10)],
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(backgroundColor: color.withOpacity(0.2), child: Icon(icon, color: color)),
+          const SizedBox(width: 15),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+              Text(count, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+            ],
+          )
         ],
       ),
     );

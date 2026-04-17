@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'api_config.dart';
 import 'widgets/realtime_clock.dart';
-import 'widgets/system_background.dart'; // <-- ADDED BACKGROUND IMPORT
+import 'widgets/system_background.dart';
 
 import 'manage_staffs.dart';
 import 'manage_polls.dart';
@@ -170,19 +170,23 @@ class _AdminDashboardState extends State<AdminDashboard> {
         children: [
           const SizedBox(height: 30),
           
-          // ==========================================
-          // ADDED LNU LOGO AND SYSTEM NAME HEADER
-          // ==========================================
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 15.0),
+            padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 10.0),
             child: Row(
               children: [
-                const CircleAvatar(
-                  backgroundColor: Colors.transparent,
-                  radius: 20,
-                  backgroundImage: AssetImage('assets/images/lnu_logo.png'),
+                // 🛠️ FORCED LARGE LOGO
+                Container(
+                  width: 75,
+                  height: 75,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    image: const DecorationImage(
+                      image: AssetImage('assets/images/lnu_logo.png'),
+                      fit: BoxFit.cover,
+                    ),
+                  ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 15),
                 const Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -191,7 +195,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         'Leyte Normal University',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 12,
+                          fontSize: 13,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -199,7 +203,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         '(System Name)',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 10,
+                          fontSize: 11,
                         ),
                       ),
                     ],
@@ -209,7 +213,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
             ),
           ),
           const SizedBox(height: 30),
-          // ==========================================
 
           Text(
             _userRole == "Staff" ? "STAFF PANEL" : "ADMIN PANEL",

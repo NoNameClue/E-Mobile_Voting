@@ -118,34 +118,48 @@ class _StudentDashboardState extends State<StudentDashboard> {
                 children: [
                   const SizedBox(height: 20),
                   
-                  // ==========================================
-                  // ADDED LNU LOGO HEADER HERE
-                  // ==========================================
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 15),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 10.0),
                     child: Row(
                       children: [
-                        CircleAvatar(
-                          backgroundColor: Colors.transparent,
-                          radius: 20,
-                          backgroundImage: AssetImage('assets/images/lnu_logo.png'),
-                        ),
-                        SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            'Leyte Normal University\n(System Name)',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
+                        // 🛠️ FORCED LARGE LOGO
+                        Container(
+                          width: 75,
+                          height: 75,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8),
+                            image: const DecorationImage(
+                              image: AssetImage('assets/images/lnu_logo.png'),
+                              fit: BoxFit.cover,
                             ),
+                          ),
+                        ),
+                        const SizedBox(width: 15),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Leyte Normal University',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                '(System Name)',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
                     ),
                   ),
-                  // ==========================================
-                  
                   const SizedBox(height: 40),
 
                   CircleAvatar(

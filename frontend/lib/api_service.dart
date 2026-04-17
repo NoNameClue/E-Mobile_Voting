@@ -67,20 +67,19 @@ class ApiService {
     final token = prefs.getString('jwt_token') ?? '';
 
     // Replace this URL with the actual URL to your backend
-    final url = Uri.parse("http://127.0.0.1:8000/api/users/me/votes");
+    final url = Uri.parse("${ApiConfig.baseUrl}/api/users/me/votes");
 
     final response = await http.get(
       url,
       headers: {
         "Authorization": "Bearer $token",
-        "Content-Type": "application/json"
       },
     );
 
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
+    } else {
+      throw Exception("Failed to load history");
     }
-
-    throw Exception("Failed to load votes");
   }
-}
+} 
