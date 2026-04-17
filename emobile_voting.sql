@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Apr 12, 2026 at 06:20 AM
+-- Generation Time: Apr 17, 2026 at 08:57 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -85,7 +85,7 @@ INSERT INTO `candidates` (`candidate_id`, `poll_id`, `name`, `position`, `party_
 (40, 1, 'Josh Brolin', 'PIO', 'Progressive Party', 'Bachelor of Elementary Education - 2nd Year', 'Progressive outreach.', NULL),
 (41, 1, 'Letitia Wright', 'PIO', 'SQU Party', 'Bachelor of Science in Hospitality Management - 2nd Year', 'Effective information dissemination.', NULL),
 (42, 1, 'Winston Duke', 'PIO', 'United Students', 'Bachelor of Science in Social Work - 2nd Year', 'Connecting the community.', NULL),
-(43, 2, 'Ryan Reynolds', 'President', 'DIGITS Party', 'Bachelor of Science in Information Technology - 3rd Year', 'Advancing technology access.', NULL),
+(43, 2, 'Ryan Reynolds', 'President', 'DIGITS Party', 'Bachelor of Science in Information Technology - 3rd Year', 'Advancing technology access.', 'uploads/20260417122205_pipols-removebg-preview.png'),
 (44, 2, 'Blake Lively', 'President', 'Future Leaders', 'Bachelor of Science in Biology - 3rd Year', 'Leadership for tomorrow.', NULL),
 (45, 2, 'Jake Gyllenhaal', 'President', 'Independent', 'Bachelor of Arts in Communication - 3rd Year', 'Your independent choice.', NULL),
 (46, 2, 'Florence Pugh', 'President', 'Innovators Bloc', 'Bachelor of Science in Tourism Management - 3rd Year', 'Innovation in action.', NULL),
@@ -173,7 +173,7 @@ CREATE TABLE `polls` (
 --
 
 INSERT INTO `polls` (`poll_id`, `title`, `start_time`, `end_time`, `status`, `is_published`, `is_archived`) VALUES
-(1, '2026 LNU SSC REGULAR ELECTION', '2026-03-01 08:00:00', '2026-04-10 17:00:00', 'Ended', 1, 0),
+(1, '2026 LNU SSC REGULAR ELECTION', '2026-03-01 08:00:00', '2026-04-10 17:00:00', 'Ended', 1, 1),
 (2, '2026 LNU SPECIAL ELECTION', '2026-04-11 08:00:00', '2026-05-30 17:00:00', 'Published', 1, 0);
 
 -- --------------------------------------------------------
@@ -206,7 +206,7 @@ INSERT INTO `users` (`user_id`, `student_number`, `full_name`, `email`, `course`
 (3, '8765431', 'jane', 'jane@gmail.com', 'Bachelor of Arts in English Language', '$2b$12$h0pCbjD.508PV/JF8aUNQOVWoh0nY.7lQIsAfrfCtK6XlFe5EsMIW', 'Student', 1, '2026-03-06 07:15:50', NULL, NULL),
 (4, '7654321', 'carl', 'carl@gmail.com', 'Bachelor of Science in Tourism Management', '$2b$12$qpBeD9Ldcrd82e4q4EKL0.aNk2NlxhL1slWGvGKJdvY/aS22fUBeC', 'Student', 1, '2026-03-14 01:17:06', 'uploads/user_20260314171705_116018138_4056146044458962_8949890354613494763_n.jpg', NULL),
 (5, '2302184', 'Dorothy Magdaraog', '2302184@lnu.edu.ph', 'Bachelor of Science in Information Technology', '$2b$12$A.cwkOJXL.jOyfOHCR/XIe3ney2rmj7.1f040INCnHihW.0IfaQbK', 'Student', 1, '2026-03-14 23:34:22', NULL, NULL),
-(6, 'STAFF-1774244897', 'Staff 1', 'staff@gmail.com', 'N/A (Staff)', '$2b$12$UQzyWQx9.bR/FFI1BwcBBOoDTRF6LmZua.LVrU4yXDGVe0MSleSLG', 'Staff', 1, '2026-03-22 21:48:17', 'uploads/staff_20260326234516_android-logo-on-transparent-background-free-vector.jpg', '[\"Users / Account Control\", \"Manage Polls\", \"Manage Candidates\", \"Manage Parties\"]'),
+(6, 'STAFF-1774244897', 'Staff 1', 'staff@gmail.com', 'N/A (Staff)', '$2b$12$UQzyWQx9.bR/FFI1BwcBBOoDTRF6LmZua.LVrU4yXDGVe0MSleSLG', 'Staff', 1, '2026-03-22 21:48:17', 'uploads/staff_20260326234516_android-logo-on-transparent-background-free-vector.jpg', '[\"Users / Account Control\", \"Manage Polls\", \"Manage Candidates\", \"Manage Parties\", \"Registration for Candidates\"]'),
 (7, '3333333', 'Student Alpha', 'stud1@gmail.com', 'BS Computer Engineering', '$2b$12$360IOqztfaCmmocJV0/h9.4BM35A9z7fNkKuelUq5wf2256LTFmBS', 'Student', 1, '2026-03-26 00:00:00', NULL, NULL),
 (8, '4444444', 'Student Bravo', 'stud2@gmail.com', 'BA Communication', '$2b$12$360IOqztfaCmmocJV0/h9.4BM35A9z7fNkKuelUq5wf2256LTFmBS', 'Student', 1, '2026-03-26 00:00:00', NULL, NULL),
 (9, '5555555', 'Student Charlie', 'stud3@gmail.com', 'BS Biology', '$2b$12$360IOqztfaCmmocJV0/h9.4BM35A9z7fNkKuelUq5wf2256LTFmBS', 'Student', 1, '2026-03-26 00:00:00', NULL, NULL),
@@ -216,7 +216,11 @@ INSERT INTO `users` (`user_id`, `student_number`, `full_name`, `email`, `course`
 (13, '9999999', 'Student Golf', 'stud7@gmail.com', 'BS IT', '$2b$12$360IOqztfaCmmocJV0/h9.4BM35A9z7fNkKuelUq5wf2256LTFmBS', 'Student', 1, '2026-03-26 00:00:00', NULL, NULL),
 (14, '1010101', 'Student Hotel', 'stud8@gmail.com', 'BS Tourism', '$2b$12$360IOqztfaCmmocJV0/h9.4BM35A9z7fNkKuelUq5wf2256LTFmBS', 'Student', 1, '2026-03-26 00:00:00', NULL, NULL),
 (15, '2020202', 'Student India', 'stud9@gmail.com', 'BS Computer Engineering', '$2b$12$360IOqztfaCmmocJV0/h9.4BM35A9z7fNkKuelUq5wf2256LTFmBS', 'Student', 1, '2026-03-26 00:00:00', NULL, NULL),
-(16, '3030303', 'Student Juliet', 'stud10@gmail.com', 'BS IT', '$2b$12$360IOqztfaCmmocJV0/h9.4BM35A9z7fNkKuelUq5wf2256LTFmBS', 'Student', 1, '2026-03-26 00:00:00', NULL, NULL);
+(16, '3030303', 'Student Juliet', 'stud10@gmail.com', 'BS IT', '$2b$12$360IOqztfaCmmocJV0/h9.4BM35A9z7fNkKuelUq5wf2256LTFmBS', 'Student', 1, '2026-03-26 00:00:00', NULL, NULL),
+(17, '2345678', 'Johny Martin', 'martinjohny@gmail.com', 'Bachelor of Science in Information Technology', '$2b$12$c3uGa3VpbBa/YHn0qyWw6OZdS9CTiHqkbXG9/F73tvpFWDdrkJ0O6', 'Student', 1, '2026-04-12 09:00:56', 'uploads/user_20260412170055_WIN_20240429_17_27_38_Pro.jpg', '[]'),
+(18, 'STAFF-18', 'staff 2', 'staff2@gmail.com', 'N/A', '$2b$12$9aeu9UVv5ycbc.gWqPomH.IcNwt7/PQmc7rFeRa8YDomGpuhNAdKO', 'Staff', 1, '2026-04-14 21:41:53', NULL, '[]'),
+(19, '7654313', 'New User', 'newuser@lnu.edu.ph', 'Bachelor of Entrepreneurship', '$2b$12$UqAGbvuzyi8f6F0aowJR5e1aPTJPbel2XHlyZU.bIfdzk3qEJCksG', 'Student', 1, '2026-04-16 21:12:17', 'uploads/user_20260417131216_lnu_logo.png', '[]'),
+(20, '9854243', 'new user3', 'newuser2@lnu.edu.ph', 'Bachelor of Arts in Political Science', '$2b$12$s4UUHWzZMIpauWKFnVn/IuF40.V0gyWWZJZkG2eWPW9HBH/Z1.o/6', 'Student', 1, '2026-04-16 21:48:45', NULL, '[]');
 
 -- --------------------------------------------------------
 
@@ -392,7 +396,25 @@ INSERT INTO `votes` (`vote_id`, `user_id`, `poll_id`, `candidate_id`, `cast_at`)
 (153, 16, 2, 63, '2026-04-12 02:00:00'),
 (154, 16, 2, 64, '2026-04-12 02:00:00'),
 (155, 16, 2, 72, '2026-04-12 02:00:00'),
-(156, 16, 2, 80, '2026-04-12 02:00:00');
+(156, 16, 2, 80, '2026-04-12 02:00:00'),
+(157, 3, 2, 48, '2026-04-13 06:16:18'),
+(158, 3, 2, 51, '2026-04-13 06:16:18'),
+(159, 3, 2, 61, '2026-04-13 06:16:18'),
+(160, 3, 2, 69, '2026-04-13 06:16:18'),
+(161, 3, 2, 73, '2026-04-13 06:16:18'),
+(162, 3, 2, 79, '2026-04-13 06:16:18'),
+(163, 17, 2, 43, '2026-04-13 06:20:47'),
+(164, 17, 2, 51, '2026-04-13 06:20:47'),
+(165, 17, 2, 61, '2026-04-13 06:20:47'),
+(166, 17, 2, 69, '2026-04-13 06:20:47'),
+(167, 17, 2, 73, '2026-04-13 06:20:47'),
+(168, 17, 2, 81, '2026-04-13 06:20:47'),
+(169, 2, 2, 43, '2026-04-15 09:27:37'),
+(170, 2, 2, 50, '2026-04-15 09:27:37'),
+(171, 2, 2, 57, '2026-04-15 09:27:37'),
+(172, 2, 2, 64, '2026-04-15 09:27:37'),
+(173, 2, 2, 71, '2026-04-15 09:27:37'),
+(174, 2, 2, 78, '2026-04-15 09:27:37');
 
 --
 -- Indexes for dumped tables
@@ -461,13 +483,13 @@ ALTER TABLE `polls`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
+  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
 
 --
 -- AUTO_INCREMENT for table `votes`
 --
 ALTER TABLE `votes`
-  MODIFY `vote_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=157;
+  MODIFY `vote_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=175;
 
 --
 -- Constraints for dumped tables
