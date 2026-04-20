@@ -375,7 +375,7 @@ Future<void> _generatePdfAndPrint() async {
               children: [
                 const Text(
                   "Election Report",
-                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white),
                 ),
                 Row(
                   children: [

@@ -39,7 +39,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
   final List<String> _masterMenuItems = [
     "Dashboard",
     "Users / Account Control",
-    "Manage Election Officers", 
+    "Manage Election Staff", // 🛠️ Fixed exact string
     "Manage Polls",
     "Manage Candidates",
     "Manage Parties",
@@ -71,8 +71,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
         displayMenuItems = List.from(_masterMenuItems);
       } else if (_userRole == "Staff") {
         displayMenuItems = _masterMenuItems.where((item) {
-          if (item == "Manage Election Officers") return false; 
+          if (item == "Manage Election Staff") return false; // 🛠️ Staff cannot manage other staff
           if (item == "Dashboard") return true; 
+          // Note: If old database records say "Manage Election Officers", we map it safely
+          if (_userPermissions.contains("Manage Election Officers") && item == "Manage Election Staff") return true;
           return _userPermissions.contains(item);
         }).toList();
       }
@@ -171,13 +173,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
           const SizedBox(height: 30),
           
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 10.0),
+            padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 5.0),
             child: Row(
               children: [
-                // 🛠️ FORCED LARGE LOGO
                 Container(
-                  width: 75,
-                  height: 75,
+                  width: 50, 
+                  height: 50,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(8),
                     image: const DecorationImage(
@@ -186,7 +187,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     ),
                   ),
                 ),
-                const SizedBox(width: 15),
+                const SizedBox(width: 10),
                 const Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -195,7 +196,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         'Leyte Normal University',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 13,
+                          fontSize: 12, 
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -203,7 +204,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         '(System Name)',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 11,
+                          fontSize: 10,
                         ),
                       ),
                     ],
@@ -212,39 +213,28 @@ class _AdminDashboardState extends State<AdminDashboard> {
               ],
             ),
           ),
-          const SizedBox(height: 30),
+          
+          const SizedBox(height: 35),
 
           Text(
             _userRole == "Staff" ? "STAFF PANEL" : "ADMIN PANEL",
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 20,
+              fontSize: 18, 
               fontWeight: FontWeight.bold,
               letterSpacing: 1.5,
             ),
           ),
-          const SizedBox(height: 30),
+          
+          const SizedBox(height: 35),
 
-          CircleAvatar(
-            radius: 50,
-            backgroundColor: Colors.white,
-            backgroundImage: _profilePicUrl != null
-                ? NetworkImage('${ApiConfig.baseUrl}/$_profilePicUrl')
-                : null,
-            child: _profilePicUrl == null
-                ? const Icon(Icons.person, size: 60, color: Colors.grey)
-                : null,
-          ),
-          const SizedBox(height: 10),
-          Text(
-            "$_userName\nID: $_userId",
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.white),
+          Transform.scale(
+            scale: 0.80, 
+            child: const RealtimeClock(textColor: Colors.white, isCenterAligned: true),
           ),
           
-          const SizedBox(height: 20),
-          const RealtimeClock(textColor: Colors.white, isCenterAligned: true),
-          const SizedBox(height: 20),
+          const SizedBox(height: 10),
+          const Divider(color: Colors.white24, height: 1),
 
           Expanded(
             child: SingleChildScrollView(
@@ -253,7 +243,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   for (int i = 0; i < displayMenuItems.length; i++)
                     Padding(
                       padding: const EdgeInsets.symmetric(
-                        vertical: 2,
+                        vertical: 0, 
                         horizontal: 10,
                       ),
                       child: Container(
@@ -264,9 +254,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
                           borderRadius: BorderRadius.circular(5),
                         ),
                         child: ListTile(
-                          dense: true,
+                          dense: true, 
+                          visualDensity: const VisualDensity(horizontal: 0, vertical: -4), 
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 0),
                           leading: Icon(
                             _getMenuIcon(displayMenuItems[i]),
+                            size: 20, 
                             color: _selectedMenuString == displayMenuItems[i]
                                 ? const Color(0xFF000B6B)
                                 : Colors.white70,
@@ -274,6 +267,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                           title: Text(
                             displayMenuItems[i],
                             style: TextStyle(
+                              fontSize: 13, 
                               color: _selectedMenuString == displayMenuItems[i]
                                   ? const Color(0xFF000B6B)
                                   : Colors.white,
@@ -294,13 +288,15 @@ class _AdminDashboardState extends State<AdminDashboard> {
             ),
           ),
 
-          const Divider(color: Colors.white24),
+          const Divider(color: Colors.white24, height: 1),
           ListTile(
-            leading: const Icon(Icons.logout, color: Colors.white),
-            title: const Text("Logout", style: TextStyle(color: Colors.white)),
+            dense: true,
+            visualDensity: const VisualDensity(horizontal: 0, vertical: -4), 
+            leading: const Icon(Icons.logout, color: Colors.white, size: 20),
+            title: const Text("Logout", style: TextStyle(color: Colors.white, fontSize: 13)),
             onTap: logout,
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 10),
         ],
       ),
     );
@@ -310,7 +306,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     switch (title) {
       case "Dashboard": return Icons.dashboard;
       case "Users / Account Control": return Icons.people;
-      case "Manage Election Officers": return Icons.security; 
+      case "Manage Election Staff": return Icons.admin_panel_settings; // 🛠️ Updated Icon Mapping
       case "Manage Polls": return Icons.how_to_vote;
       case "Manage Candidates": return Icons.person_pin;
       case "Manage Parties": return Icons.flag;
@@ -449,7 +445,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           const SizedBox(height: 5),
           const Text(
             "Overview of the LNU Voting System",
-            style: TextStyle(color: Colors.grey, fontSize: 16),
+            style: TextStyle(color: Colors.white70, fontSize: 16),
           ),
           const SizedBox(height: 30),
 
@@ -528,7 +524,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: Colors.blue.shade50,
+              color: Colors.blue.shade50.withOpacity(0.9),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: Colors.blue.shade100),
             ),
@@ -550,7 +546,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       SizedBox(height: 5),
                       Text(
                         "The backend server is successfully connected. Database queries are running normally.",
-                        style: TextStyle(color: Colors.black54, fontSize: 13),
+                        style: TextStyle(color: Colors.black87, fontSize: 13),
                       ),
                     ],
                   ),
@@ -567,7 +563,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     switch (_selectedMenuString) {
       case "Dashboard": return buildDashboardHome();
       case "Users / Account Control": return const ManageUsers();
-      case "Manage Election Officers": return const ManageStaffs(); 
+      case "Manage Election Staff": return const ManageStaffs(); // 🛠️ Fixed String Mapping!
       case "Manage Polls": return const ManagePolls();
       case "Manage Candidates": return const ManageCandidates();
       case "Manage Parties": return const ManageParties();
@@ -583,7 +579,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     bool isDesktop = MediaQuery.of(context).size.width > 900;
 
     return Scaffold(
-      backgroundColor: Colors.transparent, // Background is transparent
+      backgroundColor: Colors.transparent, 
       appBar: isDesktop
           ? null
           : AppBar(
@@ -593,8 +589,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
             ),
       drawer: isDesktop ? null : Drawer(child: buildSidebar(false)),
       body: SystemBackground(
-        opacity: 1.0,           // Image is fully solid
-        darkenOverlay: 0.70,    // Image is tinted 70% darker
+        opacity: 1.0,           
+        darkenOverlay: 0.70,   
+        isFrosted: true, 
         child: Row(
           children: [
             if (isDesktop) buildSidebar(true),

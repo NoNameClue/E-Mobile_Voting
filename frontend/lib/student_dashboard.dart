@@ -106,6 +106,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
     Navigator.pushReplacementNamed(context, '/login');
   }
 
+  // 🛠️ UPDATED SIDEBAR: Matches Admin sizing exactly
   Widget buildSidebar(bool isDesktop) {
     return Container(
       width: 250,
@@ -116,16 +117,16 @@ class _StudentDashboardState extends State<StudentDashboard> {
             child: SingleChildScrollView(
               child: Column(
                 children: [
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 30), // Match Admin top spacing
                   
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 10.0),
+                    padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 5.0),
                     child: Row(
                       children: [
-                        // 🛠️ FORCED LARGE LOGO
+                        // 🛠️ Match Admin Logo Size (50x50)
                         Container(
-                          width: 75,
-                          height: 75,
+                          width: 50,
+                          height: 50,
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(8),
                             image: const DecorationImage(
@@ -134,7 +135,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
                             ),
                           ),
                         ),
-                        const SizedBox(width: 15),
+                        const SizedBox(width: 10), // Match Admin spacing
                         const Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -143,7 +144,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
                                 'Leyte Normal University',
                                 style: TextStyle(
                                   color: Colors.white,
-                                  fontSize: 13,
+                                  fontSize: 12, // Match Admin University text size
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -151,7 +152,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
                                 '(System Name)',
                                 style: TextStyle(
                                   color: Colors.white,
-                                  fontSize: 11,
+                                  fontSize: 10, // Match Admin System Name text size
                                 ),
                               ),
                             ],
@@ -162,6 +163,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
                   ),
                   const SizedBox(height: 40),
 
+                  // 🛡️ UNTOUCHED PROFILE AVATAR
                   CircleAvatar(
                     radius: 50,
                     backgroundColor: Colors.white,
@@ -174,33 +176,49 @@ class _StudentDashboardState extends State<StudentDashboard> {
                   ),
                   const SizedBox(height: 10),
 
+                  // 🛠️ Match Admin Name text size and weight
                   Text(
                     "$_studentName\nID: $_studentId",
                     textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.white),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 15, // Match Admin size
+                      fontWeight: FontWeight.bold, // Match Admin weight
+                      letterSpacing: 1.1,
+                    ),
                   ),
                   const SizedBox(height: 20),
 
-                  const RealtimeClock(textColor: Colors.white, isCenterAligned: true),
+                  // 🛠️ Match Admin Clock size exactly using the scale transform
+                  Transform.scale(
+                    scale: 0.80, 
+                    child: const RealtimeClock(textColor: Colors.white, isCenterAligned: true),
+                  ),
+                  
                   const SizedBox(height: 20),
 
+                  // 🛠️ COMPRESSED MENU LIST (Matches Admin exactly)
                   for (int i = 0; i < menuItems.length; i++)
                     Padding(
                       padding: const EdgeInsets.symmetric(
-                        vertical: 4,
-                        horizontal: 8,
+                        vertical: 0, // Removed vertical padding
+                        horizontal: 10, // Match Admin horizontal padding
                       ),
                       child: Container(
                         decoration: BoxDecoration(
                           color: selectedIndex == i
                               ? Colors.amber
                               : Colors.transparent,
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(5), // Match Admin border radius
                         ),
                         child: ListTile(
+                          dense: true, 
+                          visualDensity: const VisualDensity(horizontal: 0, vertical: -4), // MAXIMUM COMPRESSION
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 0),
                           title: Text(
                             menuItems[i],
                             style: TextStyle(
+                              fontSize: 13, // Match Admin font size
                               color: selectedIndex == i
                                   ? const Color(0xFF000B6B)
                                   : Colors.white,
@@ -221,12 +239,18 @@ class _StudentDashboardState extends State<StudentDashboard> {
             ),
           ),
 
-          const Divider(color: Colors.white54, height: 1),
+          const Divider(color: Colors.white24, height: 1), // Match Admin divider
+          
+          // 🛠️ COMPRESSED LOGOUT BUTTON (Matches Admin exactly)
           ListTile(
-            leading: const Icon(Icons.logout, color: Colors.white),
-            title: const Text("Logout", style: TextStyle(color: Colors.white)),
+            dense: true,
+            visualDensity: const VisualDensity(horizontal: 0, vertical: -4), // MAXIMUM COMPRESSION
+            leading: const Icon(Icons.logout, color: Colors.white, size: 20), // Match Admin icon size
+            title: const Text("Logout", style: TextStyle(color: Colors.white, fontSize: 13)), // Match Admin font size
             onTap: logout,
           ),
+          
+          // 🛡️ UNTOUCHED WATERMARK
           const Padding(
             padding: EdgeInsets.all(15.0),
             child: Text(
@@ -281,7 +305,8 @@ class _StudentDashboardState extends State<StudentDashboard> {
       drawer: isDesktop ? null : Drawer(child: buildSidebar(false)),
       body: SystemBackground(
         opacity: 1.0,           
-        darkenOverlay: 0.70,    
+        darkenOverlay: 0.70,   
+        isFrosted: true, // 🛡️ Frosted background kept
         child: Row(
           children: [
             if (isDesktop) buildSidebar(true),
@@ -294,7 +319,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
 }
 
 // ========================================================================
-// 3. LIVE SCOREBOARD WIDGET
+// 3. LIVE SCOREBOARD VIEW (STUDENT DASHBOARD CONTENT)
 // ========================================================================
 class LiveScoreboardView extends StatefulWidget {
   const LiveScoreboardView({super.key});
@@ -724,7 +749,7 @@ class _LiveScoreboardViewState extends State<LiveScoreboardView> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.1), 
+              color: Colors.white.withAlpha(25), 
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
