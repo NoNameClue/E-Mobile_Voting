@@ -35,6 +35,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
   String _userName = "Loading...";
   String _userId = "";
   String? _profilePicUrl;
+  List<dynamic> _recentPolls = [];
+  bool _isLoadingRecentPolls = true; 
 
   final List<String> _masterMenuItems = [
     "Dashboard",
@@ -56,6 +58,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     _loadUserAccess();
     _fetchUserProfile(); 
     _fetchUserCount();
+    _fetchRecentPolls();
   }
 
   Future<void> _loadUserAccess() async {
@@ -152,6 +155,33 @@ class _AdminDashboardState extends State<AdminDashboard> {
       }
     } catch (e) {
       setState(() => _isLoadingStats = false);
+    }
+  }
+
+  Future<void> _fetchRecentPolls() async {
+    setState(() => _isLoadingRecentPolls = true);
+
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/api/polls'),
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> allPolls = jsonDecode(response.body);
+
+        final recent = allPolls.where((poll) {
+          return poll['status'] == 'Ended' || poll['status'] == 'Expired';
+        }).toList();
+
+        setState(() {
+          _recentPolls = recent;
+          _isLoadingRecentPolls = false;
+        });
+      } else {
+        setState(() => _isLoadingRecentPolls = false);
+      }
+    } catch (e) {
+      setState(() => _isLoadingRecentPolls = false);
     }
   }
 
@@ -428,6 +458,47 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
+  Widget buildRecentPollsWidget() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          "Recent Polls",
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+        ),
+        const SizedBox(height: 15),
+
+        if (_isLoadingRecentPolls)
+          const Center(child: CircularProgressIndicator()),
+
+        if (!_isLoadingRecentPolls && _recentPolls.isEmpty)
+          const Text(
+            "No recent polls.",
+            style: TextStyle(color: Colors.grey),
+          ),
+
+        if (!_isLoadingRecentPolls && _recentPolls.isNotEmpty)
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: _recentPolls.length,
+            itemBuilder: (context, index) {
+              final poll = _recentPolls[index];
+
+              return Card(
+                margin: const EdgeInsets.only(bottom: 10),
+                child: ListTile(
+                  title: Text(poll['title'] ?? 'Untitled Poll'),
+                  subtitle: Text("Status: ${poll['status']}"),
+                  trailing: const Icon(Icons.history),
+                ),
+              );
+            },
+          ),
+      ],
+    );
+  }
+
   Widget buildDashboardHome() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(30),
@@ -520,6 +591,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
           ),
 
           const SizedBox(height: 40),
+
+          buildRecentPollsWidget(),
 
           Container(
             padding: const EdgeInsets.all(20),
