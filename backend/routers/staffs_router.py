@@ -12,18 +12,34 @@ router = APIRouter(tags=["Staffs"])
 
 @router.get("/api/officers")
 def get_all_staff(db: Session = Depends(get_db)):
-    return db.query(User).filter(User.role == "Staff").all()
+    staffs = db.query(User).filter(User.role == "Staff").all()
+    return [
+        {
+            "user_id": s.user_id,
+            "first_name": s.first_name,
+            "middle_name": s.middle_name,
+            "last_name": s.last_name,
+            "full_name": f"{s.first_name} {s.middle_name} {s.last_name}".replace("  ", " ").strip(),
+            "email": s.email,
+            "student_number": s.student_number,
+            "is_active": s.is_active,
+            "profile_pic_url": s.profile_pic_url,
+            "permissions": s.permissions
+        } for s in staffs
+    ]
 
 @router.post("/api/officers")
 def create_staff(
-    full_name: str = Form(...),
+    first_name: str = Form(...),
+    middle_name: str = Form(""),
+    last_name: str = Form(...),
     email: str = Form(...),
     password: str = Form(...),
     photo: UploadFile = File(None),
     db: Session = Depends(get_db)
 ):
     if db.query(User).filter(User.email == email).first():
-        raise HTTPException(status_code=400, detail="Email already registered")
+        raise HTTPException(status_code=409, detail="Email already registered")
 
     max_id = db.query(func.max(User.user_id)).scalar() or 0
     dummy_student_number = f"STAFF-{max_id + 1}"
@@ -38,10 +54,12 @@ def create_staff(
 
     hashed_password = pwd_context.hash(password)
     new_staff = User(
-        full_name=full_name,
+        first_name=first_name,
+        middle_name=middle_name,
+        last_name=last_name,
         email=email,
         student_number=dummy_student_number,
-        course="N/A",
+        course="N/A (Staff)",
         password_hash=hashed_password,
         role="Staff",
         is_active=True,
@@ -56,7 +74,9 @@ def create_staff(
 @router.put("/api/officers/{user_id}")
 def update_staff(
     user_id: int,
-    full_name: str = Form(...),
+    first_name: str = Form(...),
+    middle_name: str = Form(""),
+    last_name: str = Form(...),
     email: str = Form(...),
     password: str = Form(None),
     photo: UploadFile = File(None),
@@ -67,9 +87,11 @@ def update_staff(
         raise HTTPException(status_code=404, detail="Staff not found")
 
     if email != user.email and db.query(User).filter(User.email == email).first():
-        raise HTTPException(status_code=400, detail="Email already in use")
+        raise HTTPException(status_code=409, detail="Email already in use")
 
-    user.full_name = full_name
+    user.first_name = first_name
+    user.middle_name = middle_name
+    user.last_name = last_name
     user.email = email
     
     if password and password.strip():

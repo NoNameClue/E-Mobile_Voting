@@ -3,7 +3,9 @@ from typing import Optional, List
 from datetime import datetime
 
 class UserCreate(BaseModel):
-    full_name: str
+    first_name: str
+    middle_name: Optional[str] = ""
+    last_name: str
     email: str
     student_number: str
     password: str
@@ -14,7 +16,9 @@ class UserLogin(BaseModel):
     password: str
 
 class OfficerCreate(BaseModel):
-    full_name: str
+    first_name: str
+    middle_name: Optional[str] = ""
+    last_name: str
     email: str
     password: str
 
@@ -41,7 +45,9 @@ class VoteSubmit(BaseModel):
     candidate_ids: List[int]
 
 class CandidateUpdate(BaseModel):
-    name: Optional[str] = None
+    first_name: Optional[str] = None
+    middle_name: Optional[str] = None
+    last_name: Optional[str] = None
     course_year: Optional[str] = None
     description_platform: Optional[str] = None
 

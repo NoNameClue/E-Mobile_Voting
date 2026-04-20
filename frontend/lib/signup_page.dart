@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart'; 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // <-- ADDED: Required for inputFormatters
+import 'package:flutter/services.dart'; 
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:image_picker/image_picker.dart';
@@ -17,7 +17,11 @@ class SignupPage extends StatefulWidget {
 }
 
 class _SignupPageState extends State<SignupPage> {
-  final TextEditingController _nameController = TextEditingController();
+  // 🛠️ CHANGED: Split name into 3 controllers
+  final TextEditingController _firstNameController = TextEditingController();
+  final TextEditingController _middleNameController = TextEditingController();
+  final TextEditingController _lastNameController = TextEditingController();
+  
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _studentIdController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
@@ -82,7 +86,11 @@ class _SignupPageState extends State<SignupPage> {
       var request = http.MultipartRequest('POST', Uri.parse('${ApiConfig.baseUrl}/api/register'));
       
       request.fields['student_number'] = _studentIdController.text.trim();
-      request.fields['full_name'] = _nameController.text.trim();
+      // 🛠️ CHANGED: Added the three distinct name parts
+      request.fields['first_name'] = _firstNameController.text.trim();
+      request.fields['middle_name'] = _middleNameController.text.trim();
+      request.fields['last_name'] = _lastNameController.text.trim();
+      
       request.fields['email'] = _emailController.text.trim();
       request.fields['course'] = _selectedCourse!;
       request.fields['password'] = _passwordController.text.trim();
@@ -102,7 +110,9 @@ class _SignupPageState extends State<SignupPage> {
       if (response.statusCode == 200) {
         setState(() {
           _successMessage = "Registration successful! You can now log in.";
-          _nameController.clear(); 
+          _firstNameController.clear(); 
+          _middleNameController.clear(); 
+          _lastNameController.clear(); 
           _emailController.clear(); 
           _studentIdController.clear(); 
           _selectedCourse = null; 
@@ -167,10 +177,32 @@ class _SignupPageState extends State<SignupPage> {
             ),
             const SizedBox(height: 20),
 
+            // 🛠️ CHANGED: Split Name Fields
+            Row(
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: ModernTextField(
+                    controller: _firstNameController,
+                    hintText: 'First Name',
+                    validator: (value) => value == null || value.isEmpty ? 'Required' : null,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  flex: 2,
+                  child: ModernTextField(
+                    controller: _middleNameController,
+                    hintText: 'M.I.',
+                  ),
+                ),
+              ],
+            ),
+            
             ModernTextField(
-              controller: _nameController,
-              hintText: 'Full Name (e.g. John Doe)',
-              validator: (value) => value == null || value.isEmpty ? 'Name is required' : null,
+              controller: _lastNameController,
+              hintText: 'Last Name',
+              validator: (value) => value == null || value.isEmpty ? 'Required' : null,
             ),
             
             ModernTextField(
@@ -178,7 +210,6 @@ class _SignupPageState extends State<SignupPage> {
               hintText: 'LNU Email',
               validator: (value) {
                 if (value == null || value.isEmpty) return 'Email is required';
-                // 🛠️ MODIFIED: Strictly require @lnu.edu.ph
                 if (!value.trim().toLowerCase().endsWith('@lnu.edu.ph')) {
                   return 'Must end in @lnu.edu.ph';
                 }
@@ -191,13 +222,12 @@ class _SignupPageState extends State<SignupPage> {
               children: [
                 Expanded(
                   flex: 2, 
-                  // 🛠️ MODIFIED: Swapped to TextFormField to use inputFormatters natively
                   child: TextFormField(
                     controller: _studentIdController,
                     keyboardType: TextInputType.number,
                     inputFormatters: [
                       FilteringTextInputFormatter.digitsOnly,
-                      LengthLimitingTextInputFormatter(7), // Stops typing at 7 characters
+                      LengthLimitingTextInputFormatter(7), 
                     ],
                     style: const TextStyle(color: Colors.black87),
                     decoration: InputDecoration(

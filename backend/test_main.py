@@ -49,9 +49,10 @@ def client(db_session):
 @pytest.fixture
 def student_auth_headers(client, db_session):
     """Registers a student, logs them in, and returns the Auth header."""
-    # 🛠️ FIX: Changed json= to data=, ID to 7 digits, course to exact match
     client.post("/api/register", data={
-        "full_name": "Test Student",
+        "first_name": "Test",
+        "middle_name": "",
+        "last_name": "Student",
         "email": "student@lnu.edu.ph",
         "student_number": "1234567",
         "password": "password123",
@@ -68,7 +69,9 @@ def student_auth_headers(client, db_session):
 def admin_auth_headers(client, db_session):
     """Injects an Admin directly into the DB, logs them in, and returns the Auth header."""
     admin = User(
-        full_name="Master Admin",
+        first_name="Master",
+        middle_name="",
+        last_name="Admin",
         email="admin@lnu.edu.ph",
         student_number="1000000",
         password_hash=pwd_context.hash("admin123"),
@@ -92,9 +95,10 @@ def admin_auth_headers(client, db_session):
 
 def test_register_student_success(client):
     """Test standard student registration."""
-    # 🛠️ FIX: Changed json= to data=, ID to 7 digits, course to exact match
     response = client.post('/api/register', data={
-        "full_name": "Juan Dela Cruz",
+        "first_name": "Juan",
+        "middle_name": "Dela",
+        "last_name": "Cruz",
         "email": "juan@lnu.edu.ph",
         "student_number": "7654321",
         "password": "securepassword",
@@ -106,11 +110,11 @@ def test_register_student_success(client):
 def test_register_duplicate_email_fails(client):
     """Test that the system blocks duplicate emails."""
     client.post('/api/register', data={
-        "full_name": "Juan 1", "email": "juan@lnu.edu.ph", 
+        "first_name": "Juan", "middle_name": "", "last_name": "1", "email": "juan@lnu.edu.ph", 
         "student_number": "1111111", "password": "pass", "course": "Bachelor of Science in Information Technology"
     })
     response = client.post('/api/register', data={
-        "full_name": "Juan 2", "email": "juan@lnu.edu.ph", # Same Email
+        "first_name": "Juan", "middle_name": "", "last_name": "2", "email": "juan@lnu.edu.ph", # Same Email
         "student_number": "2222222", "password": "pass", "course": "Bachelor of Science in Information Technology"
     })
     assert response.status_code == 400
@@ -119,11 +123,11 @@ def test_register_duplicate_email_fails(client):
 def test_register_duplicate_student_id_fails(client):
     """Test that the system blocks duplicate student numbers."""
     client.post('/api/register', data={
-        "full_name": "Juan 1", "email": "juan1@lnu.edu.ph", 
+        "first_name": "Juan", "middle_name": "", "last_name": "1", "email": "juan1@lnu.edu.ph", 
         "student_number": "1234567", "password": "pass", "course": "Bachelor of Science in Information Technology"
     })
     response = client.post('/api/register', data={
-        "full_name": "Juan 2", "email": "juan2@lnu.edu.ph", 
+        "first_name": "Juan", "middle_name": "", "last_name": "2", "email": "juan2@lnu.edu.ph", 
         "student_number": "1234567", # Same ID
         "password": "pass", "course": "Bachelor of Science in Information Technology"
     })
@@ -152,7 +156,6 @@ def test_login_invalid_password(client, student_auth_headers):
 def test_unauthenticated_access_fails(client):
     """Test that protected endpoints reject requests without a valid token."""
     response = client.get('/api/users/me')
-    # 🛠️ FIX: Depending on FastAPI versions, missing token returns 401 or 403. This catches both safely.
     assert response.status_code in [401, 403] 
 
 
@@ -169,7 +172,7 @@ def test_get_all_students(client, admin_auth_headers):
 def test_admin_toggle_student_status(client, admin_auth_headers, db_session):
     """Test deactivating a student account so they cannot log in."""
     client.post("/api/register", data={
-        "full_name": "Target Student", "email": "target@lnu.edu.ph",
+        "first_name": "Target", "middle_name": "", "last_name": "Student", "email": "target@lnu.edu.ph",
         "student_number": "9999999", "password": "pass", "course": "Bachelor of Science in Information Technology"
     })
     target_user = db_session.query(User).filter(User.email == "target@lnu.edu.ph").first()
@@ -189,7 +192,9 @@ def test_admin_toggle_student_status(client, admin_auth_headers, db_session):
 def test_admin_create_staff(client, admin_auth_headers):
     """Test creating an election officer (Staff)."""
     response = client.post('/api/officers', headers=admin_auth_headers, data={
-        "full_name": "Election Officer 1",
+        "first_name": "Election",
+        "middle_name": "Officer",
+        "last_name": "1",
         "email": "officer@lnu.edu.ph",
         "password": "officerpass"
     })
@@ -198,7 +203,7 @@ def test_admin_create_staff(client, admin_auth_headers):
 
 def test_admin_update_staff_permissions(client, admin_auth_headers, db_session):
     """Test updating permissions for a staff member."""
-    staff = User(full_name="Staff", email="staff@lnu.edu.ph", student_number="S-1", password_hash="hash", role="Staff")
+    staff = User(first_name="Staff", middle_name="", last_name="", email="staff@lnu.edu.ph", student_number="S-1", password_hash="hash", role="Staff")
     db_session.add(staff)
     db_session.commit()
 
@@ -263,7 +268,7 @@ def test_register_candidate(client, admin_auth_headers, db_session):
     db_session.commit()
 
     response = client.post('/api/candidates', headers=admin_auth_headers, data={
-        "poll_id": poll.poll_id, "name": "Jane Doe", "position": "President",
+        "poll_id": poll.poll_id, "first_name": "Jane", "middle_name": "", "last_name": "Doe", "position": "President",
         "party_name": "Independent", "course_year": "Bachelor of Science in Information Technology", "description_platform": "Better coding!"
     })
     assert response.status_code == 200
@@ -271,7 +276,7 @@ def test_register_candidate(client, admin_auth_headers, db_session):
 def test_check_vote_status(client, student_auth_headers, db_session):
     """Test the endpoint that tells Flutter if the user already cast their ballot."""
     poll = Poll(title="Status Test Poll", start_time=datetime.now(timezone.utc), end_time=datetime.now(timezone.utc))
-    cand = Candidate(poll_id=1, name="John", position="Pres", course_year="1")
+    cand = Candidate(poll_id=1, first_name="John", middle_name="", last_name="", position="Pres", course_year="1")
     db_session.add_all([poll, cand])
     db_session.commit()
 
@@ -289,7 +294,7 @@ def test_student_cast_vote(client, student_auth_headers, db_session):
     db_session.add(poll)
     db_session.commit()
     
-    cand = Candidate(poll_id=poll.poll_id, name="Test Cand", position="President", course_year="1st")
+    cand = Candidate(poll_id=poll.poll_id, first_name="Test", middle_name="", last_name="Cand", position="President", course_year="1st")
     db_session.add(cand)
     db_session.commit()
 
@@ -301,7 +306,7 @@ def test_student_cast_vote(client, student_auth_headers, db_session):
 def test_student_double_voting_prevention(client, student_auth_headers, db_session):
     """Test that the system strictly prevents a user from voting twice in the same poll."""
     poll = Poll(title="Test Poll", start_time=datetime.now(timezone.utc), end_time=datetime.now(timezone.utc))
-    cand = Candidate(poll_id=1, name="Test Cand", position="President", course_year="1st")
+    cand = Candidate(poll_id=1, first_name="Test", middle_name="", last_name="Cand", position="President", course_year="1st")
     db_session.add_all([poll, cand])
     db_session.commit()
 
@@ -319,7 +324,7 @@ def test_student_double_voting_prevention(client, student_auth_headers, db_sessi
 def test_get_poll_report_calculations(client, student_auth_headers, db_session):
     """Test if the Report endpoint correctly calculates total votes and turnout."""
     poll = Poll(title="Report Test Poll", start_time=datetime.now(timezone.utc), end_time=datetime.now(timezone.utc))
-    cand = Candidate(poll_id=1, name="Winner", position="President", course_year="1st")
+    cand = Candidate(poll_id=1, first_name="Winner", middle_name="", last_name="", position="President", course_year="1st")
     db_session.add_all([poll, cand])
     db_session.commit()
 

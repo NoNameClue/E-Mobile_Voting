@@ -11,7 +11,9 @@ router = APIRouter(tags=["Candidates"])
 @router.post("/api/candidates")
 def add_candidate(
     poll_id: int = Form(...),
-    name: str = Form(...),
+    first_name: str = Form(...),
+    middle_name: str = Form(""),
+    last_name: str = Form(...),
     position: str = Form(...),
     party_name: str = Form("Independent"),
     course_year: str = Form(...),
@@ -26,7 +28,7 @@ def add_candidate(
     ).first()
     
     if existing and party_name != "Independent":
-        raise HTTPException(status_code=400, detail=f"The {party_name} already has a {position} registered.")
+        raise HTTPException(status_code=409, detail=f"The {party_name} already has a {position} registered.")
 
     file_path = None
     if photo and photo.filename:
@@ -38,7 +40,9 @@ def add_candidate(
 
     new_candidate = Candidate(
         poll_id=poll_id,
-        name=name,
+        first_name=first_name,
+        middle_name=middle_name,
+        last_name=last_name,
         position=position,
         party_name=party_name,
         course_year=course_year,
@@ -52,12 +56,14 @@ def add_candidate(
 @router.get("/api/candidates/{poll_id}")
 def get_candidates(poll_id: int, db: Session = Depends(get_db)):
     cands = db.query(Candidate).filter(Candidate.poll_id == poll_id).all()
-    # 🛠️ FIX: Safely map data to prevent Dart JSON Decode errors
     return [
         {
             "candidate_id": c.candidate_id,
             "poll_id": c.poll_id,
-            "name": c.name,
+            "first_name": c.first_name,
+            "middle_name": c.middle_name,
+            "last_name": c.last_name,
+            "name": f"{c.first_name} {c.middle_name} {c.last_name}".replace("  ", " ").strip(),
             "position": c.position,
             "party_name": c.party_name,
             "course_year": c.course_year,
@@ -77,8 +83,10 @@ def update_candidate(
     if not db_cand:
         raise HTTPException(status_code=404, detail="Candidate not found")
         
-    if candidate.name:
-        db_cand.name = candidate.name
+    if candidate.first_name: db_cand.first_name = candidate.first_name
+    if candidate.middle_name is not None: db_cand.middle_name = candidate.middle_name
+    if candidate.last_name: db_cand.last_name = candidate.last_name
+    
     if candidate.course_year:
         db_cand.course_year = candidate.course_year
     if candidate.description_platform is not None:

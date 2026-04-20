@@ -6,7 +6,9 @@ class User(Base):
     __tablename__ = "users"
     user_id = Column(Integer, primary_key=True, index=True)
     student_number = Column(String(50), unique=True, index=True)
-    full_name = Column(String(100))
+    first_name = Column(String(50), nullable=False)
+    middle_name = Column(String(50), default="")
+    last_name = Column(String(50), nullable=False)
     email = Column(String(100), unique=True, index=True)
     course = Column(String(100))
     password_hash = Column(String(255))
@@ -36,7 +38,9 @@ class Candidate(Base):
     __tablename__ = "candidates"
     candidate_id = Column(Integer, primary_key=True, index=True)
     poll_id = Column(Integer, ForeignKey("polls.poll_id"))
-    name = Column(String(100))
+    first_name = Column(String(50), nullable=False)
+    middle_name = Column(String(50), default="")
+    last_name = Column(String(50), nullable=False)
     position = Column(String(50))
     party_name = Column(String(50), default="Independent")
     course_year = Column(String(80))

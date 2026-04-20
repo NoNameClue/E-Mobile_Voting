@@ -37,15 +37,16 @@ class _ManagePollsState extends State<ManagePolls> {
     }
   }
 
-  Future<void> _savePoll(int? pollId, String title, DateTime start, DateTime end) async {
+  // 🛠️ THE FIX: Added 'isPublished' to the parameters and JSON body to satisfy Python's PollCreate schema
+  Future<void> _savePoll(int? pollId, String title, DateTime start, DateTime end, bool isPublished) async {
     final isUpdating = pollId != null;
     final url = isUpdating ? '${ApiConfig.baseUrl}/api/polls/$pollId' : '${ApiConfig.baseUrl}/api/polls';
         
     final body = jsonEncode({
       'title': title,
-      'start_time': start.toIso8601String(),
+      'start_time': start.toIso8601String(), // ISO-8601 format required by Python
       'end_time': end.toIso8601String(),
-      'status': 'Draft' 
+      'is_published': isPublished,           // 🛠️ REQUIRED: Python 422 error fix
     });
 
     try {
@@ -56,8 +57,13 @@ class _ManagePollsState extends State<ManagePolls> {
       if (response.statusCode == 200) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(isUpdating ? 'Poll updated!' : 'Poll created!')));
         _fetchPolls();
+      } else {
+        // 🛠️ DEBUG ADDITION: This will print the exact reason FastAPI rejected it to your terminal
+        print("ERROR DETAILS: ${response.body}");
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to save poll. Check console for details.')));
       }
     } catch (e) {
+      print("SERVER ERROR: $e");
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Server error')));
     }
   }
@@ -238,6 +244,9 @@ class _ManagePollsState extends State<ManagePolls> {
     final TextEditingController titleController = TextEditingController(text: existingPoll?['title'] ?? '');
     DateTime? startTime = existingPoll != null ? DateTime.parse(existingPoll['start_time']) : null;
     DateTime? endTime = existingPoll != null ? DateTime.parse(existingPoll['end_time']) : null;
+    
+    // 🛠️ THE FIX: Extract current publish status so edits don't accidentally unpublish a poll
+    bool isPublished = existingPoll != null ? (existingPoll['is_published'] == true || existingPoll['is_published'] == 1) : false;
 
     showDialog(
       context: context,
@@ -285,7 +294,8 @@ class _ManagePollsState extends State<ManagePolls> {
                       return;
                     }
                     Navigator.pop(context);
-                    _savePoll(existingPoll?['poll_id'], titleController.text, startTime!, endTime!);
+                    // 🛠️ THE FIX: Pass isPublished boolean to the function
+                    _savePoll(existingPoll?['poll_id'], titleController.text, startTime!, endTime!, isPublished);
                   },
                   style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF000B6B), foregroundColor: Colors.white),
                   child: const Text('Save Poll'),

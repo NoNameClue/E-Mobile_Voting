@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, File, UploadFile, Form
 from sqlalchemy.orm import Session
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone 
 import os, shutil
 from database import get_db
 from models import User
@@ -11,7 +11,9 @@ router = APIRouter(tags=["Authentication"])
 
 @router.post("/api/register")
 def register_user(
-    full_name: str = Form(...),
+    first_name: str = Form(...),
+    middle_name: str = Form(""),
+    last_name: str = Form(...),
     email: str = Form(...),
     student_number: str = Form(...),
     password: str = Form(...),
@@ -19,13 +21,11 @@ def register_user(
     photo: UploadFile = File(None),
     db: Session = Depends(get_db)
 ):
-    # 1. Check for duplicates
     if db.query(User).filter(User.email == email).first():
-        raise HTTPException(status_code=400, detail="Email already registered")
+        raise HTTPException(status_code=409, detail="Email already registered")
     if db.query(User).filter(User.student_number == student_number).first():
-        raise HTTPException(status_code=400, detail="Student ID already registered")
+        raise HTTPException(status_code=409, detail="Student ID already registered")
 
-    # 2. Handle Profile Picture Upload
     file_path = None
     if photo and photo.filename:
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
@@ -34,10 +34,11 @@ def register_user(
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(photo.file, buffer)
 
-    # 3. Hash password and save user
     hashed_password = pwd_context.hash(password)
     new_user = User(
-        full_name=full_name,
+        first_name=first_name,
+        middle_name=middle_name,
+        last_name=last_name,
         email=email,
         student_number=student_number,
         course=course,
@@ -72,8 +73,12 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
 
 @router.get("/api/users/me")
 def get_user_profile(current_user: User = Depends(get_current_user)):
+    full_name = f"{current_user.first_name} {current_user.middle_name} {current_user.last_name}".replace("  ", " ").strip()
     return {
-        "full_name": current_user.full_name,
+        "first_name": current_user.first_name,
+        "middle_name": current_user.middle_name,
+        "last_name": current_user.last_name,
+        "full_name": full_name,
         "student_number": current_user.student_number,
         "email": current_user.email,
         "role": current_user.role,

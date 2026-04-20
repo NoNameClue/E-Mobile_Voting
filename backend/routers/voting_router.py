@@ -88,10 +88,9 @@ def get_poll_results(poll_id: int, db: Session = Depends(get_db)):
         })
     return results
 
-# 🛠️ THE FIX: This now returns exactly the advanced data your Dart file expects!
+
 @router.get("/api/polls/{poll_id}/report")
 def get_poll_report(poll_id: int, db: Session = Depends(get_db)):
-    # 1. GENERATE SUMMARY DATA
     total_active_students = db.query(User).filter(User.role == "Student", User.is_active == True).count()
     total_voters = db.query(func.count(func.distinct(Vote.user_id))).filter(Vote.poll_id == poll_id).scalar() or 0
     
@@ -105,7 +104,6 @@ def get_poll_report(poll_id: int, db: Session = Depends(get_db)):
         "turnout_percentage": turnout
     }
     
-    # 2. GENERATE RESULTS DATA
     candidates = db.query(Candidate).filter(Candidate.poll_id == poll_id).all()
     
     positions = {}
@@ -124,20 +122,24 @@ def get_poll_report(poll_id: int, db: Session = Depends(get_db)):
     results = []
     for pos, cands in positions.items():
         total_votes_pos = sum(c["votes"] for c in cands)
-        
-        # Sort candidates by votes highest to lowest
         cands.sort(key=lambda x: x["votes"], reverse=True)
         
         formatted_cands = []
         for i, c in enumerate(cands):
             pct = round((c["votes"] / total_votes_pos * 100), 2) if total_votes_pos > 0 else 0.0
             
-            # Calculate Margin (+X% over the person below them)
-            margin = None
-            if i < len(cands) - 1:
-                next_pct = round((cands[i+1]["votes"] / total_votes_pos * 100), 2) if total_votes_pos > 0 else 0.0
-                margin = round(pct - next_pct, 2)
-                
+            # 🛠️ TICKET 9 FIX: Advanced Margin Calculation (Includes 0.0% Ties)
+            margin = 0.0
+            if len(cands) > 1:
+                if i == 0:
+                    # Winner's margin against 2nd place
+                    next_pct = round((cands[1]["votes"] / total_votes_pos * 100), 2) if total_votes_pos > 0 else 0.0
+                    margin = round(pct - next_pct, 2)
+                else:
+                    # Losers' margins against the Leader
+                    lead_pct = round((cands[0]["votes"] / total_votes_pos * 100), 2) if total_votes_pos > 0 else 0.0
+                    margin = round(pct - lead_pct, 2) 
+
             formatted_cands.append({
                 "rank": i + 1,
                 "name": c["name"],
@@ -145,7 +147,7 @@ def get_poll_report(poll_id: int, db: Session = Depends(get_db)):
                 "votes": c["votes"],
                 "percentage": pct,
                 "margin": margin,
-                "is_winner": (i == 0 and c["votes"] > 0) # Top rank is the winner
+                "is_winner": (i == 0 and c["votes"] > 0)
             })
             
         results.append({

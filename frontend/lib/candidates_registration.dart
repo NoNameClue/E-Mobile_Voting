@@ -15,7 +15,11 @@ class CandidatesRegistration extends StatefulWidget {
 class _CandidatesRegistrationState extends State<CandidatesRegistration> {
   final _formKey = GlobalKey<FormState>();
 
-  final TextEditingController _nameController = TextEditingController();
+  // 🛠️ CHANGED: Split name into 3 controllers
+  final TextEditingController _firstNameController = TextEditingController();
+  final TextEditingController _middleNameController = TextEditingController();
+  final TextEditingController _lastNameController = TextEditingController();
+  
   final TextEditingController _platformController = TextEditingController();
 
   List<dynamic> _polls = [];
@@ -84,7 +88,8 @@ class _CandidatesRegistrationState extends State<CandidatesRegistration> {
 
   Future<void> _fetchParties() async {
     try {
-      final response = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/parties/lineups'));
+      // 🛠️ THE FIX: Changed endpoint from /api/parties/lineups to /api/parties
+      final response = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/parties'));
       if (response.statusCode == 200) {
         final List<dynamic> fetchedParties = jsonDecode(response.body);
         setState(() {
@@ -125,7 +130,12 @@ class _CandidatesRegistrationState extends State<CandidatesRegistration> {
       var request = http.MultipartRequest('POST', uri);
 
       request.fields['poll_id'] = _selectedPollId.toString();
-      request.fields['name'] = _nameController.text.trim();
+      
+      // 🛠️ CHANGED: Send the 3 distinct name fields instead of 'name'
+      request.fields['first_name'] = _firstNameController.text.trim();
+      request.fields['middle_name'] = _middleNameController.text.trim();
+      request.fields['last_name'] = _lastNameController.text.trim();
+      
       request.fields['position'] = _selectedPosition!;
       request.fields['party_name'] = _selectedParty;
       request.fields['course_year'] = '$_selectedCourse - $_selectedYear';
@@ -146,7 +156,11 @@ class _CandidatesRegistrationState extends State<CandidatesRegistration> {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Candidate Registered Successfully!'), backgroundColor: Colors.green));
         _formKey.currentState!.reset();
         setState(() {
-          _nameController.clear();
+          // 🛠️ CHANGED: Clear all 3 name controllers
+          _firstNameController.clear();
+          _middleNameController.clear();
+          _lastNameController.clear();
+          
           _platformController.clear();
           _selectedImage = null;
           _imageBytes = null;
@@ -222,12 +236,37 @@ class _CandidatesRegistrationState extends State<CandidatesRegistration> {
                   ),
                   const SizedBox(height: 20),
                   
-                  // --- DISABLED FIELDS IF ENDED ---
+                  // 🛠️ CHANGED: Horizontal Row for First and Middle Name
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: TextFormField(
+                          controller: _firstNameController,
+                          enabled: !isPollEnded, 
+                          decoration: const InputDecoration(labelText: "First Name", border: OutlineInputBorder()),
+                          validator: (value) => value!.isEmpty ? 'Required' : null,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        flex: 2,
+                        child: TextFormField(
+                          controller: _middleNameController,
+                          enabled: !isPollEnded, 
+                          decoration: const InputDecoration(labelText: "M.I.", border: OutlineInputBorder()),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  
+                  // 🛠️ CHANGED: Last Name
                   TextFormField(
-                    controller: _nameController,
-                    enabled: !isPollEnded, // Disabled if ended
-                    decoration: const InputDecoration(labelText: "Full Name", border: OutlineInputBorder()),
-                    validator: (value) => value!.isEmpty ? 'Name is required' : null,
+                    controller: _lastNameController,
+                    enabled: !isPollEnded, 
+                    decoration: const InputDecoration(labelText: "Last Name", border: OutlineInputBorder()),
+                    validator: (value) => value!.isEmpty ? 'Required' : null,
                   ),
                   const SizedBox(height: 20),
 

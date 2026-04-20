@@ -57,7 +57,7 @@ class _ManageCandidatesState extends State<ManageCandidates> {
   Future<void> _fetchParties() async {
     try {
       final response = await http.get(
-        Uri.parse('${ApiConfig.baseUrl}/api/parties/lineups'),
+        Uri.parse('${ApiConfig.baseUrl}/api/parties'),
       );
       if (response.statusCode == 200) {
         setState(() {
@@ -128,7 +128,11 @@ class _ManageCandidatesState extends State<ManageCandidates> {
   }
 
   void _showEditCandidateDialog(Map<String, dynamic> candidate) {
-    final nameCtrl = TextEditingController(text: candidate['name']);
+    // 🛠️ THE FIX: Split the controller into First, Middle, and Last name
+    final firstNameCtrl = TextEditingController(text: candidate['first_name'] ?? '');
+    final middleNameCtrl = TextEditingController(text: candidate['middle_name'] ?? '');
+    final lastNameCtrl = TextEditingController(text: candidate['last_name'] ?? '');
+    
     final platformCtrl = TextEditingController(
       text: candidate['description_platform'] ?? '',
     );
@@ -191,16 +195,38 @@ class _ManageCandidatesState extends State<ManageCandidates> {
                     ),
                     const SizedBox(height: 15),
 
+                    // 🛠️ THE FIX: UI update to match the new 3-field requirement
+                    Row(
+                      children: [
+                        Expanded(
+                          flex: 3,
+                          child: TextField(
+                            controller: firstNameCtrl,
+                            decoration: const InputDecoration(labelText: 'First Name', border: OutlineInputBorder()),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          flex: 2,
+                          child: TextField(
+                            controller: middleNameCtrl,
+                            decoration: const InputDecoration(labelText: 'M.I.', border: OutlineInputBorder()),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+
                     TextField(
-                      controller: nameCtrl,
-                      decoration: const InputDecoration(labelText: 'Full Name'),
+                      controller: lastNameCtrl,
+                      decoration: const InputDecoration(labelText: 'Last Name', border: OutlineInputBorder()),
                     ),
                     const SizedBox(height: 10),
 
                     DropdownButtonFormField<String>(
                       value: selectedParty,
                       isExpanded: true,
-                      decoration: const InputDecoration(labelText: 'Party'),
+                      decoration: const InputDecoration(labelText: 'Party', border: OutlineInputBorder()),
                       items: uniqueParties.map<DropdownMenuItem<String>>((String partyName) {
                         return DropdownMenuItem<String>(
                           value: partyName,
@@ -218,7 +244,7 @@ class _ManageCandidatesState extends State<ManageCandidates> {
                           child: DropdownButtonFormField<String>(
                             value: selectedCourse,
                             isExpanded: true, 
-                            decoration: const InputDecoration(labelText: 'Course'),
+                            decoration: const InputDecoration(labelText: 'Course', border: OutlineInputBorder()),
                             items: _courses.map((c) => DropdownMenuItem(
                                       value: c,
                                       child: Text(c, overflow: TextOverflow.ellipsis),
@@ -232,7 +258,7 @@ class _ManageCandidatesState extends State<ManageCandidates> {
                           child: DropdownButtonFormField<String>(
                             value: selectedYear,
                             isExpanded: true, 
-                            decoration: const InputDecoration(labelText: 'Year'),
+                            decoration: const InputDecoration(labelText: 'Year', border: OutlineInputBorder()),
                             items: _years.map((y) => DropdownMenuItem(
                                       value: y,
                                       child: Text(y, overflow: TextOverflow.ellipsis),
@@ -246,7 +272,7 @@ class _ManageCandidatesState extends State<ManageCandidates> {
 
                     TextField(
                       controller: platformCtrl,
-                      decoration: const InputDecoration(labelText: 'Platform'),
+                      decoration: const InputDecoration(labelText: 'Platform', border: OutlineInputBorder()),
                       maxLines: 3,
                     ),
                   ],
@@ -263,11 +289,23 @@ class _ManageCandidatesState extends State<ManageCandidates> {
                     foregroundColor: Colors.white,
                   ),
                   onPressed: () async {
+                    if (firstNameCtrl.text.trim().isEmpty || lastNameCtrl.text.trim().isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('First Name and Last Name are required.')),
+                      );
+                      return;
+                    }
+
                     var req = http.MultipartRequest(
                       'PUT',
                       Uri.parse('${ApiConfig.baseUrl}/api/candidates/${candidate['candidate_id']}'),
                     );
-                    req.fields['name'] = nameCtrl.text;
+                    
+                    // 🛠️ THE FIX: Sending the 3 specific fields instead of 'name'
+                    req.fields['first_name'] = firstNameCtrl.text.trim();
+                    req.fields['middle_name'] = middleNameCtrl.text.trim();
+                    req.fields['last_name'] = lastNameCtrl.text.trim();
+                    
                     req.fields['party_name'] = selectedParty ?? 'Independent';
                     req.fields['course_year'] = "$selectedCourse - $selectedYear";
                     req.fields['description_platform'] = platformCtrl.text;
@@ -442,12 +480,11 @@ class _ManageCandidatesState extends State<ManageCandidates> {
                                               : null,
                                         ),
                                         title: Text(
-                                          candidate['name'],
+                                          candidate['name'], // The API already combines fname/mname/lname into 'name' for display
                                           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                                         ),
                                         subtitle: Text('${candidate['party_name']} • ${candidate['course_year']}'),
                                         
-                                        // --- UPDATED DISABLED BUTTONS & TOOLTIPS ---
                                         trailing: Row(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
