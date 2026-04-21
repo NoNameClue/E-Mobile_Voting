@@ -11,9 +11,12 @@ class ManageUsers extends StatefulWidget {
 }
 
 class _ManageUsersState extends State<ManageUsers> {
+  String _statusFilter = "all"; // All | Active | Deactivated
   List<dynamic> _allStudents = [];
   List<dynamic> _filteredStudents = []; 
-  final TextEditingController _searchController = TextEditingController();
+  final TextEditingController _firstNameController = TextEditingController();
+  final TextEditingController _lastNameController = TextEditingController();
+  final TextEditingController _idController = TextEditingController();
   bool _isLoading = true;
 
   @override
@@ -24,7 +27,9 @@ class _ManageUsersState extends State<ManageUsers> {
 
   @override
   void dispose() {
-    _searchController.dispose();
+    _firstNameController.dispose();
+    _lastNameController.dispose();
+    _idController.dispose();
     super.dispose();
   }
 
@@ -94,20 +99,56 @@ class _ManageUsersState extends State<ManageUsers> {
     }
   }
 
-  // 🛠️ FIX: Now searches both Name and ID
-  void _filterStudents(String query) {
-    if (query.isEmpty) {
-      setState(() => _filteredStudents = _allStudents);
-      return;
-    }
-    final lowerQuery = query.toLowerCase();
+  void _applyFilters() {
+    final first = _firstNameController.text.toLowerCase();
+    final last = _lastNameController.text.toLowerCase();
+    final id = _idController.text.toLowerCase();
+
     setState(() {
       _filteredStudents = _allStudents.where((student) {
-        final name = student['full_name']?.toString().toLowerCase() ?? '';
-        final studentId = student['student_number']?.toString().toLowerCase() ?? '';
-        
-        // Return true if either the name OR the student ID contains the search query
-        return name.contains(lowerQuery) || studentId.contains(lowerQuery);
+        final fullName = (student['full_name'] ?? '').toString().toLowerCase();
+        final studentId = (student['student_number'] ?? '').toString().toLowerCase();
+        final isActive = student['is_active'] == true || student['is_active'] == 1;
+
+        final parts = fullName.split(" ");
+        final firstName = parts.isNotEmpty ? parts.first : '';
+        final lastName = parts.length > 1 ? parts.last : '';
+
+        final matchesSearch =
+            (first.isEmpty || firstName.contains(first)) &&
+            (last.isEmpty || lastName.contains(last)) &&
+            (id.isEmpty || studentId.contains(id));
+
+        final matchesStatus =
+            _statusFilter == "all" ||
+            (_statusFilter == "active" && isActive) ||
+            (_statusFilter == "deactivated" && !isActive);
+
+        return matchesSearch && matchesStatus;
+      }).toList();
+    });
+  }
+
+  // 🛠️ FIX: Now searches both Name and ID
+  void _filterStudents() {
+    final first = _firstNameController.text.toLowerCase();
+    final last = _lastNameController.text.toLowerCase();
+    final id = _idController.text.toLowerCase();
+
+    setState(() {
+      _filteredStudents = _allStudents.where((student) {
+        final fullName = (student['full_name'] ?? '').toString().toLowerCase();
+        final studentId = (student['student_number'] ?? '').toString().toLowerCase();
+
+        final nameParts = fullName.split(" ");
+
+        final firstName = nameParts.isNotEmpty ? nameParts.first : '';
+        final lastName = nameParts.length > 1 ? nameParts.last : '';
+
+        return
+          (first.isEmpty || firstName.contains(first)) &&
+          (last.isEmpty || lastName.contains(last)) &&
+          (id.isEmpty || studentId.contains(id));
       }).toList();
     });
   }
@@ -135,40 +176,46 @@ class _ManageUsersState extends State<ManageUsers> {
             spacing: 20,
             runSpacing: 20,
             children: [
-              _buildStatCard("Total Students", total.toString(), Icons.people, Colors.blue),
-              _buildStatCard("Active Accounts", active.toString(), Icons.check_circle, Colors.green),
-              _buildStatCard("Deactivated", deactivated.toString(), Icons.cancel, Colors.red),
+              _buildStatCard("Total Students", total.toString(), Icons.people, Colors.blue, "all"),
+              _buildStatCard("Active Accounts", active.toString(), Icons.check_circle, Colors.green, "active"),
+              _buildStatCard("Deactivated", deactivated.toString(), Icons.cancel, Colors.red, "deactivated"),
             ],
           ),
           const SizedBox(height: 25),
 
           // Search Bar
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 15),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(10),
-              boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 5)],
-            ),
-            child: TextField(
-              controller: _searchController,
-              onChanged: _filterStudents,
-              decoration: const InputDecoration(
-                border: InputBorder.none,
-                // 🛠️ FIX: Updated placeholder text
-                hintText: 'Search by Name or ID...',
-                icon: Icon(Icons.search, color: Colors.grey),
+          Row(
+            children: [
+              Expanded(
+                child: _buildSearchField(
+                  controller: _firstNameController,
+                  hint: "First Name",
+                ),
               ),
-            ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildSearchField(
+                  controller: _lastNameController,
+                  hint: "Last Name",
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildSearchField(
+                  controller: _idController,
+                  hint: "ID Number",
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 15),
 
           // List of Students
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _filteredStudents.isEmpty
-                    ? const Center(child: Text("No students found.", style: TextStyle(color: Colors.white, fontSize: 18)))
+                    ? const Center(child: Text("No students found.", style: TextStyle(color: Colors.white, fontSize: 15)))
                     : ListView.builder(
                       itemCount: _filteredStudents.length,
                       itemBuilder: (context, index) {
@@ -176,14 +223,16 @@ class _ManageUsersState extends State<ManageUsers> {
                         final isActive = student['is_active'] == true;
 
                         return Card(
-                          margin: const EdgeInsets.only(bottom: 15),
+                          margin: const EdgeInsets.only(bottom: 6),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           child: Opacity(
                             opacity: isActive ? 1.0 : 0.6, // Dim the card if deactivated
                             child: ListTile(
-                              contentPadding: const EdgeInsets.all(15),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              dense: true,  
+                              visualDensity: const VisualDensity(vertical: -3),
                               leading: CircleAvatar(
-                                radius: 25,
+                                radius: 20,
                                 backgroundColor: isActive ? const Color(0xFF000B6B) : Colors.grey,
                                 backgroundImage: student['profile_pic_url'] != null && student['profile_pic_url'].toString().isNotEmpty
                                     ? NetworkImage('${ApiConfig.baseUrl}/${student['profile_pic_url']}')
@@ -194,33 +243,46 @@ class _ManageUsersState extends State<ManageUsers> {
                               ),
                               title: Text(
                                 student['full_name'] ?? 'Unknown',
-                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, decoration: isActive ? TextDecoration.none : TextDecoration.lineThrough),
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, decoration: isActive ? TextDecoration.none : TextDecoration.lineThrough),
                               ),
-                              subtitle: Padding(
-                                padding: const EdgeInsets.only(top: 8.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text('ID: ${student['student_number'] ?? 'N/A'}', style: const TextStyle(color: Colors.black87)),
-                                    const SizedBox(height: 4),
-                                    Text('Course: ${student['course'] ?? 'N/A'}', style: const TextStyle(color: Colors.black87)),
-                                    const SizedBox(height: 4),
-                                    Text('Joined: ${_formatDate(student['created_at'])}', style: const TextStyle(color: Colors.black54, fontSize: 12)),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      isActive ? 'Status: Active' : 'Status: Deactivated (Cannot log in)',
-                                      style: TextStyle(color: isActive ? Colors.green : Colors.red, fontWeight: FontWeight.bold)
-                                    ),
-                                  ],
-                                ),
+                              subtitle: Text(
+                                'ID: ${student['student_number']} • ${student['course'] ?? 'N/A'} • ${_formatDate(student['created_at'])}',
+                                style: const TextStyle(fontSize: 12),
                               ),
-                              trailing: Switch(
-                                value: isActive,
-                                activeThumbColor: Colors.green,
-                                inactiveThumbColor: Colors.red,
-                                onChanged: (bool newValue) {
-                                  _toggleStudentStatus(student['user_id'], isActive);
-                                },
+                              // subtitle: Padding(
+                              //   padding: const EdgeInsets.only(top: 8.0),
+                              //   child: Column(
+                              //     crossAxisAlignment: CrossAxisAlignment.start,
+                              //     children: [
+                              //       Text('ID: ${student['student_number'] ?? 'N/A'}', style: const TextStyle(color: Colors.black87, fontSize: 13)),
+                              //       const SizedBox(height: 4),
+                              //       Text('Course: ${student['course'] ?? 'N/A'}', style: const TextStyle(color: Colors.black87, fontSize: 12)),
+                              //       const SizedBox(height: 4),
+                              //       Text('Joined: ${_formatDate(student['created_at'])}', style: const TextStyle(color: Colors.black54, fontSize: 11)),
+                              //       const SizedBox(height: 4),
+                              //       Text(
+                              //         isActive ? 'Status: Active' : 'Status: Deactivated (Cannot log in)',
+                              //         style: TextStyle(color: isActive ? Colors.green : Colors.red, fontWeight: FontWeight.bold)
+                              //       ),
+                              //     ],
+                              //   ),
+                              // ),
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.edit, color: Colors.blue),
+                                    onPressed: () => _showEditUserDialog(student),
+                                  ),
+                                  Switch(
+                                    value: isActive,
+                                    activeThumbColor: Colors.green,
+                                    inactiveThumbColor: Colors.red,
+                                    onChanged: (bool newValue) {
+                                      _toggleStudentStatus(student['user_id'], isActive);
+                                    },
+                                  )
+                                ],
                               ),
                             ),
                           ),
@@ -233,27 +295,186 @@ class _ManageUsersState extends State<ManageUsers> {
     );
   }
 
-  Widget _buildStatCard(String title, String count, IconData icon, Color color) {
+  void _showEditUserDialog(dynamic student) {
+    final courseController = TextEditingController(text: student['course'] ?? '');
+    final passwordController = TextEditingController();
+    final confirmPasswordController = TextEditingController();
+
+    bool obscure1 = true;
+    bool obscure2 = true;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return AlertDialog(
+              title: const Text("Edit User"),
+              content: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    TextField(
+                      controller: courseController,
+                      decoration: const InputDecoration(labelText: "Course / Program"),
+                    ),
+                    const SizedBox(height: 15),
+
+                    TextField(
+                      controller: passwordController,
+                      obscureText: obscure1,
+                      decoration: InputDecoration(
+                        labelText: "New Password",
+                        suffixIcon: IconButton(
+                          icon: Icon(obscure1 ? Icons.visibility : Icons.visibility_off),
+                          onPressed: () => setModalState(() => obscure1 = !obscure1),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+
+                    TextField(
+                      controller: confirmPasswordController,
+                      obscureText: obscure2,
+                      decoration: InputDecoration(
+                        labelText: "Confirm Password",
+                        suffixIcon: IconButton(
+                          icon: Icon(obscure2 ? Icons.visibility : Icons.visibility_off),
+                          onPressed: () => setModalState(() => obscure2 = !obscure2),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  child: const Text("Cancel"),
+                  onPressed: () => Navigator.pop(context),
+                ),
+                ElevatedButton(
+                  child: const Text("Save"),
+                  onPressed: () async {
+                    if (passwordController.text != confirmPasswordController.text) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("Passwords do not match")),
+                      );
+                      return;
+                    }
+
+                    try {
+                      await http.put(
+                        Uri.parse('${ApiConfig.baseUrl}/api/admin/users/${student['user_id']}'),
+                        headers: {"Content-Type": "application/json"},
+                        body: jsonEncode({
+                          "course": courseController.text,
+                          "password": passwordController.text.isNotEmpty
+                              ? passwordController.text
+                              : null,
+                        }),
+                      );
+
+                      Navigator.pop(context);
+                      _fetchStudents();
+                    } catch (e) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("Update failed")),
+                      );
+                    }
+                  },
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildSearchField({
+    required TextEditingController controller,
+    required String hint,
+  }) {
     return Container(
-      width: 200,
-      padding: const EdgeInsets.all(20),
+      height: 40, // compact
+      padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Colors.white, // 👈 ALWAYS white (no fill change)
         borderRadius: BorderRadius.circular(12),
-        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10)],
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(backgroundColor: color.withOpacity(0.2), child: Icon(icon, color: color)),
-          const SizedBox(width: 15),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
-              Text(count, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-            ],
-          )
+        border: Border.all(
+          // color: isSelected ? color : Colors.transparent,
+          width: 2,
+        ),
+        boxShadow: const [
+          BoxShadow(color: Colors.black12, blurRadius: 10)
         ],
+      ),
+      child: TextField(
+        controller: controller,
+        onChanged: (_) => _filterStudents(),
+        style: const TextStyle(fontSize: 13),
+        decoration: InputDecoration(
+          border: InputBorder.none,
+          hintText: hint,
+          hintStyle: const TextStyle(fontSize: 12),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatCard(
+    String title,
+    String count,
+    IconData icon,
+    Color color,
+    String filterType,
+  ) {
+    final bool isSelected = _statusFilter == filterType;
+
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _statusFilter = filterType;
+        });
+        _applyFilters();
+      },
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        width: 200,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.grey.shade200 : Colors.white, // 👈 gray when selected
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? color : Colors.transparent, // 👈 keep colored outline
+            width: 2,
+          ),
+          boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10)],
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              backgroundColor: color.withOpacity(0.2),
+              child: Icon(icon, color: color),
+            ),
+            const SizedBox(width: 15),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                    overflow: TextOverflow.ellipsis, // 👈 prevents overflow
+                  ),
+                  Text(
+                    count,
+                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+            )
+          ],
+        ),
       ),
     );
   }
