@@ -665,24 +665,73 @@ Future<void> _generatePdfAndPrint() async {
                                                 ),
                                               ),
                                               DataCell(
-                                                Text(
-                                                  '${candidate['percentage']}%',
-                                                  style: textStyle,
+                                                SizedBox(
+                                                  width: 120,
+                                                  child: Row(
+                                                    children: [
+                                                      Expanded(
+                                                        child: Stack(
+                                                          children: [
+                                                            Container(
+                                                              height: 8,
+                                                              decoration: BoxDecoration(
+                                                                color: Colors.grey[300],
+                                                                borderRadius: BorderRadius.circular(4),
+                                                              ),
+                                                            ),
+                                                            FractionallySizedBox(
+                                                              widthFactor: (candidate['percentage'] ?? 0) / 100,
+                                                              child: Container(
+                                                                height: 8,
+                                                                decoration: BoxDecoration(
+                                                                  color: Colors.blue,
+                                                                  borderRadius: BorderRadius.circular(4),
+                                                                ),
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      ),
+                                                      const SizedBox(width: 6),
+                                                      Text(
+                                                        '${candidate['percentage']}%',
+                                                        style: textStyle.copyWith(fontSize: 12),
+                                                      ),
+                                                    ],
+                                                  ),
                                                 ),
                                               ),
                                               DataCell(
-                                                Text(
-                                                  candidate['margin'] != null
-                                                      ? '+${candidate['margin']}%'
-                                                      : '-',
-                                                  style: TextStyle(
-                                                    color:
-                                                        candidate['margin'] !=
-                                                            null
-                                                        ? Colors.blue[700]
-                                                        : Colors.grey,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
+                                                Builder(
+                                                  builder: (_) {
+                                                    final margin = candidate['margin'];
+                                                    final votes = candidate['votes'];
+
+                                                    // Detect tie safely
+                                                    final isTie = margin == 0;
+
+                                                    String displayText;
+                                                    Color displayColor;
+
+                                                    if (margin == null) {
+                                                      displayText = '-';
+                                                      displayColor = Colors.grey;
+                                                    } else if (isTie) {
+                                                      displayText = 'Tie';
+                                                      displayColor = Colors.orange;
+                                                    } else {
+                                                      displayText = '+${margin}%';
+                                                      displayColor = Colors.blue.shade700;
+                                                    }
+
+                                                    return Text(
+                                                      displayText,
+                                                      style: TextStyle(
+                                                        color: displayColor,
+                                                        fontWeight: FontWeight.bold,
+                                                      ),
+                                                    );
+                                                  },
                                                 ),
                                               ),
                                             ],
