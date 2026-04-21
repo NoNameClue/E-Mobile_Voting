@@ -449,7 +449,7 @@ class _ManagePollsState extends State<ManagePolls> {
                                 IconButton(
                                   icon: const Icon(Icons.info, color: Colors.amber), 
                                   onPressed: () async {
-                                    final res = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/polls/${poll['poll_id']}/summary'));
+                                    final res = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/polls/${poll['poll_id']}/report'));
                                     if (res.statusCode == 200) {
                                       final data = jsonDecode(res.body);
                                       if (!mounted) return;

@@ -15,7 +15,6 @@ class CandidatesRegistration extends StatefulWidget {
 class _CandidatesRegistrationState extends State<CandidatesRegistration> {
   final _formKey = GlobalKey<FormState>();
 
-  // 🛠️ CHANGED: Split name into 3 controllers
   final TextEditingController _firstNameController = TextEditingController();
   final TextEditingController _middleNameController = TextEditingController();
   final TextEditingController _lastNameController = TextEditingController();
@@ -55,218 +54,211 @@ class _CandidatesRegistrationState extends State<CandidatesRegistration> {
     'Bachelor of Technology and Livelihood Education',
     'Bachelor of Secondary Education'
   ];
-  
   final List<String> _years = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
 
-  bool _isLoading = false;
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _fetchPolls();
-    _fetchParties();
+    _fetchPollsAndParties();
   }
 
-  // --- HELPER: CHECK IF POLL IS ENDED ---
+  // 🛠️ UPDATED: Now it only fetches Polls on startup. Parties are loaded later.
+  Future<void> _fetchPollsAndParties() async {
+    try {
+      final pollResponse = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/polls'));
+
+      if (pollResponse.statusCode == 200) {
+        final List<dynamic> pollData = jsonDecode(pollResponse.body);
+
+        setState(() {
+          _polls = pollData;
+          _parties = ['Independent']; // Default before poll is selected
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to load data from server')));
+      }
+    }
+  }
+
+  // 🛠️ ADDED: New method to fetch parties for a specific poll
+  Future<void> _fetchPartiesForPoll(int pollId) async {
+    try {
+      final response = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/parties/$pollId'));
+      if (response.statusCode == 200) {
+        final List<dynamic> partyData = jsonDecode(response.body);
+        setState(() {
+          _parties = {'Independent', ...partyData.map((p) => p['name'].toString())}.toList();
+          _selectedParty = 'Independent'; // Reset to default
+        });
+      }
+    } catch (e) {
+      // Handle error silently
+    }
+  }
+
+  Future<void> _pickImage() async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? image = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+
+    if (image != null) {
+      final bytes = await image.readAsBytes();
+      setState(() {
+        _selectedImage = image;
+        _imageBytes = bytes; 
+      });
+    }
+  }
+
   bool _isCurrentPollEnded() {
     if (_selectedPollId == null || _polls.isEmpty) return false;
     final poll = _polls.firstWhere((p) => p['poll_id'] == _selectedPollId, orElse: () => null);
     return poll != null && poll['status'] == 'Ended';
   }
 
-  Future<void> _fetchPolls() async {
-    try {
-      final response = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/polls'));
-      if (response.statusCode == 200) {
-        setState(() {
-          _polls = jsonDecode(response.body);
-          if (_polls.isNotEmpty) _selectedPollId = _polls[0]['poll_id'];
-        });
-      }
-    } catch (e) {}
-  }
-
-  Future<void> _fetchParties() async {
-    try {
-      // 🛠️ THE FIX: Changed endpoint from /api/parties/lineups to /api/parties
-      final response = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/parties'));
-      if (response.statusCode == 200) {
-        final List<dynamic> fetchedParties = jsonDecode(response.body);
-        setState(() {
-          _parties = ['Independent']; 
-          for (var p in fetchedParties) {
-            if (p['party_name'] != 'Independent') _parties.add(p['party_name']);
-          }
-        });
-      }
-    } catch (e) {}
-  }
-
-  Future<void> _pickImage() async {
-    final ImagePicker picker = ImagePicker();
-    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
-
-    if (image != null) {
-      final bytes = await image.readAsBytes();
-      setState(() {
-        _selectedImage = image;
-        _imageBytes = bytes;
-      });
-    }
-  }
-
   Future<void> _submitForm() async {
+    if (_selectedPollId == null || _selectedPosition == null || _selectedCourse == null || _selectedYear == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select all required dropdowns')));
+      return;
+    }
+
     if (!_formKey.currentState!.validate()) return;
 
-    if (_selectedCourse == null || _selectedYear == null || _selectedPosition == null || _selectedPollId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select all dropdown fields.')));
+    if (_isCurrentPollEnded()) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cannot register candidates for an ended poll.')));
       return;
     }
 
     setState(() => _isLoading = true);
 
     try {
-      var uri = Uri.parse('${ApiConfig.baseUrl}/api/candidates');
-      var request = http.MultipartRequest('POST', uri);
-
+      var request = http.MultipartRequest('POST', Uri.parse('${ApiConfig.baseUrl}/api/candidates'));
+      
       request.fields['poll_id'] = _selectedPollId.toString();
-      
-      // 🛠️ CHANGED: Send the 3 distinct name fields instead of 'name'
-      request.fields['first_name'] = _firstNameController.text.trim();
-      request.fields['middle_name'] = _middleNameController.text.trim();
-      request.fields['last_name'] = _lastNameController.text.trim();
-      
+      request.fields['first_name'] = _firstNameController.text;
+      request.fields['middle_name'] = _middleNameController.text;
+      request.fields['last_name'] = _lastNameController.text;
       request.fields['position'] = _selectedPosition!;
       request.fields['party_name'] = _selectedParty;
       request.fields['course_year'] = '$_selectedCourse - $_selectedYear';
+      request.fields['description_platform'] = _platformController.text;
 
-      if (_platformController.text.trim().isNotEmpty) {
-        request.fields['description_platform'] = _platformController.text.trim();
+      if (_imageBytes != null && _selectedImage != null) {
+        request.files.add(
+          http.MultipartFile.fromBytes(
+            'photo', 
+            _imageBytes!, 
+            filename: _selectedImage!.name, 
+          )
+        );
       }
 
-      if (_selectedImage != null && _imageBytes != null) {
-        request.files.add(http.MultipartFile.fromBytes('photo', _imageBytes!, filename: _selectedImage!.name));
-      }
+      var streamedResponse = await request.send();
+      var response = await http.Response.fromStream(streamedResponse);
 
-      var response = await request.send();
-      var responseData = await response.stream.bytesToString();
-      var jsonResponse = jsonDecode(responseData);
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Candidate Registered Successfully!'), backgroundColor: Colors.green));
-        _formKey.currentState!.reset();
-        setState(() {
-          // 🛠️ CHANGED: Clear all 3 name controllers
+      if (response.statusCode == 200) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Candidate Registered Successfully!')));
+          _formKey.currentState!.reset();
           _firstNameController.clear();
           _middleNameController.clear();
           _lastNameController.clear();
-          
           _platformController.clear();
-          _selectedImage = null;
-          _imageBytes = null;
-          _selectedCourse = null;
-          _selectedYear = null;
-          _selectedPosition = null;
-          _selectedParty = 'Independent';
-        });
+          setState(() {
+            _selectedImage = null;
+            _imageBytes = null;
+            _selectedPosition = null;
+            _selectedCourse = null;
+            _selectedYear = null;
+            _selectedParty = 'Independent';
+          });
+        }
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(jsonResponse['detail'] ?? 'Registration failed.'), backgroundColor: Colors.red));
+        final error = jsonDecode(response.body);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error['detail'] ?? 'Registration Failed')));
+        }
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Network error. Please try again.'), backgroundColor: Colors.red));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error connecting to server')));
+      }
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    bool isPollEnded = _isCurrentPollEnded(); // Check if locked
+    if (_isLoading && _polls.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    bool isPollEnded = _isCurrentPollEnded();
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(30.0),
+      padding: const EdgeInsets.all(30),
       child: Form(
         key: _formKey,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text("Register New Candidate", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white)),
-            const SizedBox(height: 10),
-            Text(
-              isPollEnded 
-                ? "This election has ended. Registration is permanently locked." 
-                : "Enter candidate details, assign them to a party, and upload a photo.",
-              style: TextStyle(color: isPollEnded ? Colors.redAccent : Colors.grey, fontWeight: isPollEnded ? FontWeight.bold : FontWeight.normal),
-            ),
+            const Text("Register Candidate", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
+            const SizedBox(height: 5),
+            const Text("Add a new candidate to an election poll", style: TextStyle(color: Colors.white70)),
             const SizedBox(height: 30),
 
+            if (isPollEnded)
+              Container(
+                margin: const EdgeInsets.only(bottom: 20),
+                padding: const EdgeInsets.all(15),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.red.shade200)
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.warning, color: Colors.red),
+                    SizedBox(width: 10),
+                    Expanded(child: Text("This poll has already ended. You cannot register new candidates.", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold))),
+                  ],
+                ),
+              ),
+
             Container(
-              padding: const EdgeInsets.all(25),
-              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10)]),
+              padding: const EdgeInsets.all(30),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10)],
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  
-                  // --- PHOTO UPLOAD ---
-                  Center(
-                    child: Tooltip(
-                      message: isPollEnded ? "Cannot upload: Poll has ended" : "Upload Photo",
-                      child: GestureDetector(
-                        onTap: isPollEnded ? null : _pickImage, // Disabled if ended
-                        child: CircleAvatar(
-                          radius: 60,
-                          backgroundColor: Colors.grey[200],
-                          backgroundImage: _imageBytes != null ? MemoryImage(_imageBytes!) : null,
-                          child: _imageBytes == null ? const Icon(Icons.camera_alt, size: 40, color: Colors.grey) : null,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const Center(child: Padding(padding: EdgeInsets.only(top: 8), child: Text("Tap to upload photo", style: TextStyle(color: Colors.grey, fontSize: 12)))),
-                  const SizedBox(height: 30),
+                  const Text("Election Details", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const Divider(height: 30),
 
-                  // Dropdown for selecting poll is ALWALYS active so users can switch to view different polls
                   DropdownButtonFormField<int>(
-                    isExpanded: true,
-                    decoration: const InputDecoration(labelText: "Select Election Poll", border: OutlineInputBorder()),
-                    initialValue: _selectedPollId,
-                    items: _polls.map<DropdownMenuItem<int>>((poll) => DropdownMenuItem(value: poll['poll_id'], child: Text(poll['title'], overflow: TextOverflow.ellipsis))).toList(),
-                    onChanged: (val) => setState(() => _selectedPollId = val),
-                    validator: (value) => value == null ? 'Please select a poll' : null,
-                  ),
-                  const SizedBox(height: 20),
-                  
-                  // 🛠️ CHANGED: Horizontal Row for First and Middle Name
-                  Row(
-                    children: [
-                      Expanded(
-                        flex: 3,
-                        child: TextFormField(
-                          controller: _firstNameController,
-                          enabled: !isPollEnded, 
-                          decoration: const InputDecoration(labelText: "First Name", border: OutlineInputBorder()),
-                          validator: (value) => value!.isEmpty ? 'Required' : null,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        flex: 2,
-                        child: TextFormField(
-                          controller: _middleNameController,
-                          enabled: !isPollEnded, 
-                          decoration: const InputDecoration(labelText: "M.I.", border: OutlineInputBorder()),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  
-                  // 🛠️ CHANGED: Last Name
-                  TextFormField(
-                    controller: _lastNameController,
-                    enabled: !isPollEnded, 
-                    decoration: const InputDecoration(labelText: "Last Name", border: OutlineInputBorder()),
-                    validator: (value) => value!.isEmpty ? 'Required' : null,
+                    decoration: const InputDecoration(labelText: 'Select Poll', border: OutlineInputBorder()),
+                    value: _selectedPollId,
+                    items: _polls.map((poll) {
+                      String statusText = poll['status'] == 'Ended' ? ' (Ended)' : '';
+                      return DropdownMenuItem<int>(
+                        value: poll['poll_id'],
+                        child: Text('${poll['title']}$statusText'),
+                      );
+                    }).toList(),
+                    // 🛠️ UPDATED: Fetch parties dynamically when a poll is selected
+                    onChanged: (val) {
+                      setState(() => _selectedPollId = val);
+                      if (val != null) _fetchPartiesForPoll(val); 
+                    },
                   ),
                   const SizedBox(height: 20),
 
@@ -274,22 +266,53 @@ class _CandidatesRegistrationState extends State<CandidatesRegistration> {
                     children: [
                       Expanded(
                         child: DropdownButtonFormField<String>(
-                          isExpanded: true,
-                          decoration: const InputDecoration(labelText: "Position", border: OutlineInputBorder()),
-                          initialValue: _selectedPosition,
-                          items: _positions.map((p) => DropdownMenuItem(value: p, child: Text(p, overflow: TextOverflow.ellipsis))).toList(),
-                          onChanged: isPollEnded ? null : (val) => setState(() => _selectedPosition = val), // Disabled if ended
-                          validator: (value) => value == null ? 'Required' : null,
+                          decoration: const InputDecoration(labelText: 'Running for Position', border: OutlineInputBorder()),
+                          value: _selectedPosition,
+                          items: _positions.map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(),
+                          onChanged: isPollEnded ? null : (val) => setState(() => _selectedPosition = val), 
                         ),
                       ),
                       const SizedBox(width: 20),
                       Expanded(
                         child: DropdownButtonFormField<String>(
-                          isExpanded: true,
-                          decoration: const InputDecoration(labelText: "Select Party", border: OutlineInputBorder()),
-                          initialValue: _selectedParty,
-                          items: _parties.map((p) => DropdownMenuItem(value: p, child: Text(p, overflow: TextOverflow.ellipsis))).toList(),
-                          onChanged: isPollEnded ? null : (val) => setState(() => _selectedParty = val!), // Disabled if ended
+                          decoration: const InputDecoration(labelText: 'Political Party', border: OutlineInputBorder()),
+                          value: _selectedParty,
+                          items: _parties.map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(),
+                          onChanged: isPollEnded ? null : (val) => setState(() => _selectedParty = val!), 
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 40),
+                  const Text("Candidate Details", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const Divider(height: 30),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          controller: _firstNameController,
+                          enabled: !isPollEnded,
+                          decoration: const InputDecoration(labelText: "First Name", border: OutlineInputBorder()),
+                          validator: (value) => value!.isEmpty ? 'Required' : null,
+                        ),
+                      ),
+                      const SizedBox(width: 15),
+                      Expanded(
+                        child: TextFormField(
+                          controller: _middleNameController,
+                          enabled: !isPollEnded,
+                          decoration: const InputDecoration(labelText: "Middle Name (Optional)", border: OutlineInputBorder()),
+                        ),
+                      ),
+                      const SizedBox(width: 15),
+                      Expanded(
+                        child: TextFormField(
+                          controller: _lastNameController,
+                          enabled: !isPollEnded,
+                          decoration: const InputDecoration(labelText: "Last Name", border: OutlineInputBorder()),
+                          validator: (value) => value!.isEmpty ? 'Required' : null,
                         ),
                       ),
                     ],
@@ -301,25 +324,49 @@ class _CandidatesRegistrationState extends State<CandidatesRegistration> {
                       Expanded(
                         flex: 2,
                         child: DropdownButtonFormField<String>(
-                          isExpanded: true,
-                          decoration: const InputDecoration(labelText: "Course", border: OutlineInputBorder()),
-                          initialValue: _selectedCourse,
+                          decoration: const InputDecoration(labelText: 'Course', border: OutlineInputBorder()),
+                          value: _selectedCourse,
+                          isExpanded: true, 
                           items: _courses.map((c) => DropdownMenuItem(value: c, child: Text(c, overflow: TextOverflow.ellipsis))).toList(),
-                          onChanged: isPollEnded ? null : (val) => setState(() => _selectedCourse = val), // Disabled if ended
-                          validator: (value) => value == null ? 'Required' : null,
+                          onChanged: isPollEnded ? null : (val) => setState(() => _selectedCourse = val), 
                         ),
                       ),
                       const SizedBox(width: 20),
                       Expanded(
                         flex: 1,
                         child: DropdownButtonFormField<String>(
-                          isExpanded: true,
-                          decoration: const InputDecoration(labelText: "Year Level", border: OutlineInputBorder()),
-                          initialValue: _selectedYear,
-                          items: _years.map((y) => DropdownMenuItem(value: y, child: Text(y, overflow: TextOverflow.ellipsis))).toList(),
-                          onChanged: isPollEnded ? null : (val) => setState(() => _selectedYear = val), // Disabled if ended
-                          validator: (value) => value == null ? 'Required' : null,
+                          decoration: const InputDecoration(labelText: 'Year Level', border: OutlineInputBorder()),
+                          value: _selectedYear,
+                          items: _years.map((y) => DropdownMenuItem(value: y, child: Text(y))).toList(),
+                          onChanged: isPollEnded ? null : (val) => setState(() => _selectedYear = val), 
                         ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+
+                  Row(
+                    children: [
+                      Container(
+                        width: 100,
+                        height: 100,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[200],
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.grey.shade400)
+                        ),
+                        child: _imageBytes != null 
+                            ? ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.memory(_imageBytes!, fit: BoxFit.cover),
+                              )
+                            : const Icon(Icons.person, size: 50, color: Colors.grey),
+                      ),
+                      const SizedBox(width: 20),
+                      ElevatedButton.icon(
+                        onPressed: isPollEnded ? null : _pickImage, 
+                        icon: const Icon(Icons.image),
+                        label: const Text("Upload Candidate Photo"),
                       ),
                     ],
                   ),
@@ -327,9 +374,13 @@ class _CandidatesRegistrationState extends State<CandidatesRegistration> {
 
                   TextFormField(
                     controller: _platformController,
-                    enabled: !isPollEnded, // Disabled if ended
+                    enabled: !isPollEnded, 
                     maxLines: 4,
-                    decoration: const InputDecoration(labelText: "Platform / Description", border: OutlineInputBorder(), alignLabelWithHint: true),
+                    decoration: const InputDecoration(
+                      labelText: "Platform / Description", 
+                      border: OutlineInputBorder(), 
+                      alignLabelWithHint: true
+                    ),
                   ),
                   const SizedBox(height: 30),
 
@@ -340,10 +391,10 @@ class _CandidatesRegistrationState extends State<CandidatesRegistration> {
                       height: 50,
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: isPollEnded ? Colors.grey.shade400 : const Color(0xFF000B6B), // Grey out if ended
+                          backgroundColor: isPollEnded ? Colors.grey.shade400 : const Color(0xFF000B6B), 
                           foregroundColor: Colors.white
                         ),
-                        onPressed: isPollEnded ? null : (_isLoading ? null : _submitForm), // Disabled if ended
+                        onPressed: isPollEnded ? null : (_isLoading ? null : _submitForm), 
                         child: _isLoading
                             ? const CircularProgressIndicator(color: Colors.white)
                             : const Text("Register Candidate", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),

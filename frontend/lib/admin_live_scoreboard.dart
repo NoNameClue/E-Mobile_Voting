@@ -41,20 +41,19 @@ class _AdminLiveScoreboardState extends State<AdminLiveScoreboard> {
       final response = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/polls'));
       if (response.statusCode == 200) {
         final polls = jsonDecode(response.body);
-        if (mounted) {
-          setState(() {
-            _polls = polls;
-            if (_polls.isNotEmpty) {
-              _selectedPollId = _polls[0]['poll_id'];
-              _fetchResultsData();
-            } else {
-              _isLoading = false;
-            }
-          });
-        }
+        setState(() {
+          // Only Active polls make sense for LIVE scoreboard
+          _polls = polls.where((p) => p['status'] == 'Active').toList();
+          if (_polls.isNotEmpty) {
+            _selectedPollId = _polls[0]['poll_id'];
+            _fetchResultsData();
+          } else {
+            _isLoading = false;
+          }
+        });
       }
     } catch (e) {
-      if (mounted) setState(() => _isLoading = false);
+      setState(() => _isLoading = false);
     }
   }
 
@@ -63,10 +62,7 @@ class _AdminLiveScoreboardState extends State<AdminLiveScoreboard> {
     if (showLoading && mounted) setState(() => _isLoading = true);
 
     try {
-      final response = await http.get(
-        Uri.parse('${ApiConfig.baseUrl}/api/polls/$_selectedPollId/results'),
-      );
-
+      final response = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/polls/$_selectedPollId/results'));
       if (response.statusCode == 200) {
         if (mounted) {
           setState(() {
@@ -82,166 +78,90 @@ class _AdminLiveScoreboardState extends State<AdminLiveScoreboard> {
     }
   }
 
-  // Groups the flat list of candidates into a map by their position
-  Map<String, List<dynamic>> _groupResultsByPosition() {
-    Map<String, List<dynamic>> grouped = {};
-    for (var candidate in _resultsData) {
-      String pos = candidate['position'];
-      if (!grouped.containsKey(pos)) {
-        grouped[pos] = [];
-      }
-      grouped[pos]!.add(candidate);
-    }
-    
-    // Sort candidates within each position by votes (highest first)
-    grouped.forEach((key, list) {
-      list.sort((a, b) => (b['votes'] as int).compareTo(a['votes'] as int));
-    });
-
-    return grouped;
-  }
-
-  Widget _buildDropdown() {
-    if (_polls.isEmpty) return const SizedBox.shrink();
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 2),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<int>(
-          value: _selectedPollId,
-          items: _polls.map<DropdownMenuItem<int>>((poll) {
-            return DropdownMenuItem<int>(
-              value: poll['poll_id'],
-              child: Text(
-                poll['title'],
-                style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF000B6B)),
-              ),
-            );
-          }).toList(),
-          onChanged: (int? newValue) {
-            if (newValue != null && newValue != _selectedPollId) {
-              setState(() {
-                _selectedPollId = newValue;
-                _fetchResultsData();
-              });
-            }
-          },
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCandidateRow(dynamic candidate, int maxVotesInPosition) {
-    double fraction = maxVotesInPosition > 0 ? (candidate['votes'] / maxVotesInPosition) : 0.0;
+  Widget _buildCandidateRow(Map<String, dynamic> candidate, int maxVotes) {
+    int votes = candidate['votes'];
+    double flexValue = maxVotes > 0 ? (votes / maxVotes) : 0;
     String photoUrl = candidate['photo_url'] ?? '';
+    String fullImageUrl = photoUrl.isNotEmpty ? "${ApiConfig.baseUrl}/$photoUrl" : "";
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12.0),
+      padding: const EdgeInsets.only(bottom: 15.0),
       child: Row(
-        // 🛠️ FIX: Pin to the top so the bar alignment ignores the text length below the image
-        crossAxisAlignment: CrossAxisAlignment.start, 
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // 1. Profile Picture and Name Column
-          SizedBox(
-            width: 110, // Increased width to fit larger text
+          // Photo
+          Container(
+            width: 45,
+            height: 45,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade300,
+              shape: BoxShape.circle,
+              image: fullImageUrl.isNotEmpty
+                  ? DecorationImage(
+                      image: NetworkImage(fullImageUrl),
+                      fit: BoxFit.cover,
+                    )
+                  : null,
+            ),
+            child: fullImageUrl.isEmpty
+                ? const Icon(Icons.person, color: Colors.white)
+                : null,
+          ),
+          const SizedBox(width: 15),
+
+          // Name & Progress Bar
+          Expanded(
             child: Column(
-              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                CircleAvatar(
-                  radius: 40, // 🛠️ FIX: Made avatar slightly bigger (was 30)
-                  backgroundColor: Colors.grey.shade300,
-                  backgroundImage: photoUrl.isNotEmpty
-                      ? NetworkImage('${ApiConfig.baseUrl}/$photoUrl')
-                      : null,
-                  child: photoUrl.isEmpty
-                      ? const Icon(Icons.person, size: 40, color: Colors.grey)
-                      : null,
-                  onBackgroundImageError: photoUrl.isNotEmpty
-                      ? (exception, stackTrace) => const Icon(Icons.broken_image)
-                      : null,
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        candidate['name'],
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Text(
+                      "$votes",
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF000B6B)),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  candidate['name'],
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15, // 🛠️ FIX: Made name slightly bigger (was 13)
-                  ),
-                ),
-                const SizedBox(height: 2),
                 Text(
                   candidate['party_name'] ?? 'Independent',
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.grey,
-                    fontSize: 12, // 🛠️ FIX: Made party slightly bigger (was 10)
-                  ),
+                  style: const TextStyle(color: Colors.grey, fontSize: 12),
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 20),
+                const SizedBox(height: 8),
 
-          // 2. Horizontal Bar Graph
-          Expanded(
-            child: SizedBox(
-              // 🛠️ ALIGNMENT FIX: The height matches the Avatar's exact diameter (40 * 2 = 80). 
-              // This guarantees the bar centers perfectly with the picture.
-              height: 80, 
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  return Row(
-                    crossAxisAlignment: CrossAxisAlignment.center, // Centers bar relative to the 80px height
-                    children: [
-                      Stack(
-                        alignment: Alignment.centerLeft,
+                // Animated Progress Bar
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    return Container(
+                      height: 12,
+                      width: constraints.maxWidth,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade200,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
                         children: [
-                          // Background track for the bar
-                          Container(
-                            height: 40, // Increased thickness to look better with the larger avatar
-                            width: constraints.maxWidth * 0.75, // 75% max width
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade200,
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                          ),
-                          // The actual colored animated vote bar
                           AnimatedContainer(
-                            duration: const Duration(milliseconds: 800),
+                            duration: const Duration(milliseconds: 500),
                             curve: Curves.easeOut,
-                            height: 40,
-                            width: (constraints.maxWidth * 0.75) * fraction,
+                            width: constraints.maxWidth * flexValue,
                             decoration: BoxDecoration(
-                              color: Colors.green, // Active voting color
-                              borderRadius: BorderRadius.circular(6),
+                              color: const Color(0xFF000B6B),
+                              borderRadius: BorderRadius.circular(10),
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(width: 15),
-                      // 3. The Vote Count & Percentage Text
-                      Expanded(
-                        child: Text(
-                          '${candidate['votes']} votes (${candidate['percentage']}%)',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
-                          ),
-                        ),
-                      ),
-                    ],
-                  );
-                },
-              ),
+                    );
+                  },
+                ),
+              ],
             ),
           ),
         ],
@@ -249,93 +169,146 @@ class _AdminLiveScoreboardState extends State<AdminLiveScoreboard> {
     );
   }
 
+  // 🛠️ NEW: A helper widget that builds the position card independently
+  Widget _buildPositionCard(String position, List<dynamic> candidates, int maxVotes) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 25),
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "Live: ${position.toUpperCase()}",
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF000B6B),
+              ),
+            ),
+            const Divider(height: 30, thickness: 1),
+            ...candidates.map((candidate) => _buildCandidateRow(candidate, maxVotes)).toList(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // 🛠️ NEW: Splitting logic into two columns for maximum screen real estate
+  Widget _buildScoreboardGrid(Map<String, List<dynamic>> groupedResults, int maxVotes) {
+    bool isMobile = MediaQuery.of(context).size.width < 800;
+    List<String> positions = groupedResults.keys.toList();
+    
+    List<Widget> leftColumn = [];
+    List<Widget> rightColumn = [];
+
+    for (int i = 0; i < positions.length; i++) {
+      String pos = positions[i];
+      Widget card = _buildPositionCard(pos, groupedResults[pos]!, maxVotes);
+      
+      if (isMobile) {
+        // If mobile, stack everything into one single left column
+        leftColumn.add(card);
+      } else {
+        // If desktop/tablet, stagger them into two columns
+        if (i % 2 == 0) {
+          leftColumn.add(card);
+        } else {
+          rightColumn.add(card);
+        }
+      }
+    }
+
+    return SingleChildScrollView(
+      child: isMobile 
+        ? Column(children: leftColumn)
+        : Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: Column(children: leftColumn)),
+              const SizedBox(width: 25),
+              Expanded(child: Column(children: rightColumn)),
+            ],
+          ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    bool isMobile = MediaQuery.of(context).size.width < 700;
-    var groupedData = _groupResultsByPosition();
+    // Process Data
+    int maxVotes = 0;
+    Map<String, List<dynamic>> groupedResults = {};
+
+    for (var cand in _resultsData) {
+      if (cand['votes'] > maxVotes) {
+        maxVotes = cand['votes'];
+      }
+      String pos = cand['position'];
+      if (!groupedResults.containsKey(pos)) {
+        groupedResults[pos] = [];
+      }
+      groupedResults[pos]!.add(cand);
+    }
+
+    // Sort Candidates by Votes
+    for (var pos in groupedResults.keys) {
+      groupedResults[pos]!.sort((a, b) => b['votes'].compareTo(a['votes']));
+    }
 
     return Padding(
-      padding: EdgeInsets.all(isMobile ? 15.0 : 30.0),
+      padding: const EdgeInsets.all(30.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header Section
-          Wrap(
-            alignment: WrapAlignment.spaceBetween,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 20,
-            runSpacing: 15,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
+              const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Text(
-                    "Live Scoreboard",
-                    style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white),
-                  ),
-                  SizedBox(height: 5),
-                  Text(
-                    "Charts automatically update every 10 seconds.",
-                    style: TextStyle(color: Colors.white70, fontSize: 14),
-                  ),
+                children: [
+                  Text("Live Election Scoreboard", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white)),
+                  Text("Real-time results. Updates automatically every 10 seconds.", style: TextStyle(color: Colors.white70)),
                 ],
               ),
-              _buildDropdown(),
+              if (_polls.isNotEmpty)
+                Container(
+                  width: 250,
+                  padding: const EdgeInsets.symmetric(horizontal: 15),
+                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<int>(
+                      isExpanded: true,
+                      value: _selectedPollId,
+                      items: _polls.map((poll) {
+                        return DropdownMenuItem<int>(
+                          value: poll['poll_id'],
+                          child: Text(poll['title'], overflow: TextOverflow.ellipsis),
+                        );
+                      }).toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          setState(() {
+                            _selectedPollId = val;
+                            _fetchResultsData();
+                          });
+                        }
+                      },
+                    ),
+                  ),
+                ),
             ],
           ),
           const SizedBox(height: 30),
-
-          // Content Section
+          
           Expanded(
-            child: _isLoading && _resultsData.isEmpty
+            child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _resultsData.isEmpty
-                    ? const Center(
-                        child: Text(
-                          "No candidates or votes found for this election yet.",
-                          style: TextStyle(color: Colors.white, fontSize: 18),
-                        ),
-                      )
-                    : ListView.builder(
-                        itemCount: groupedData.keys.length,
-                        itemBuilder: (context, index) {
-                          String position = groupedData.keys.elementAt(index);
-                          List<dynamic> candidates = groupedData[position]!;
-
-                          // Find the highest vote count in this position to scale the bars properly
-                          int maxVotes = 0;
-                          for (var c in candidates) {
-                            if (c['votes'] > maxVotes) maxVotes = c['votes'];
-                          }
-
-                          return Card(
-                            margin: const EdgeInsets.only(bottom: 25),
-                            elevation: 4,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            child: Padding(
-                              padding: const EdgeInsets.all(20.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  // Position Title
-                                  Text(
-                                    "Live: ${position.toUpperCase()}",
-                                    style: const TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xFF000B6B),
-                                    ),
-                                  ),
-                                  const Divider(height: 30, thickness: 1),
-
-                                  // Candidate Rows
-                                  ...candidates.map((candidate) => _buildCandidateRow(candidate, maxVotes)).toList(),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
+                    ? const Center(child: Text("No live data found for this poll.", style: TextStyle(color: Colors.white)))
+                    // 🛠️ REPLACED: Uses the new two-column layout grid instead of a single ListView
+                    : _buildScoreboardGrid(groupedResults, maxVotes),
           ),
         ],
       ),

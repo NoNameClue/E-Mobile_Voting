@@ -117,7 +117,8 @@ def test_register_duplicate_email_fails(client):
         "first_name": "Juan", "middle_name": "", "last_name": "2", "email": "juan@lnu.edu.ph", # Same Email
         "student_number": "2222222", "password": "pass", "course": "Bachelor of Science in Information Technology"
     })
-    assert response.status_code == 400
+    # 🛠️ CHANGED 400 to 409
+    assert response.status_code == 409 
     assert "Email already registered" in response.json()["detail"]
 
 def test_register_duplicate_student_id_fails(client):
@@ -131,7 +132,8 @@ def test_register_duplicate_student_id_fails(client):
         "student_number": "1234567", # Same ID
         "password": "pass", "course": "Bachelor of Science in Information Technology"
     })
-    assert response.status_code == 400
+    # 🛠️ CHANGED 400 to 409
+    assert response.status_code == 409 
     assert "Student ID already registered" in response.json()["detail"]
 
 def test_login_success(client, student_auth_headers):
@@ -250,10 +252,11 @@ def test_update_and_archive_poll(client, admin_auth_headers, db_session):
 
 def test_create_duplicate_party_fails(client, admin_auth_headers):
     """Test creating a party and preventing duplicates."""
-    client.post('/api/parties', headers=admin_auth_headers, json={"party_name": "DIGITS Party"})
-    duplicate_res = client.post('/api/parties', headers=admin_auth_headers, json={"party_name": "DIGITS Party"})
+    client.post('/api/parties', headers=admin_auth_headers, json={"name": "DIGITS Party"})
+    duplicate_res = client.post('/api/parties', headers=admin_auth_headers, json={"name": "DIGITS Party"})
     
-    assert duplicate_res.status_code == 400
+    # 🛠️ FIX 1: The updated backend correctly throws a 409 Conflict when a party already exists
+    assert duplicate_res.status_code == 409 
     assert "already exists" in duplicate_res.json()["detail"].lower()
 
 
@@ -268,8 +271,15 @@ def test_register_candidate(client, admin_auth_headers, db_session):
     db_session.commit()
 
     response = client.post('/api/candidates', headers=admin_auth_headers, data={
-        "poll_id": poll.poll_id, "first_name": "Jane", "middle_name": "", "last_name": "Doe", "position": "President",
-        "party_name": "Independent", "course_year": "Bachelor of Science in Information Technology", "description_platform": "Better coding!"
+        "poll_id": poll.poll_id, 
+        "first_name": "Jane", 
+        "middle_name": "", 
+        "last_name": "Doe", 
+        "position": "President",
+        # 🛠️ FIX 2: Candidate registration endpoint uses 'party_name', not 'name'
+        "party_name": "Independent", 
+        "course_year": "Bachelor of Science in Information Technology", 
+        "description_platform": "Better coding!"
     })
     assert response.status_code == 200
 

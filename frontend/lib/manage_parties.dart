@@ -46,8 +46,7 @@ class _ManagePartiesState extends State<ManageParties> {
         return;
       }
 
-      // 🛠️ FIX 1: Changed from /api/parties/lineups to /api/parties
-      final partyRes = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/parties'));
+      final partyRes = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/parties/$_selectedPollId'));
       final candsRes = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/candidates/$_selectedPollId'));
 
       if (partyRes.statusCode == 200 && candsRes.statusCode == 200) {
@@ -61,14 +60,21 @@ class _ManagePartiesState extends State<ManageParties> {
           Map<String, dynamic> lineup = { for (var pos in standardPositions) pos: null };
           
           for (var c in candidates) {
-            if (c['party_name'] == p['party_name'] && lineup.containsKey(c['position'])) {
-              lineup[c['position']] = c['name'];
+            if (c['party_name'] == p['name'] && lineup.containsKey(c['position'])) {
+              
+              // 🛠️ FIX APPLIED: Combine the name properly from the backend fields!
+              String fName = c['first_name'] ?? '';
+              String mName = c['middle_name'] ?? '';
+              String lName = c['last_name'] ?? '';
+              String fullName = "$fName $mName $lName".replaceAll('  ', ' ').trim();
+              
+              lineup[c['position']] = fullName;
             }
           }
           
           updatedParties.add({
             "party_id": p['party_id'],
-            "party_name": p['party_name'],
+            "name": p['name'], 
             "lineup": lineup
           });
         }
@@ -89,12 +95,16 @@ class _ManagePartiesState extends State<ManageParties> {
   }
 
   Future<void> _createParty(String partyName) async {
+    if (_selectedPollId == null) return;
+
     try {
       final response = await http.post(
         Uri.parse('${ApiConfig.baseUrl}/api/parties'),
         headers: {"Content-Type": "application/json"},
-        // 🛠️ FIX 2: Changed "name" to "party_name" so Python accepts it
-        body: jsonEncode({"party_name": partyName}),
+        body: jsonEncode({
+          "poll_id": _selectedPollId,
+          "name": partyName
+        }),
       );
 
       if (response.statusCode == 200) {
@@ -255,12 +265,20 @@ class _ManagePartiesState extends State<ManageParties> {
     bool isMobile = MediaQuery.of(context).size.width < 700;
     bool isPollEnded = _isCurrentPollEnded(); 
 
+    bool isPollPublished = false;
+    if (_selectedPollId != null && _polls.isNotEmpty) {
+      final poll = _polls.firstWhere((p) => p['poll_id'] == _selectedPollId, orElse: () => null);
+      isPollPublished = poll != null && (poll['is_published'] == true || poll['is_published'] == 1);
+    }
+    
+    bool isLocked = isPollEnded || isPollPublished;
+    String lockReason = isPollEnded ? "Poll has ended." : "Poll is already published.";
+
     return Padding(
       padding: const EdgeInsets.all(20.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // --- MOBILE OVERFLOW FIX: Changed Row to Wrap ---
           Wrap(
             alignment: WrapAlignment.spaceBetween,
             crossAxisAlignment: WrapCrossAlignment.center,
@@ -275,19 +293,19 @@ class _ManagePartiesState extends State<ManageParties> {
                 children: [
                   _buildPollDropdown(),
                   Tooltip(
-                    message: isPollEnded ? "You cannot create parties because the poll has ended." : "Create a new party",
+                    message: isLocked ? "Creation locked: $lockReason" : "Create a new party",
                     child: ElevatedButton.icon(
-                      icon: Icon(Icons.add, color: isPollEnded ? Colors.grey.shade500 : Colors.white),
+                      icon: Icon(Icons.add, color: isLocked ? Colors.grey.shade500 : Colors.white),
                       label: Text(
                         "Create Party", 
-                        style: TextStyle(color: isPollEnded ? Colors.grey.shade500 : Colors.white, fontWeight: FontWeight.bold)
+                        style: TextStyle(color: isLocked ? Colors.grey.shade500 : Colors.white, fontWeight: FontWeight.bold)
                       ),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: isPollEnded ? Colors.grey.shade300 : Colors.green, 
+                        backgroundColor: isLocked ? Colors.grey.shade300 : Colors.green, 
                         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-                        elevation: isPollEnded ? 0 : 2, 
+                        elevation: isLocked ? 0 : 2, 
                       ),
-                      onPressed: isPollEnded ? null : _showCreatePartyDialog, 
+                      onPressed: isLocked ? null : _showCreatePartyDialog, 
                     ),
                   ),
                 ],
@@ -297,10 +315,10 @@ class _ManagePartiesState extends State<ManageParties> {
           const SizedBox(height: 10),
           
           Text(
-            isPollEnded 
-              ? "This election has ended. Party lineups are permanently locked." 
+            isLocked 
+              ? "This election is locked ($lockReason). Party lineups are permanently locked." 
               : "Create political parties and view their assigned candidate lineups for the selected election.", 
-            style: TextStyle(color: isPollEnded ? Colors.redAccent : Colors.grey, fontSize: 16, fontWeight: isPollEnded ? FontWeight.bold : FontWeight.normal)
+            style: TextStyle(color: isLocked ? Colors.redAccent : Colors.grey, fontSize: 16, fontWeight: isLocked ? FontWeight.bold : FontWeight.normal)
           ),
           
           const SizedBox(height: 20),
@@ -322,8 +340,7 @@ class _ManagePartiesState extends State<ManageParties> {
                           final party = _parties[index];
                           final Map<String, dynamic> lineup = party['lineup'];
                           
-                          bool isIndependent = party['party_name'].toString().toLowerCase() == "independent";
-                          bool canDelete = !isIndependent && !isPollEnded;
+                          bool isIndependent = party['name'].toString().toLowerCase() == "independent";
 
                           return Card(
                             elevation: 3,
@@ -340,7 +357,7 @@ class _ManagePartiesState extends State<ManageParties> {
                                     children: [
                                       Expanded(
                                         child: Text(
-                                          party['party_name'].toUpperCase(),
+                                          party['name'].toUpperCase(),
                                           style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF000B6B)),
                                           maxLines: 2,
                                           overflow: TextOverflow.ellipsis,
@@ -348,12 +365,12 @@ class _ManagePartiesState extends State<ManageParties> {
                                       ),
                                       if (!isIndependent) 
                                         Tooltip(
-                                          message: isPollEnded ? "You cannot delete/edit it because the poll has ended." : "Delete Party",
+                                          message: isLocked ? "Locked: $lockReason" : "Delete Party",
                                           child: IconButton(
-                                            icon: Icon(Icons.delete, color: isPollEnded ? Colors.grey.shade400 : Colors.red),
+                                            icon: Icon(Icons.delete, color: isLocked ? Colors.grey.shade400 : Colors.red),
                                             padding: EdgeInsets.zero,
                                             constraints: const BoxConstraints(),
-                                            onPressed: isPollEnded ? null : () => _showDeleteConfirmation1(party['party_id'], party['party_name']),
+                                            onPressed: isLocked ? null : () => _showDeleteConfirmation1(party['party_id'], party['name']),
                                           ),
                                         ),
                                     ],

@@ -26,7 +26,8 @@ class PermissionsUpdate(BaseModel):
     permissions: List[str]
 
 class PartyCreate(BaseModel):
-    party_name: str
+    poll_id: int
+    name: str
 
 class PollCreate(BaseModel):
     title: str

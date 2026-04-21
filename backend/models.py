@@ -32,8 +32,9 @@ class Poll(Base):
 class Party(Base):
     __tablename__ = "parties"
     party_id = Column(Integer, primary_key=True, index=True)
-    party_name = Column("name", String(100), unique=True, index=True)
-
+    poll_id = Column(Integer, ForeignKey("polls.poll_id", ondelete="CASCADE"), nullable=False)
+    name = Column(String(100), unique=True, index=True) # 🛠️ CHANGED TO name
+    
 class Candidate(Base):
     __tablename__ = "candidates"
     candidate_id = Column(Integer, primary_key=True, index=True)
