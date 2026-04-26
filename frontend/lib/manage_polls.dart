@@ -21,6 +21,30 @@ class _ManagePollsState extends State<ManagePolls> {
     _fetchPolls();
   }
 
+  // 🛠️ Formats raw ISO string from database to "Month DD, YYYY at HH:MM AM/PM"
+  String _formatDateString(String? isoString) {
+    if (isoString == null) return 'N/A';
+    try {
+      DateTime dt = DateTime.parse(isoString).toLocal();
+      return _formatDateTimeObj(dt);
+    } catch (e) {
+      return isoString; 
+    }
+  }
+
+  // 🛠️ Formats Flutter DateTime objects for the Dialog menus
+  String _formatDateTimeObj(DateTime? dt) {
+    if (dt == null) return 'Select date & time';
+    List<String> months = [
+      'January', 'February', 'March', 'April', 'May', 'June', 
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    String amPm = dt.hour >= 12 ? 'PM' : 'AM';
+    int hour = dt.hour > 12 ? dt.hour - 12 : (dt.hour == 0 ? 12 : dt.hour);
+    String minute = dt.minute.toString().padLeft(2, '0');
+    return "${months[dt.month - 1]} ${dt.day}, ${dt.year} at $hour:$minute $amPm";
+  }
+
   Future<void> _fetchPolls() async {
     setState(() => _isLoading = true);
     try {
@@ -37,16 +61,15 @@ class _ManagePollsState extends State<ManagePolls> {
     }
   }
 
-  // 🛠️ THE FIX: Added 'isPublished' to the parameters and JSON body to satisfy Python's PollCreate schema
   Future<void> _savePoll(int? pollId, String title, DateTime start, DateTime end, bool isPublished) async {
     final isUpdating = pollId != null;
     final url = isUpdating ? '${ApiConfig.baseUrl}/api/polls/$pollId' : '${ApiConfig.baseUrl}/api/polls';
         
     final body = jsonEncode({
       'title': title,
-      'start_time': start.toIso8601String(), // ISO-8601 format required by Python
+      'start_time': start.toIso8601String(), 
       'end_time': end.toIso8601String(),
-      'is_published': isPublished,           // 🛠️ REQUIRED: Python 422 error fix
+      'is_published': isPublished,           
     });
 
     try {
@@ -58,12 +81,9 @@ class _ManagePollsState extends State<ManagePolls> {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(isUpdating ? 'Poll updated!' : 'Poll created!')));
         _fetchPolls();
       } else {
-        // 🛠️ DEBUG ADDITION: This will print the exact reason FastAPI rejected it to your terminal
-        print("ERROR DETAILS: ${response.body}");
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to save poll. Check console for details.')));
       }
     } catch (e) {
-      print("SERVER ERROR: $e");
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Server error')));
     }
   }
@@ -140,6 +160,125 @@ class _ManagePollsState extends State<ManagePolls> {
         const SnackBar(content: Text('Server error')),
       );
     }
+  }
+
+  // 🛠️ NEW: Publish Summary Interceptor Dialog
+  void _showPublishConfirmationDialog(int pollId, String title) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          title: Text("Publish Election: $title", style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF000B6B))),
+          content: SizedBox(
+            width: 500,
+            height: 400,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.shade50, 
+                    borderRadius: BorderRadius.circular(8), 
+                    border: Border.all(color: Colors.amber.shade400)
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text("WARNING: IRREVERSIBLE ACTION", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orange, fontSize: 13)),
+                            const SizedBox(height: 4),
+                            Text("Once published, this election is permanently locked. You will NOT be able to add, edit, or remove parties and candidates to prevent voter fraud. Please carefully review the final roster below.", style: TextStyle(color: Colors.grey.shade800, fontSize: 12)),
+                          ],
+                        )
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Text("Official Candidate Roster", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                const Divider(),
+                Expanded(
+                  child: FutureBuilder(
+                    future: http.get(Uri.parse('${ApiConfig.baseUrl}/api/candidates/$pollId')),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+                      if (!snapshot.hasData || snapshot.data!.statusCode != 200) {
+                        return const Center(child: Text("Failed to load roster."));
+                      }
+
+                      final List candidates = jsonDecode(snapshot.data!.body);
+                      if (candidates.isEmpty) {
+                        return const Center(child: Text("⚠️ No candidates registered.\nAre you sure you want to publish an empty poll?", textAlign: TextAlign.center, style: TextStyle(color: Colors.red)));
+                      }
+
+                      // Group by party
+                      Map<String, List<dynamic>> grouped = {};
+                      for (var c in candidates) {
+                        String party = c['party_name'] ?? 'Independent';
+                        grouped.putIfAbsent(party, () => []).add(c);
+                      }
+
+                      return ListView(
+                        children: grouped.entries.map((entry) {
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 15),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                  decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(4)),
+                                  child: Text(entry.key, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF000B6B))),
+                                ),
+                                ...entry.value.map((candidate) {
+                                  return ListTile(
+                                    dense: true,
+                                    visualDensity: const VisualDensity(vertical: -2),
+                                    leading: const Icon(Icons.person, size: 18, color: Colors.grey),
+                                    title: Text(candidate['name'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                                    subtitle: Text(candidate['position'], style: const TextStyle(fontSize: 12)),
+                                  );
+                                }),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actionsPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Cancel", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+            ),
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12)),
+              icon: const Icon(Icons.campaign, size: 18),
+              label: const Text("Confirm & Publish", style: TextStyle(fontWeight: FontWeight.bold)),
+              onPressed: () {
+                Navigator.pop(context); // Close Modal
+                _publishPoll(pollId);   // Execute Publish API
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void _openPollDetails(int pollId, String title) {
@@ -245,7 +384,6 @@ class _ManagePollsState extends State<ManagePolls> {
     DateTime? startTime = existingPoll != null ? DateTime.parse(existingPoll['start_time']) : null;
     DateTime? endTime = existingPoll != null ? DateTime.parse(existingPoll['end_time']) : null;
     
-    // 🛠️ THE FIX: Extract current publish status so edits don't accidentally unpublish a poll
     bool isPublished = existingPoll != null ? (existingPoll['is_published'] == true || existingPoll['is_published'] == 1) : false;
 
     showDialog(
@@ -265,18 +403,19 @@ class _ManagePollsState extends State<ManagePolls> {
                     ),
                     const SizedBox(height: 20),
                     ListTile(
-                      title: const Text('Start Time'),
-                      subtitle: Text(startTime?.toString().substring(0, 16) ?? 'Select start date & time'),
-                      trailing: const Icon(Icons.calendar_today),
+                      title: const Text('Start Time', style: TextStyle(fontWeight: FontWeight.bold)),
+                      subtitle: Text(_formatDateTimeObj(startTime)), 
+                      trailing: const Icon(Icons.calendar_today, color: Color(0xFF000B6B)),
                       onTap: () async {
                         final dt = await _pickDateTime(startTime);
                         if (dt != null) setDialogState(() => startTime = dt);
                       },
                     ),
+                    const Divider(),
                     ListTile(
-                      title: const Text('End Time'),
-                      subtitle: Text(endTime?.toString().substring(0, 16) ?? 'Select end date & time'),
-                      trailing: const Icon(Icons.calendar_today),
+                      title: const Text('End Time', style: TextStyle(fontWeight: FontWeight.bold)),
+                      subtitle: Text(_formatDateTimeObj(endTime)), 
+                      trailing: const Icon(Icons.calendar_today, color: Color(0xFF000B6B)),
                       onTap: () async {
                         final dt = await _pickDateTime(endTime);
                         if (dt != null) setDialogState(() => endTime = dt);
@@ -294,7 +433,6 @@ class _ManagePollsState extends State<ManagePolls> {
                       return;
                     }
                     Navigator.pop(context);
-                    // 🛠️ THE FIX: Pass isPublished boolean to the function
                     _savePoll(existingPoll?['poll_id'], titleController.text, startTime!, endTime!, isPublished);
                   },
                   style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF000B6B), foregroundColor: Colors.white),
@@ -325,7 +463,7 @@ class _ManagePollsState extends State<ManagePolls> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text("Manage Polls", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
-              Spacer(),
+              const Spacer(),
               IconButton(
                 icon: Icon(
                   _showArchived ? Icons.list : Icons.archive,
@@ -361,7 +499,7 @@ class _ManagePollsState extends State<ManagePolls> {
             child: _isLoading 
               ? const Center(child: CircularProgressIndicator())
               : _polls.isEmpty 
-                  ? const Center(child: Text('No polls created yet.'))
+                  ? const Center(child: Text('No polls created yet.', style: TextStyle(color: Colors.white)))
                   : ListView.builder(
                       itemCount: _polls.length,
                       itemBuilder: (context, index) {
@@ -369,13 +507,11 @@ class _ManagePollsState extends State<ManagePolls> {
                         final bool isPublished = poll['is_published'] == true || poll['is_published'] == 1;
                         final bool isArchived = poll['is_archived'] == true || poll['is_archived'] == 1;
                         
-                        // --- 🛠️ EXPIRED CHECK ---
                         bool isExpired = false;
                         if (poll['end_time'] != null) {
                           DateTime endTime = DateTime.parse(poll['end_time']);
                           isExpired = endTime.isBefore(DateTime.now());
                         }
-                        // -------------------------
 
                         if (_showArchived != isArchived) {
                           return const SizedBox.shrink();
@@ -386,106 +522,113 @@ class _ManagePollsState extends State<ManagePolls> {
                           child: Card(
                             margin: const EdgeInsets.only(bottom: 15),
                             child: ListTile(
-                            title: Text(poll['title'], style: const TextStyle(fontWeight: FontWeight.bold)),
-                            subtitle: Text('Start: ${poll['start_time'].toString().substring(0, 16)}\nEnd: ${poll['end_time'].toString().substring(0, 16)}'),
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                if (!isPublished) ...[
-                                  ElevatedButton.icon(
-                                    icon: const Icon(Icons.campaign, size: 18),
-                                    label: const Text("Publish"),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.green,
-                                      foregroundColor: Colors.white,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                              title: Text(poll['title'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF000B6B))),
+                              
+                              subtitle: Padding(
+                                padding: const EdgeInsets.only(top: 8.0),
+                                child: Text(
+                                  'Start: ${_formatDateString(poll['start_time'])}\nEnd: ${_formatDateString(poll['end_time'])}', 
+                                  style: const TextStyle(height: 1.5, color: Colors.black87)
+                                ),
+                              ),
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (!isPublished) ...[
+                                    // 🛠️ REPLACED: Intercepts the publish action to show the summary modal
+                                    ElevatedButton.icon(
+                                      icon: const Icon(Icons.campaign, size: 18),
+                                      label: const Text("Publish"),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.green,
+                                        foregroundColor: Colors.white,
+                                      ),
+                                      onPressed: () => _showPublishConfirmationDialog(poll['poll_id'], poll['title']),
                                     ),
-                                    onPressed: () => _publishPoll(poll['poll_id']),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  IconButton(
-                                    icon: const Icon(Icons.edit, color: Colors.blue),
-                                    tooltip: "Edit Poll",
-                                    onPressed: () => _showPollDialog(existingPoll: poll),
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.delete, color: Colors.red),
-                                    tooltip: "Delete Poll",
-                                    onPressed: () => _confirmDelete(poll['poll_id']),
-                                  ),
-                                ] else ...[
-                                  // --- 🛠️ RED EXPIRED BADGE vs GREEN PUBLISHED BADGE ---
-                                  if (isExpired)
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                      decoration: BoxDecoration(
-                                        color: Colors.red.withOpacity(0.2),
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(color: Colors.red),
-                                      ),
-                                      child: const Text(
-                                        "EXPIRED",
-                                        style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 12),
-                                      ),
-                                    )
-                                  else
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                      decoration: BoxDecoration(
-                                        color: Colors.green.withOpacity(0.2),
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(color: Colors.green),
-                                      ),
-                                      child: const Text(
-                                        "PUBLISHED",
-                                        style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 12),
-                                      ),
+                                    const SizedBox(width: 8),
+                                    IconButton(
+                                      icon: const Icon(Icons.edit, color: Colors.blue),
+                                      tooltip: "Edit Poll",
+                                      onPressed: () => _showPollDialog(existingPoll: poll),
                                     ),
+                                    IconButton(
+                                      icon: const Icon(Icons.delete, color: Colors.red),
+                                      tooltip: "Delete Poll",
+                                      onPressed: () => _confirmDelete(poll['poll_id']),
+                                    ),
+                                  ] else ...[
+                                    if (isExpired)
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                        decoration: BoxDecoration(
+                                          color: Colors.red.withOpacity(0.2),
+                                          borderRadius: BorderRadius.circular(12),
+                                          border: Border.all(color: Colors.red),
+                                        ),
+                                        child: const Text(
+                                          "EXPIRED",
+                                          style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 12),
+                                        ),
+                                      )
+                                    else
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                        decoration: BoxDecoration(
+                                          color: Colors.green.withOpacity(0.2),
+                                          borderRadius: BorderRadius.circular(12),
+                                          border: Border.all(color: Colors.green),
+                                        ),
+                                        child: const Text(
+                                          "PUBLISHED",
+                                          style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 12),
+                                        ),
+                                      ),
+                                    const SizedBox(width: 10),
+                                  ],
+                                    
                                   const SizedBox(width: 10),
-                                  // -----------------------------------------------------
-                                ],
                                   
-                                const SizedBox(width: 10),
-                                
-                                IconButton(
-                                  icon: const Icon(Icons.info, color: Colors.amber), 
-                                  onPressed: () async {
-                                    final res = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/polls/${poll['poll_id']}/report'));
-                                    if (res.statusCode == 200) {
-                                      final data = jsonDecode(res.body);
-                                      if (!mounted) return;
-                                      showDialog(
-                                        context: context,
-                                        builder: (context) => AlertDialog(
-                                          title: Text(poll['title']),
-                                          content: Text("Total Candidates: ${data['total_candidates']}\nParticipating Parties: ${data['total_parties']}"),
-                                          actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text("Close"))],
-                                        )
-                                      );
+                                  IconButton(
+                                    icon: const Icon(Icons.info, color: Colors.amber), 
+                                    onPressed: () async {
+                                      final res = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/polls/${poll['poll_id']}/report'));
+                                      if (res.statusCode == 200) {
+                                        final data = jsonDecode(res.body);
+                                        if (!mounted) return;
+                                        showDialog(
+                                          context: context,
+                                          builder: (context) => AlertDialog(
+                                            title: Text(poll['title']),
+                                            content: Text("Total Candidates: ${data['total_candidates']}\nParticipating Parties: ${data['total_parties']}"),
+                                            actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text("Close"))],
+                                          )
+                                        );
+                                      }
                                     }
-                                  }
-                                ),
+                                  ),
 
-                                IconButton(
-                                  icon: Icon(
-                                    poll['is_archived'] == true || poll['is_archived'] == 1
-                                        ? Icons.unarchive
-                                        : Icons.archive,
-                                    color: poll['is_archived'] == true || poll['is_archived'] == 1
-                                        ? Colors.green
-                                        : Colors.orange,
+                                  IconButton(
+                                    icon: Icon(
+                                      poll['is_archived'] == true || poll['is_archived'] == 1
+                                          ? Icons.unarchive
+                                          : Icons.archive,
+                                      color: poll['is_archived'] == true || poll['is_archived'] == 1
+                                          ? Colors.green
+                                          : Colors.orange,
+                                    ),
+                                    tooltip: poll['is_archived'] == true || poll['is_archived'] == 1
+                                        ? 'Unarchive Poll'
+                                        : 'Archive Poll',
+                                    onPressed: () => _toggleArchivePoll(
+                                      poll['poll_id'],
+                                      poll['is_archived'] == true || poll['is_archived'] == 1,
+                                    ),
                                   ),
-                                  tooltip: poll['is_archived'] == true || poll['is_archived'] == 1
-                                      ? 'Unarchive Poll'
-                                      : 'Archive Poll',
-                                  onPressed: () => _toggleArchivePoll(
-                                    poll['poll_id'],
-                                    poll['is_archived'] == true || poll['is_archived'] == 1,
-                                  ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
-                        ),
                         );
                       },
                     ),

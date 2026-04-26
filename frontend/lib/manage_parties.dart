@@ -61,13 +61,10 @@ class _ManagePartiesState extends State<ManageParties> {
           
           for (var c in candidates) {
             if (c['party_name'] == p['name'] && lineup.containsKey(c['position'])) {
-              
-              // 🛠️ FIX APPLIED: Combine the name properly from the backend fields!
               String fName = c['first_name'] ?? '';
               String mName = c['middle_name'] ?? '';
               String lName = c['last_name'] ?? '';
               String fullName = "$fName $mName $lName".replaceAll('  ', ' ').trim();
-              
               lineup[c['position']] = fullName;
             }
           }
@@ -75,6 +72,7 @@ class _ManagePartiesState extends State<ManageParties> {
           updatedParties.add({
             "party_id": p['party_id'],
             "name": p['name'], 
+            "platform_bio": p['platform_bio'],
             "lineup": lineup
           });
         }
@@ -94,31 +92,51 @@ class _ManagePartiesState extends State<ManageParties> {
     }
   }
 
-  Future<void> _createParty(String partyName) async {
+  Future<void> _createParty(String partyName, String platformBio) async {
     if (_selectedPollId == null) return;
-
     try {
       final response = await http.post(
         Uri.parse('${ApiConfig.baseUrl}/api/parties'),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           "poll_id": _selectedPollId,
-          "name": partyName
+          "name": partyName,
+          "platform_bio": platformBio
         }),
       );
 
       if (response.statusCode == 200) {
-        if (mounted) Navigator.of(context).pop(); 
         _fetchData(); 
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Party created successfully!', style: TextStyle(color: Colors.white)), backgroundColor: Colors.green));
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Party created successfully!', style: TextStyle(color: Colors.white)), backgroundColor: Colors.green));
       } else {
         final errorMsg = jsonDecode(response.body)['detail'] ?? 'Failed to create party.';
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(errorMsg, style: const TextStyle(color: Colors.white)), backgroundColor: Colors.red));
-        }
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(errorMsg, style: const TextStyle(color: Colors.white)), backgroundColor: Colors.red));
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Network error. Please try again.')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Network error. Please try again.')));
+    }
+  }
+
+  Future<void> _updateParty(int partyId, String partyName, String platformBio) async {
+    try {
+      final response = await http.put(
+        Uri.parse('${ApiConfig.baseUrl}/api/parties/$partyId'),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "name": partyName,
+          "platform_bio": platformBio
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        _fetchData();
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Party updated successfully!', style: TextStyle(color: Colors.white)), backgroundColor: Colors.green));
+      } else {
+        final errorMsg = jsonDecode(response.body)['detail'] ?? 'Failed to update party.';
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(errorMsg, style: const TextStyle(color: Colors.white)), backgroundColor: Colors.red));
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Network error. Please try again.')));
     }
   }
 
@@ -140,7 +158,7 @@ class _ManagePartiesState extends State<ManageParties> {
         }
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Network error. Please try again.')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Network error. Please try again.')));
     }
   }
 
@@ -186,38 +204,80 @@ class _ManagePartiesState extends State<ManageParties> {
     );
   }
 
-  void _showCreatePartyDialog() {
-    final TextEditingController nameController = TextEditingController();
+void _showPartyDialog({Map<String, dynamic>? party}) {
+    final bool isEdit = party != null;
+    final TextEditingController nameController = TextEditingController(text: isEdit ? party['name'] : '');
+    final TextEditingController bioController = TextEditingController(text: isEdit ? (party['platform_bio'] ?? '') : '');
 
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text("Create New Party"),
-          content: TextField(
-            controller: nameController,
-            decoration: const InputDecoration(
-              labelText: "Party Name",
-              hintText: "e.g. Progressive Youth Party",
-              border: OutlineInputBorder(),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          title: Text(isEdit ? "Edit Party" : "Create New Party", style: const TextStyle(fontWeight: FontWeight.bold)),
+          content: SizedBox(
+            width: 450, 
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameController,
+                  decoration: InputDecoration(
+                    labelText: "Party Name",
+                    hintText: "e.g. Progressive Youth Party",
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    filled: true,
+                    fillColor: Colors.grey.shade50
+                  ),
+                  autofocus: !isEdit,
+                ),
+                const SizedBox(height: 20),
+                
+                TextField(
+                  controller: bioController,
+                  minLines: 4, 
+                  maxLines: 4, 
+                  maxLength: 300, 
+                  keyboardType: TextInputType.multiline,
+                  decoration: InputDecoration(
+                    labelText: "Platform / Bio (Optional)",
+                    hintText: "Briefly describe the party's vision...",
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    alignLabelWithHint: true,
+                    filled: true,
+                    fillColor: Colors.grey.shade50
+                  ),
+                ),
+              ],
             ),
-            autofocus: true,
           ),
+          actionsPadding: const EdgeInsets.all(20),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text("Cancel"),
+              child: const Text("Cancel", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
             ),
             ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF000B6B), foregroundColor: Colors.white),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF000B6B), 
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))
+              ),
               onPressed: () {
                 if (nameController.text.trim().isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Party name cannot be empty")));
                   return;
                 }
-                _createParty(nameController.text.trim());
+                Navigator.pop(context);
+                
+                if (isEdit) {
+                  _updateParty(party['party_id'], nameController.text.trim(), bioController.text.trim());
+                } else {
+                  _createParty(nameController.text.trim(), bioController.text.trim());
+                }
               },
-              child: const Text("Save / Create"),
+              child: Text(isEdit ? "Save Changes" : "Save / Create", style: const TextStyle(fontWeight: FontWeight.bold)),
             ),
           ],
         );
@@ -228,19 +288,19 @@ class _ManagePartiesState extends State<ManageParties> {
   Widget _buildPollDropdown() {
     if (_polls.isEmpty) return const SizedBox.shrink();
     return Container(
-      constraints: const BoxConstraints(maxWidth: 250), 
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      constraints: const BoxConstraints(maxWidth: 280), 
+      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 6),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.shade400),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 3))],
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<int>(
           isExpanded: true, 
           value: _selectedPollId,
-          icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF000B6B)),
-          style: const TextStyle(color: Color(0xFF000B6B), fontWeight: FontWeight.bold, fontSize: 16),
+          icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF000B6B), size: 28),
+          style: const TextStyle(color: Color(0xFF000B6B), fontWeight: FontWeight.w800, fontSize: 16),
           items: _polls.map<DropdownMenuItem<int>>((poll) {
             return DropdownMenuItem<int>(
               value: poll['poll_id'],
@@ -275,7 +335,7 @@ class _ManagePartiesState extends State<ManageParties> {
     String lockReason = isPollEnded ? "Poll has ended." : "Poll is already published.";
 
     return Padding(
-      padding: const EdgeInsets.all(20.0),
+      padding: const EdgeInsets.all(25.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -285,55 +345,56 @@ class _ManagePartiesState extends State<ManageParties> {
             spacing: 15,
             runSpacing: 15,
             children: [
-              const Text("Manage Parties", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white)),
+              const Text("Manage Parties", style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white)),
               Wrap(
-                spacing: 10,
-                runSpacing: 10,
+                spacing: 15,
+                runSpacing: 15,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   _buildPollDropdown(),
                   Tooltip(
                     message: isLocked ? "Creation locked: $lockReason" : "Create a new party",
                     child: ElevatedButton.icon(
-                      icon: Icon(Icons.add, color: isLocked ? Colors.grey.shade500 : Colors.white),
+                      icon: Icon(Icons.add_rounded, color: isLocked ? Colors.grey.shade500 : Colors.white, size: 22),
                       label: Text(
                         "Create Party", 
-                        style: TextStyle(color: isLocked ? Colors.grey.shade500 : Colors.white, fontWeight: FontWeight.bold)
+                        style: TextStyle(color: isLocked ? Colors.grey.shade500 : Colors.white, fontWeight: FontWeight.bold, fontSize: 15)
                       ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: isLocked ? Colors.grey.shade300 : Colors.green, 
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-                        elevation: isLocked ? 0 : 2, 
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        elevation: isLocked ? 0 : 4, 
                       ),
-                      onPressed: isLocked ? null : _showCreatePartyDialog, 
+                      onPressed: isLocked ? null : () => _showPartyDialog(), 
                     ),
                   ),
                 ],
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 15),
           
           Text(
             isLocked 
               ? "This election is locked ($lockReason). Party lineups are permanently locked." 
               : "Create political parties and view their assigned candidate lineups for the selected election.", 
-            style: TextStyle(color: isLocked ? Colors.redAccent : Colors.grey, fontSize: 16, fontWeight: isLocked ? FontWeight.bold : FontWeight.normal)
+            style: TextStyle(color: isLocked ? Colors.redAccent.shade100 : Colors.white70, fontSize: 16, fontWeight: isLocked ? FontWeight.bold : FontWeight.normal)
           ),
           
-          const SizedBox(height: 20),
+          const SizedBox(height: 30),
 
           Expanded(
             child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
+                ? const Center(child: CircularProgressIndicator(color: Colors.white))
                 : _parties.isEmpty
-                    ? const Center(child: Text("No parties found. Create one to get started!"))
+                    ? const Center(child: Text("No parties found. Create one to get started!", style: TextStyle(color: Colors.white, fontSize: 18)))
                     : GridView.builder(
                         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: isMobile ? 1 : 3,
-                          crossAxisSpacing: 20,
-                          mainAxisSpacing: 20,
-                          childAspectRatio: isMobile ? 1.0 : 0.80, 
+                          crossAxisSpacing: 25,
+                          mainAxisSpacing: 25,
+                          childAspectRatio: isMobile ? 0.9 : 0.70, // Allowed more height for the bigger bio boxes
                         ),
                         itemCount: _parties.length,
                         itemBuilder: (context, index) {
@@ -341,13 +402,15 @@ class _ManagePartiesState extends State<ManageParties> {
                           final Map<String, dynamic> lineup = party['lineup'];
                           
                           bool isIndependent = party['name'].toString().toLowerCase() == "independent";
+                          String? platformBio = party['platform_bio']; 
 
                           return Card(
-                            elevation: 3,
+                            elevation: 6,
+                            shadowColor: Colors.black26,
                             color: Colors.white,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                             child: Padding(
-                              padding: const EdgeInsets.all(20.0),
+                              padding: const EdgeInsets.all(25.0),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -358,24 +421,71 @@ class _ManagePartiesState extends State<ManageParties> {
                                       Expanded(
                                         child: Text(
                                           party['name'].toUpperCase(),
-                                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF000B6B)),
+                                          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFF000B6B), letterSpacing: 0.5),
                                           maxLines: 2,
                                           overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
                                       if (!isIndependent) 
-                                        Tooltip(
-                                          message: isLocked ? "Locked: $lockReason" : "Delete Party",
-                                          child: IconButton(
-                                            icon: Icon(Icons.delete, color: isLocked ? Colors.grey.shade400 : Colors.red),
-                                            padding: EdgeInsets.zero,
-                                            constraints: const BoxConstraints(),
-                                            onPressed: isLocked ? null : () => _showDeleteConfirmation1(party['party_id'], party['name']),
+                                        Container(
+                                          decoration: BoxDecoration(
+                                            color: Colors.grey.shade50,
+                                            borderRadius: BorderRadius.circular(8),
+                                            border: Border.all(color: Colors.grey.shade200)
                                           ),
-                                        ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Tooltip(
+                                                message: isLocked ? "Locked: $lockReason" : "Edit Party",
+                                                child: IconButton(
+                                                  icon: Icon(Icons.edit_rounded, color: isLocked ? Colors.grey.shade400 : Colors.blue.shade600, size: 20),
+                                                  constraints: const BoxConstraints(),
+                                                  onPressed: isLocked ? null : () => _showPartyDialog(party: party),
+                                                ),
+                                              ),
+                                              Tooltip(
+                                                message: isLocked ? "Locked: $lockReason" : "Delete Party",
+                                                child: IconButton(
+                                                  icon: Icon(Icons.delete_rounded, color: isLocked ? Colors.grey.shade400 : Colors.red.shade600, size: 20),
+                                                  constraints: const BoxConstraints(),
+                                                  onPressed: isLocked ? null : () => _showDeleteConfirmation1(party['party_id'], party['name']),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        )
                                     ],
                                   ),
-                                  const Divider(height: 30, thickness: 1),
+                                  
+                                  // MODERN BIGGER BIO BOX
+                                  if (platformBio != null && platformBio.isNotEmpty) ...[
+                                    const SizedBox(height: 15),
+                                    Container(
+                                      width: double.infinity,
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: Colors.blue.shade50.withOpacity(0.5),
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(color: Colors.blue.shade100)
+                                      ),
+                                      child: Text(
+                                        platformBio,
+                                        style: const TextStyle(
+                                          fontSize: 14, 
+                                          color: Colors.black87, 
+                                          fontWeight: FontWeight.w500,
+                                          height: 1.4 // Increased line height for readability
+                                        ),
+                                        maxLines: 3,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                  
+                                  const SizedBox(height: 15),
+                                  const Divider(thickness: 1.5),
+                                  const SizedBox(height: 10),
                                   
                                   Expanded(
                                     child: ListView(
@@ -392,19 +502,19 @@ class _ManagePartiesState extends State<ManageParties> {
                                                 flex: 2, 
                                                 child: Text(
                                                   position,
-                                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black87),
+                                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black54),
                                                 ),
                                               ),
-                                              const SizedBox(width: 5),
+                                              const SizedBox(width: 10),
                                               Expanded(
                                                 flex: 3, 
                                                 child: Text(
                                                   candidateName ?? "No Candidate",
                                                   style: TextStyle(
-                                                    fontSize: 14, 
+                                                    fontSize: 15, 
                                                     color: candidateName == null ? Colors.grey : Colors.black87,
                                                     fontStyle: candidateName == null ? FontStyle.italic : FontStyle.normal,
-                                                    fontWeight: candidateName != null ? FontWeight.w500 : FontWeight.normal,
+                                                    fontWeight: candidateName != null ? FontWeight.w800 : FontWeight.normal,
                                                   ),
                                                 ),
                                               ),

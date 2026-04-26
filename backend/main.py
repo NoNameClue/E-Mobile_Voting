@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from database import Base, engine
+from routers import auth_router, users_router, staffs_router, parties_router, polls_router, candidates_router, voting_router, questions_router
 
 # Import all routers
 from routers import auth_router, users_router, staffs_router, parties_router, polls_router, candidates_router, voting_router
@@ -34,3 +35,4 @@ app.include_router(parties_router.router)
 app.include_router(polls_router.router)
 app.include_router(candidates_router.router)
 app.include_router(voting_router.router)
+app.include_router(questions_router.router)

@@ -19,6 +19,27 @@ class _ManageUsersState extends State<ManageUsers> {
   final TextEditingController _idController = TextEditingController();
   bool _isLoading = true;
 
+  // 🛠️ ADDED: Exact list of courses copied from signup_page.dart
+  final List<String> _courses = [
+    'Bachelor of Science in Tourism Management',
+    'Bachelor of Science in Hospitality Management',
+    'Bachelor of Entrepreneurship',
+    'Bachelor of Arts in Communication',
+    'Bachelor of Arts in Political Science',
+    'Bachelor of Arts in English Language',
+    'Bachelor of Science in Social Work',
+    'Bachelor of Science in Biology',
+    'Bachelor of Science in Information Technology',
+    'Bachelor of Library and Information Science',
+    'Bachelor of Music in Music Education',
+    'Bachelor of Early Childhood Education',
+    'Bachelor of Elementary Education',
+    'Bachelor of Special Needs Education',
+    'Bachelor of Physical Education',
+    'Bachelor of Technology and Livelihood Education',
+    'Bachelor of Secondary Education'
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -129,7 +150,6 @@ class _ManageUsersState extends State<ManageUsers> {
     });
   }
 
-  // 🛠️ FIX: Now searches both Name and ID
   void _filterStudents() {
     final first = _firstNameController.text.toLowerCase();
     final last = _lastNameController.text.toLowerCase();
@@ -183,32 +203,35 @@ class _ManageUsersState extends State<ManageUsers> {
           ),
           const SizedBox(height: 25),
 
-          // Search Bar
+          // 🛠️ CHANGED: Search Bar with Modern Styling
           Row(
             children: [
               Expanded(
                 child: _buildSearchField(
                   controller: _firstNameController,
-                  hint: "First Name",
+                  hint: "Search First Name",
+                  icon: Icons.person_search_outlined,
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 15),
               Expanded(
                 child: _buildSearchField(
                   controller: _lastNameController,
-                  hint: "Last Name",
+                  hint: "Search Last Name",
+                  icon: Icons.person_search_outlined,
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 15),
               Expanded(
                 child: _buildSearchField(
                   controller: _idController,
-                  hint: "ID Number",
+                  hint: "Search ID Number",
+                  icon: Icons.badge_outlined,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 15),
+          const SizedBox(height: 20),
 
           // List of Students
           Expanded(
@@ -249,24 +272,6 @@ class _ManageUsersState extends State<ManageUsers> {
                                 'ID: ${student['student_number']} • ${student['course'] ?? 'N/A'} • ${_formatDate(student['created_at'])}',
                                 style: const TextStyle(fontSize: 12),
                               ),
-                              // subtitle: Padding(
-                              //   padding: const EdgeInsets.only(top: 8.0),
-                              //   child: Column(
-                              //     crossAxisAlignment: CrossAxisAlignment.start,
-                              //     children: [
-                              //       Text('ID: ${student['student_number'] ?? 'N/A'}', style: const TextStyle(color: Colors.black87, fontSize: 13)),
-                              //       const SizedBox(height: 4),
-                              //       Text('Course: ${student['course'] ?? 'N/A'}', style: const TextStyle(color: Colors.black87, fontSize: 12)),
-                              //       const SizedBox(height: 4),
-                              //       Text('Joined: ${_formatDate(student['created_at'])}', style: const TextStyle(color: Colors.black54, fontSize: 11)),
-                              //       const SizedBox(height: 4),
-                              //       Text(
-                              //         isActive ? 'Status: Active' : 'Status: Deactivated (Cannot log in)',
-                              //         style: TextStyle(color: isActive ? Colors.green : Colors.red, fontWeight: FontWeight.bold)
-                              //       ),
-                              //     ],
-                              //   ),
-                              // ),
                               trailing: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
@@ -296,7 +301,12 @@ class _ManageUsersState extends State<ManageUsers> {
   }
 
   void _showEditUserDialog(dynamic student) {
-    final courseController = TextEditingController(text: student['course'] ?? '');
+    // Determine initial dropdown value safely
+    String? selectedCourse = student['course'];
+    if (selectedCourse != null && !_courses.contains(selectedCourse)) {
+      selectedCourse = null; // Prevent crash if DB has an old/custom value not in the array
+    }
+
     final passwordController = TextEditingController();
     final confirmPasswordController = TextEditingController();
 
@@ -309,54 +319,92 @@ class _ManageUsersState extends State<ManageUsers> {
         return StatefulBuilder(
           builder: (context, setModalState) {
             return AlertDialog(
-              title: const Text("Edit User"),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+              title: const Text("Edit Student Details", style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF000B6B))),
               content: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    TextField(
-                      controller: courseController,
-                      decoration: const InputDecoration(labelText: "Course / Program"),
-                    ),
-                    const SizedBox(height: 15),
+                child: SizedBox(
+                  width: 400, // Make dialog slightly wider for better dropdown fit
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // 🛠️ CHANGED: Course Dropdown matches signup_page.dart
+                      DropdownButtonFormField<String>(
+                        value: selectedCourse,
+                        isExpanded: true,
+                        decoration: InputDecoration(
+                          labelText: "Course / Program",
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
+                        ),
+                        items: _courses.map((String course) {
+                          return DropdownMenuItem<String>(
+                            value: course,
+                            child: Text(
+                              course,
+                              style: const TextStyle(fontSize: 13),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (String? newValue) {
+                          setModalState(() {
+                            selectedCourse = newValue;
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 20),
 
-                    TextField(
-                      controller: passwordController,
-                      obscureText: obscure1,
-                      decoration: InputDecoration(
-                        labelText: "New Password",
-                        suffixIcon: IconButton(
-                          icon: Icon(obscure1 ? Icons.visibility : Icons.visibility_off),
-                          onPressed: () => setModalState(() => obscure1 = !obscure1),
+                      TextField(
+                        controller: passwordController,
+                        obscureText: obscure1,
+                        decoration: InputDecoration(
+                          labelText: "New Password",
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
+                          suffixIcon: IconButton(
+                            icon: Icon(obscure1 ? Icons.visibility : Icons.visibility_off, color: Colors.grey),
+                            onPressed: () => setModalState(() => obscure1 = !obscure1),
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 10),
+                      const SizedBox(height: 15),
 
-                    TextField(
-                      controller: confirmPasswordController,
-                      obscureText: obscure2,
-                      decoration: InputDecoration(
-                        labelText: "Confirm Password",
-                        suffixIcon: IconButton(
-                          icon: Icon(obscure2 ? Icons.visibility : Icons.visibility_off),
-                          onPressed: () => setModalState(() => obscure2 = !obscure2),
+                      TextField(
+                        controller: confirmPasswordController,
+                        obscureText: obscure2,
+                        decoration: InputDecoration(
+                          labelText: "Confirm Password",
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
+                          suffixIcon: IconButton(
+                            icon: Icon(obscure2 ? Icons.visibility : Icons.visibility_off, color: Colors.grey),
+                            onPressed: () => setModalState(() => obscure2 = !obscure2),
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
+              actionsPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
               actions: [
                 TextButton(
-                  child: const Text("Cancel"),
+                  child: const Text("Cancel", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
                   onPressed: () => Navigator.pop(context),
                 ),
                 ElevatedButton(
-                  child: const Text("Save"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF000B6B),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  ),
+                  child: const Text("Save Changes", style: TextStyle(fontWeight: FontWeight.bold)),
                   onPressed: () async {
                     if (passwordController.text != confirmPasswordController.text) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text("Passwords do not match")),
+                        const SnackBar(content: Text("Passwords do not match"), backgroundColor: Colors.red),
                       );
                       return;
                     }
@@ -365,20 +413,28 @@ class _ManageUsersState extends State<ManageUsers> {
                       await http.put(
                         Uri.parse('${ApiConfig.baseUrl}/api/admin/users/${student['user_id']}'),
                         headers: {"Content-Type": "application/json"},
+                        // Send the properly selected dropdown value
                         body: jsonEncode({
-                          "course": courseController.text,
+                          "course": selectedCourse ?? student['course'],
                           "password": passwordController.text.isNotEmpty
                               ? passwordController.text
                               : null,
                         }),
                       );
 
-                      Navigator.pop(context);
-                      _fetchStudents();
+                      if (mounted) {
+                        Navigator.pop(context);
+                        _fetchStudents();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text("User updated successfully!", style: TextStyle(color: Colors.white)), backgroundColor: Colors.green),
+                        );
+                      }
                     } catch (e) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text("Update failed")),
-                      );
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text("Update failed"), backgroundColor: Colors.red),
+                        );
+                      }
                     }
                   },
                 ),
@@ -390,32 +446,35 @@ class _ManageUsersState extends State<ManageUsers> {
     );
   }
 
+  // 🛠️ CHANGED: Modernized Search Field (Pill Shape + Drop Shadow + Icons)
   Widget _buildSearchField({
     required TextEditingController controller,
     required String hint,
+    required IconData icon,
   }) {
     return Container(
-      height: 40, // compact
-      padding: const EdgeInsets.symmetric(horizontal: 10),
+      height: 45, 
       decoration: BoxDecoration(
-        color: Colors.white, // 👈 ALWAYS white (no fill change)
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          // color: isSelected ? color : Colors.transparent,
-          width: 2,
-        ),
-        boxShadow: const [
-          BoxShadow(color: Colors.black12, blurRadius: 10)
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(25), 
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05), 
+            blurRadius: 10, 
+            offset: const Offset(0, 4)
+          )
         ],
       ),
       child: TextField(
         controller: controller,
         onChanged: (_) => _filterStudents(),
-        style: const TextStyle(fontSize: 13),
+        style: const TextStyle(fontSize: 14),
         decoration: InputDecoration(
+          prefixIcon: Icon(icon, color: Colors.grey.shade500, size: 20),
           border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           hintText: hint,
-          hintStyle: const TextStyle(fontSize: 12),
+          hintStyle: TextStyle(fontSize: 13, color: Colors.grey.shade400),
         ),
       ),
     );
@@ -442,10 +501,10 @@ class _ManageUsersState extends State<ManageUsers> {
         width: 200,
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.grey.shade200 : Colors.white, // 👈 gray when selected
+          color: isSelected ? Colors.grey.shade200 : Colors.white,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? color : Colors.transparent, // 👈 keep colored outline
+            color: isSelected ? color : Colors.transparent, 
             width: 2,
           ),
           boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10)],
@@ -464,7 +523,7 @@ class _ManageUsersState extends State<ManageUsers> {
                   Text(
                     title,
                     style: const TextStyle(fontWeight: FontWeight.bold),
-                    overflow: TextOverflow.ellipsis, // 👈 prevents overflow
+                    overflow: TextOverflow.ellipsis, 
                   ),
                   Text(
                     count,

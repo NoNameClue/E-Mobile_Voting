@@ -13,7 +13,7 @@ import 'manage_candidates.dart';
 import 'election_result.dart';
 import 'admin_live_scoreboard.dart';
 import 'manage_parties.dart';
-import 'candidates_registration.dart';
+// Note: candidates_registration.dart import removed because the feature is now inside Manage Candidates!
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -38,8 +38,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
   
   Map<String, dynamic>? _mostRecentPollData;
   bool _isLoadingRecentPoll = true; 
-  
-  // 🛠️ NEW: Track if there is an active poll to show/hide Live Scoreboard
   bool _hasActivePoll = false;
 
   final List<String> _masterMenuItems = [
@@ -49,7 +47,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
     "Manage Polls",
     "Manage Candidates",
     "Manage Parties",
-    "Registration for Candidates",
     "Live Scoreboard",
     "Election Result",
   ];
@@ -67,16 +64,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   Future<void> _loadUserAccess() async {
     final prefs = await SharedPreferences.getInstance();
-    
     _userRole = prefs.getString('role') ?? "Admin"; 
-    
     String permsString = prefs.getString('permissions') ?? "[]";
     _userPermissions = List<String>.from(jsonDecode(permsString));
-
-    _updateMenu(); // 🛠️ Replaced inline menu building with a dynamic method
+    _updateMenu(); 
   }
 
-  // 🛠️ NEW: Centralized menu builder to dynamically hide/show elements
   void _updateMenu() {
     if (!mounted) return;
     setState(() {
@@ -94,7 +87,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
         }).toList();
       }
 
-      // 🛠️ Failsafe: Kick user back to Dashboard if they are on Scoreboard and it ends
       if (!_hasActivePoll && _selectedMenuString == "Live Scoreboard") {
         _selectedMenuString = "Dashboard";
       }
@@ -104,13 +96,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
   Future<void> _fetchUserProfile() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('jwt_token') ?? '';
-
     try {
       final response = await http.get(
         Uri.parse('${ApiConfig.baseUrl}/api/users/me'),
         headers: {'Authorization': 'Bearer $token'},
       );
-
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (mounted) {
@@ -122,11 +112,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
         }
       }
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _userName = _userRole;
-        });
-      }
+      if (mounted) setState(() => _userName = _userRole);
     }
   }
 
@@ -134,37 +120,30 @@ class _AdminDashboardState extends State<AdminDashboard> {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('jwt_token') ?? ''; 
-
       final response = await http.get(
         Uri.parse('${ApiConfig.baseUrl}/api/users'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
+        headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
       );
-
       if (response.statusCode == 200) {
         final List<dynamic> allUsers = jsonDecode(response.body);
-
-        int total = 0;
-        int active = 0;
+        int total = 0; 
+        int active = 0; 
         int deactivated = 0;
-
+        
         for (var user in allUsers) {
           if (user['role'] == 'Student') {
             total++;
-            if (user['is_active'] == true || user['is_active'] == 1) {
-              active++;
-            } else {
-              deactivated++;
+            if (user['is_active'] == true || user['is_active'] == 1) { 
+              active++; 
+            } else { 
+              deactivated++; 
             }
           }
         }
-
         setState(() {
-          _totalStudents = total;
-          _activeStudents = active;
-          _deactivatedStudents = deactivated;
+          _totalStudents = total; 
+          _activeStudents = active; 
+          _deactivatedStudents = deactivated; 
           _isLoadingStats = false;
         });
       } else {
@@ -177,52 +156,35 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   Future<void> _fetchRecentPolls() async {
     setState(() => _isLoadingRecentPoll = true);
-
     try {
       final response = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/polls'));
-
       if (response.statusCode == 200) {
         final List<dynamic> allPolls = jsonDecode(response.body);
-
-        // 🛠️ NEW: Determine if there is an active poll and update menu UI
         bool hasActive = allPolls.any((poll) => poll['status'] == 'Active');
         _hasActivePoll = hasActive;
         _updateMenu();
 
-        // Filter for only Ended/Expired polls
-        final recent = allPolls.where((poll) {
-          return poll['status'] == 'Ended' || poll['status'] == 'Expired';
-        }).toList();
-
+        final recent = allPolls.where((poll) => poll['status'] == 'Ended' || poll['status'] == 'Expired').toList();
         if (recent.isNotEmpty) {
-          // Sort by end_time descending to get the absolute newest one
           recent.sort((a, b) {
             DateTime dateA = DateTime.tryParse(a['end_time'] ?? a['start_time'] ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
             DateTime dateB = DateTime.tryParse(b['end_time'] ?? b['start_time'] ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
             return dateB.compareTo(dateA);
           });
-
+          
           final latestPoll = recent.first;
-
-          // Fetch the analytical report to see who won
           final reportRes = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/polls/${latestPoll['poll_id']}/report'));
           
           if (reportRes.statusCode == 200) {
             setState(() {
-              _mostRecentPollData = {
-                'poll': latestPoll,
-                'report': jsonDecode(reportRes.body)
-              };
+              _mostRecentPollData = {'poll': latestPoll, 'report': jsonDecode(reportRes.body)};
               _isLoadingRecentPoll = false;
             });
           } else {
             setState(() => _isLoadingRecentPoll = false);
           }
         } else {
-          setState(() {
-            _mostRecentPollData = null;
-            _isLoadingRecentPoll = false;
-          });
+          setState(() { _mostRecentPollData = null; _isLoadingRecentPoll = false; });
         }
       } else {
         setState(() => _isLoadingRecentPoll = false);
@@ -243,7 +205,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   void _showPollDetailsDialog() {
     if (_mostRecentPollData == null) return;
-    
     final poll = _mostRecentPollData!['poll'];
     final report = _mostRecentPollData!['report'];
     final summary = report['summary'];
@@ -259,12 +220,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Header
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: const BoxDecoration(
-                  color: Color(0xFF000B6B),
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(15)),
+                  color: Color(0xFF000B6B), 
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(15))
                 ),
                 child: Row(
                   children: [
@@ -279,22 +239,16 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         ],
                       ),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.close, color: Colors.white),
-                      onPressed: () => Navigator.pop(context),
-                    )
+                    IconButton(icon: const Icon(Icons.close, color: Colors.white), onPressed: () => Navigator.pop(context))
                   ],
                 ),
               ),
-              
-              // Body
               Flexible(
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.all(25),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Turnout Stats
                       Row(
                         children: [
                           Expanded(
@@ -327,25 +281,22 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         ],
                       ),
                       const SizedBox(height: 30),
-                      
                       const Text("Winning Margins", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                       const Divider(),
                       const SizedBox(height: 10),
-
                       ...results.map((posData) {
                         final candidates = posData['candidates'] as List<dynamic>;
                         final winner = candidates.firstWhere((c) => c['is_winner'] == true, orElse: () => null);
-                        
                         if (winner == null) return const SizedBox.shrink();
-
+                        
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 15),
                           child: Row(
                             children: [
                               Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(color: Colors.amber.shade100, shape: BoxShape.circle),
-                                child: const Icon(Icons.emoji_events, color: Colors.orange, size: 20),
+                                padding: const EdgeInsets.all(8), 
+                                decoration: BoxDecoration(color: Colors.amber.shade100, shape: BoxShape.circle), 
+                                child: const Icon(Icons.emoji_events, color: Colors.orange, size: 20)
                               ),
                               const SizedBox(width: 15),
                               Expanded(
@@ -383,41 +334,25 @@ class _AdminDashboardState extends State<AdminDashboard> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          "Latest Election Results",
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
-        ),
+        const Text("Latest Election Results", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
         const SizedBox(height: 15),
-
-        if (_isLoadingRecentPoll)
+        
+        if (_isLoadingRecentPoll) 
           const Center(child: CircularProgressIndicator(color: Colors.amber)),
-
+          
         if (!_isLoadingRecentPoll && _mostRecentPollData == null)
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.white24)
-            ),
-            child: const Center(
-              child: Text(
-                "No recent polls have ended yet.",
-                style: TextStyle(color: Colors.white70, fontStyle: FontStyle.italic),
-              ),
-            ),
+            decoration: BoxDecoration(color: Colors.white.withOpacity(0.1), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.white24)),
+            child: const Center(child: Text("No recent polls have ended yet.", style: TextStyle(color: Colors.white70, fontStyle: FontStyle.italic))),
           ),
-
+          
         if (!_isLoadingRecentPoll && _mostRecentPollData != null)
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(25),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 5))],
-            ),
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 5))]),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -434,44 +369,28 @@ class _AdminDashboardState extends State<AdminDashboard> {
                             child: const Text("ENDED", style: TextStyle(color: Colors.red, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1)),
                           ),
                           const SizedBox(height: 8),
-                          Text(
-                            _mostRecentPollData!['poll']['title'],
-                            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF000B6B)),
-                          ),
+                          Text(_mostRecentPollData!['poll']['title'], style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF000B6B))),
                         ],
                       ),
                     ),
                     ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF000B6B),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))
-                      ),
+                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF000B6B), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
                       icon: const Icon(Icons.insights, size: 18),
                       label: const Text("See more details"),
                       onPressed: _showPollDetailsDialog,
                     ),
                   ],
                 ),
-                
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 20),
-                  child: Divider(),
-                ),
-                
+                const Padding(padding: EdgeInsets.symmetric(vertical: 20), child: Divider()),
                 const Text("Elected Officials Overview", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
                 const SizedBox(height: 15),
-                
                 Wrap(
                   spacing: 20,
                   runSpacing: 15,
                   children: (_mostRecentPollData!['report']['results'] as List<dynamic>).map((posData) {
                     final candidates = posData['candidates'] as List<dynamic>;
                     final winner = candidates.firstWhere((c) => c['is_winner'] == true, orElse: () => null);
-                    
                     if (winner == null) return const SizedBox.shrink();
-
                     return SizedBox(
                       width: 250,
                       child: Row(
@@ -506,59 +425,37 @@ class _AdminDashboardState extends State<AdminDashboard> {
       child: Column(
         children: [
           const SizedBox(height: 30),
-          
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 5.0),
             child: Row(
               children: [
                 Container(
                   width: 50, 
-                  height: 50,
+                  height: 50, 
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8),
-                    image: const DecorationImage(
-                      image: AssetImage('assets/images/lnu_logo.png'),
-                      fit: BoxFit.cover,
-                    ),
-                  ),
+                    borderRadius: BorderRadius.circular(8), 
+                    image: const DecorationImage(image: AssetImage('assets/images/lnu_logo.png'), fit: BoxFit.cover)
+                  )
                 ),
                 const SizedBox(width: 10),
                 const Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Leyte Normal University',
-                        style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-                      ),
-                      Text(
-                        '(System Name)',
-                        style: TextStyle(color: Colors.white, fontSize: 10),
-                      ),
+                      Text('Leyte Normal University', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                      Text('(System Name)', style: TextStyle(color: Colors.white, fontSize: 10)),
                     ],
                   ),
                 ),
               ],
             ),
           ),
-          
           const SizedBox(height: 35),
-
-          Text(
-            _userRole == "Staff" ? "STAFF PANEL" : "ADMIN PANEL",
-            style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1.5),
-          ),
-          
+          Text(_userRole == "Staff" ? "STAFF PANEL" : "ADMIN PANEL", style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
           const SizedBox(height: 35),
-
-          Transform.scale(
-            scale: 0.80, 
-            child: const RealtimeClock(textColor: Colors.white, isCenterAligned: true),
-          ),
-          
+          Transform.scale(scale: 0.80, child: const RealtimeClock(textColor: Colors.white, isCenterAligned: true)),
           const SizedBox(height: 10),
           const Divider(color: Colors.white24, height: 1),
-
           Expanded(
             child: SingleChildScrollView(
               child: Column(
@@ -568,25 +465,25 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       padding: const EdgeInsets.symmetric(vertical: 0, horizontal: 10),
                       child: Container(
                         decoration: BoxDecoration(
-                          color: _selectedMenuString == displayMenuItems[i] ? Colors.amber : Colors.transparent,
-                          borderRadius: BorderRadius.circular(5),
+                          color: _selectedMenuString == displayMenuItems[i] ? Colors.amber : Colors.transparent, 
+                          borderRadius: BorderRadius.circular(5)
                         ),
                         child: ListTile(
                           dense: true, 
                           visualDensity: const VisualDensity(horizontal: 0, vertical: -4), 
                           contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 0),
                           leading: Icon(
-                            _getMenuIcon(displayMenuItems[i]),
+                            _getMenuIcon(displayMenuItems[i]), 
                             size: 20, 
-                            color: _selectedMenuString == displayMenuItems[i] ? const Color(0xFF000B6B) : Colors.white70,
+                            color: _selectedMenuString == displayMenuItems[i] ? const Color(0xFF000B6B) : Colors.white70
                           ),
                           title: Text(
-                            displayMenuItems[i],
+                            displayMenuItems[i], 
                             style: TextStyle(
                               fontSize: 13, 
-                              color: _selectedMenuString == displayMenuItems[i] ? const Color(0xFF000B6B) : Colors.white,
-                              fontWeight: _selectedMenuString == displayMenuItems[i] ? FontWeight.bold : FontWeight.normal,
-                            ),
+                              color: _selectedMenuString == displayMenuItems[i] ? const Color(0xFF000B6B) : Colors.white, 
+                              fontWeight: _selectedMenuString == displayMenuItems[i] ? FontWeight.bold : FontWeight.normal
+                            )
                           ),
                           onTap: () {
                             setState(() => _selectedMenuString = displayMenuItems[i]);
@@ -599,12 +496,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
               ),
             ),
           ),
-
           const Divider(color: Colors.white24, height: 1),
           ListTile(
-            dense: true,
+            dense: true, 
             visualDensity: const VisualDensity(horizontal: 0, vertical: -4), 
-            leading: const Icon(Icons.logout, color: Colors.white, size: 20),
+            leading: const Icon(Icons.logout, color: Colors.white, size: 20), 
             title: const Text("Logout", style: TextStyle(color: Colors.white, fontSize: 13)),
             onTap: logout,
           ),
@@ -622,7 +518,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
       case "Manage Polls": return Icons.how_to_vote;
       case "Manage Candidates": return Icons.person_pin;
       case "Manage Parties": return Icons.flag;
-      case "Registration for Candidates": return Icons.app_registration;
       case "Live Scoreboard": return Icons.bar_chart;
       case "Election Result": return Icons.assignment_turned_in;
       default: return Icons.circle;
@@ -631,20 +526,20 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   Widget buildStatCard(String title, String value, IconData icon, Color color) {
     return Container(
-      width: 260,
+      width: 260, 
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
-        boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 5))],
+        color: Colors.white, 
+        borderRadius: BorderRadius.circular(12), 
+        border: Border.all(color: Colors.grey.shade200), 
+        boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 5))]
       ),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(15),
-            decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle),
-            child: Icon(icon, size: 30, color: color),
+            padding: const EdgeInsets.all(15), 
+            decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle), 
+            child: Icon(icon, size: 30, color: color)
           ),
           const SizedBox(width: 20),
           Expanded(
@@ -653,9 +548,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
               children: [
                 Text(title, style: TextStyle(color: Colors.grey[600], fontSize: 13, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 5),
-                _isLoadingStats
-                    ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                    : Text(value, style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.grey[800])),
+                _isLoadingStats 
+                  ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2)) 
+                  : Text(value, style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.grey[800])),
               ],
             ),
           ),
@@ -665,29 +560,26 @@ class _AdminDashboardState extends State<AdminDashboard> {
   }
 
   Widget buildQuickActionButton(String title, IconData icon, String navigateToTitle, Color color) {
-    // 🛠️ NEW: Conditionally lock/grey out the Live Scoreboard shortcut if no polls are active
     bool isLocked = navigateToTitle == "Live Scoreboard" && !_hasActivePoll;
-
+    
     return InkWell(
       onTap: isLocked 
         ? () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("No active elections available for Live Scoreboard.", style: TextStyle(color: Colors.white)), backgroundColor: Colors.orange))
         : () {
-        if (displayMenuItems.contains(navigateToTitle)) {
-          setState(() => _selectedMenuString = navigateToTitle);
-        } else {
-           ScaffoldMessenger.of(context).showSnackBar(
-             const SnackBar(content: Text("You do not have permission to access this module.", style: TextStyle(color: Colors.white)), backgroundColor: Colors.red)
-           );
-        }
-      },
+            if (displayMenuItems.contains(navigateToTitle)) {
+              setState(() => _selectedMenuString = navigateToTitle);
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("You do not have permission to access this module.", style: TextStyle(color: Colors.white)), backgroundColor: Colors.red));
+            }
+          },
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        width: 160,
+        width: 160, 
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: isLocked ? Colors.grey.shade400 : color,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [BoxShadow(color: (isLocked ? Colors.grey : color).withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))],
+          color: isLocked ? Colors.grey.shade400 : color, 
+          borderRadius: BorderRadius.circular(12), 
+          boxShadow: [BoxShadow(color: (isLocked ? Colors.grey : color).withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))]
         ),
         child: Column(
           children: [
@@ -710,11 +602,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
           const SizedBox(height: 5),
           const Text("Overview of the LNU Voting System", style: TextStyle(color: Colors.white70, fontSize: 16)),
           const SizedBox(height: 30),
-
+          
           const Text("Student Demographics", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
           const SizedBox(height: 15),
           Wrap(
-            spacing: 20,
+            spacing: 20, 
             runSpacing: 20,
             children: [
               buildStatCard("Total Registered\nStudents", _totalStudents.toString(), Icons.groups, Colors.blue),
@@ -722,35 +614,34 @@ class _AdminDashboardState extends State<AdminDashboard> {
               buildStatCard("Deactivated\nAccounts", _deactivatedStudents.toString(), Icons.block, Colors.red),
             ],
           ),
-
+          
           const SizedBox(height: 40),
           const Divider(),
           const SizedBox(height: 30),
-
+          
           const Text("Quick Actions", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
           const SizedBox(height: 15),
           Wrap(
-            spacing: 20,
+            spacing: 20, 
             runSpacing: 20,
             children: [
               buildQuickActionButton("Create New\nElection Poll", Icons.add_chart, "Manage Polls", const Color(0xFF000B6B)),
-              buildQuickActionButton("Register\nCandidate", Icons.person_add, "Registration for Candidates", Colors.amber.shade700),
+              buildQuickActionButton("Manage\nCandidates", Icons.how_to_reg, "Manage Candidates", Colors.amber.shade700),
               buildQuickActionButton("Manage\nUser Accounts", Icons.manage_accounts, "Users / Account Control", Colors.teal),
-              buildQuickActionButton("View Live\nScoreboard", Icons.live_tv, "Live Scoreboard", Colors.deepPurple), // Automatically handles locking
+              buildQuickActionButton("View Live\nScoreboard", Icons.live_tv, "Live Scoreboard", Colors.deepPurple), 
             ],
           ),
-
+          
           const SizedBox(height: 40),
-
           buildRecentPollsWidget(),
-
+          
           const SizedBox(height: 40),
           Container(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(20), 
             decoration: BoxDecoration(
-              color: Colors.blue.shade50.withOpacity(0.9),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.blue.shade100),
+              color: Colors.blue.shade50.withOpacity(0.9), 
+              borderRadius: BorderRadius.circular(12), 
+              border: Border.all(color: Colors.blue.shade100)
             ),
             child: const Row(
               children: [
@@ -782,7 +673,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
       case "Manage Polls": return const ManagePolls();
       case "Manage Candidates": return const ManageCandidates();
       case "Manage Parties": return const ManageParties();
-      case "Registration for Candidates": return const CandidatesRegistration();
       case "Live Scoreboard": return const AdminLiveScoreboard();
       case "Election Result": return const ElectionResultPage();
       default: return buildDashboardHome();
@@ -792,26 +682,25 @@ class _AdminDashboardState extends State<AdminDashboard> {
   @override
   Widget build(BuildContext context) {
     bool isDesktop = MediaQuery.of(context).size.width > 900;
-
     return Scaffold(
       backgroundColor: Colors.transparent, 
-      appBar: isDesktop
-          ? null
-          : AppBar(
-              backgroundColor: const Color(0xFF000B6B),
-              foregroundColor: Colors.white, 
-              title: const Text("Admin Panel", style: TextStyle(color: Colors.white)),
-            ),
+      appBar: isDesktop 
+        ? null 
+        : AppBar(
+            backgroundColor: const Color(0xFF000B6B), 
+            foregroundColor: Colors.white, 
+            title: const Text("Admin Panel", style: TextStyle(color: Colors.white))
+          ),
       drawer: isDesktop ? null : Drawer(child: buildSidebar(false)),
       body: SystemBackground(
-        opacity: 1.0,           
-        darkenOverlay: 0.70,   
+        opacity: 1.0, 
+        darkenOverlay: 0.70, 
         isFrosted: true, 
         child: Row(
           children: [
-            if (isDesktop) buildSidebar(true),
-            Expanded(child: buildContent()),
-          ],
+            if (isDesktop) buildSidebar(true), 
+            Expanded(child: buildContent())
+          ]
         ),
       ),
     );

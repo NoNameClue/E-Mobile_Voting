@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Apr 21, 2026 at 11:39 AM
+-- Generation Time: Apr 23, 2026 at 08:21 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -157,6 +157,19 @@ INSERT INTO `candidates` (`candidate_id`, `poll_id`, `first_name`, `middle_name`
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `candidate_qa`
+--
+
+CREATE TABLE `candidate_qa` (
+  `qa_id` int(11) NOT NULL,
+  `candidate_id` int(11) DEFAULT NULL,
+  `question` varchar(255) DEFAULT NULL,
+  `answer` text DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `parties`
 --
 
@@ -214,6 +227,17 @@ INSERT INTO `polls` (`poll_id`, `title`, `start_time`, `end_time`, `status`, `is
 (1, '2025 SSC General Election', '2025-09-01 08:00:00', '2025-09-07 17:00:00', 'Ended', 1, 1),
 (2, '2026 Special Election', '2026-03-01 08:00:00', '2026-03-15 17:00:00', 'Ended', 1, 0),
 (3, '2026 Main SSC Election', '2026-04-18 08:00:00', '2026-04-25 17:00:00', 'Active', 1, 0);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `question_bank`
+--
+
+CREATE TABLE `question_bank` (
+  `question_id` int(11) NOT NULL,
+  `question_text` varchar(255) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -4091,6 +4115,14 @@ ALTER TABLE `candidates`
   ADD KEY `poll_id` (`poll_id`);
 
 --
+-- Indexes for table `candidate_qa`
+--
+ALTER TABLE `candidate_qa`
+  ADD PRIMARY KEY (`qa_id`),
+  ADD KEY `candidate_id` (`candidate_id`),
+  ADD KEY `ix_candidate_qa_qa_id` (`qa_id`);
+
+--
 -- Indexes for table `parties`
 --
 ALTER TABLE `parties`
@@ -4102,6 +4134,14 @@ ALTER TABLE `parties`
 --
 ALTER TABLE `polls`
   ADD PRIMARY KEY (`poll_id`);
+
+--
+-- Indexes for table `question_bank`
+--
+ALTER TABLE `question_bank`
+  ADD PRIMARY KEY (`question_id`),
+  ADD UNIQUE KEY `question_text` (`question_text`),
+  ADD KEY `ix_question_bank_question_id` (`question_id`);
 
 --
 -- Indexes for table `users`
@@ -4131,6 +4171,12 @@ ALTER TABLE `candidates`
   MODIFY `candidate_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=109;
 
 --
+-- AUTO_INCREMENT for table `candidate_qa`
+--
+ALTER TABLE `candidate_qa`
+  MODIFY `qa_id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `parties`
 --
 ALTER TABLE `parties`
@@ -4141,6 +4187,12 @@ ALTER TABLE `parties`
 --
 ALTER TABLE `polls`
   MODIFY `poll_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+
+--
+-- AUTO_INCREMENT for table `question_bank`
+--
+ALTER TABLE `question_bank`
+  MODIFY `question_id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `users`
@@ -4163,6 +4215,12 @@ ALTER TABLE `votes`
 --
 ALTER TABLE `candidates`
   ADD CONSTRAINT `candidates_ibfk_1` FOREIGN KEY (`poll_id`) REFERENCES `polls` (`poll_id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `candidate_qa`
+--
+ALTER TABLE `candidate_qa`
+  ADD CONSTRAINT `candidate_qa_ibfk_1` FOREIGN KEY (`candidate_id`) REFERENCES `candidates` (`candidate_id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `parties`

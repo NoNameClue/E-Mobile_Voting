@@ -10,35 +10,7 @@ import 'widgets/realtime_clock.dart';
 import 'widgets/system_background.dart';
 
 // ========================================================================
-// 1. DATA MODELS
-// ========================================================================
-class CandidateResult {
-  final int id;
-  final String name;
-  final String party;
-  final String? photoUrl;
-  final int votes;
-  final double percentage;
-
-  CandidateResult({
-    required this.id,
-    required this.name,
-    required this.party,
-    this.photoUrl,
-    required this.votes,
-    required this.percentage,
-  });
-}
-
-class PositionRanking {
-  final String positionName;
-  final List<CandidateResult> candidates;
-
-  PositionRanking({required this.positionName, required this.candidates});
-}
-
-// ========================================================================
-// 2. MAIN STUDENT DASHBOARD SHELL
+// 1. MAIN STUDENT DASHBOARD SHELL
 // ========================================================================
 class StudentDashboard extends StatefulWidget {
   const StudentDashboard({super.key});
@@ -106,7 +78,6 @@ class _StudentDashboardState extends State<StudentDashboard> {
     Navigator.pushReplacementNamed(context, '/login');
   }
 
-  // 🛠️ UPDATED SIDEBAR: Matches Admin sizing exactly
   Widget buildSidebar(bool isDesktop) {
     return Container(
       width: 250,
@@ -117,13 +88,12 @@ class _StudentDashboardState extends State<StudentDashboard> {
             child: SingleChildScrollView(
               child: Column(
                 children: [
-                  const SizedBox(height: 30), // Match Admin top spacing
+                  const SizedBox(height: 30), 
                   
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 5.0),
                     child: Row(
                       children: [
-                        // 🛠️ Match Admin Logo Size (50x50)
                         Container(
                           width: 50,
                           height: 50,
@@ -135,7 +105,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
                             ),
                           ),
                         ),
-                        const SizedBox(width: 10), // Match Admin spacing
+                        const SizedBox(width: 10), 
                         const Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -144,7 +114,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
                                 'Leyte Normal University',
                                 style: TextStyle(
                                   color: Colors.white,
-                                  fontSize: 12, // Match Admin University text size
+                                  fontSize: 12, 
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -152,7 +122,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
                                 '(System Name)',
                                 style: TextStyle(
                                   color: Colors.white,
-                                  fontSize: 10, // Match Admin System Name text size
+                                  fontSize: 10, 
                                 ),
                               ),
                             ],
@@ -163,7 +133,6 @@ class _StudentDashboardState extends State<StudentDashboard> {
                   ),
                   const SizedBox(height: 40),
 
-                  // 🛡️ UNTOUCHED PROFILE AVATAR
                   CircleAvatar(
                     radius: 50,
                     backgroundColor: Colors.white,
@@ -176,20 +145,18 @@ class _StudentDashboardState extends State<StudentDashboard> {
                   ),
                   const SizedBox(height: 10),
 
-                  // 🛠️ Match Admin Name text size and weight
                   Text(
                     "$_studentName\nID: $_studentId",
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 15, // Match Admin size
-                      fontWeight: FontWeight.bold, // Match Admin weight
+                      fontSize: 15, 
+                      fontWeight: FontWeight.bold, 
                       letterSpacing: 1.1,
                     ),
                   ),
                   const SizedBox(height: 20),
 
-                  // 🛠️ Match Admin Clock size exactly using the scale transform
                   Transform.scale(
                     scale: 0.80, 
                     child: const RealtimeClock(textColor: Colors.white, isCenterAligned: true),
@@ -197,28 +164,27 @@ class _StudentDashboardState extends State<StudentDashboard> {
                   
                   const SizedBox(height: 20),
 
-                  // 🛠️ COMPRESSED MENU LIST (Matches Admin exactly)
                   for (int i = 0; i < menuItems.length; i++)
                     Padding(
                       padding: const EdgeInsets.symmetric(
-                        vertical: 0, // Removed vertical padding
-                        horizontal: 10, // Match Admin horizontal padding
+                        vertical: 0, 
+                        horizontal: 10, 
                       ),
                       child: Container(
                         decoration: BoxDecoration(
                           color: selectedIndex == i
                               ? Colors.amber
                               : Colors.transparent,
-                          borderRadius: BorderRadius.circular(5), // Match Admin border radius
+                          borderRadius: BorderRadius.circular(5), 
                         ),
                         child: ListTile(
                           dense: true, 
-                          visualDensity: const VisualDensity(horizontal: 0, vertical: -4), // MAXIMUM COMPRESSION
+                          visualDensity: const VisualDensity(horizontal: 0, vertical: -4), 
                           contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 0),
                           title: Text(
                             menuItems[i],
                             style: TextStyle(
-                              fontSize: 13, // Match Admin font size
+                              fontSize: 13, 
                               color: selectedIndex == i
                                   ? const Color(0xFF000B6B)
                                   : Colors.white,
@@ -239,18 +205,16 @@ class _StudentDashboardState extends State<StudentDashboard> {
             ),
           ),
 
-          const Divider(color: Colors.white24, height: 1), // Match Admin divider
+          const Divider(color: Colors.white24, height: 1), 
           
-          // 🛠️ COMPRESSED LOGOUT BUTTON (Matches Admin exactly)
           ListTile(
             dense: true,
-            visualDensity: const VisualDensity(horizontal: 0, vertical: -4), // MAXIMUM COMPRESSION
-            leading: const Icon(Icons.logout, color: Colors.white, size: 20), // Match Admin icon size
-            title: const Text("Logout", style: TextStyle(color: Colors.white, fontSize: 13)), // Match Admin font size
+            visualDensity: const VisualDensity(horizontal: 0, vertical: -4), 
+            leading: const Icon(Icons.logout, color: Colors.white, size: 20), 
+            title: const Text("Logout", style: TextStyle(color: Colors.white, fontSize: 13)), 
             onTap: logout,
           ),
           
-          // 🛡️ UNTOUCHED WATERMARK
           const Padding(
             padding: EdgeInsets.all(15.0),
             child: Text(
@@ -265,7 +229,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
 
   Widget buildContent() {
     switch (selectedIndex) {
-      case 0: return const LiveScoreboardView();
+      case 0: return const CandidatePlatformsView(); 
       case 1:
         return VotingPage(
           onReturnToDashboard: () {
@@ -285,7 +249,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
           child: Text("About Us", style: TextStyle(fontSize: 24, color: Colors.white)),
         );
       default:
-        return const LiveScoreboardView();
+        return const CandidatePlatformsView();
     }
   }
 
@@ -306,7 +270,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
       body: SystemBackground(
         opacity: 1.0,           
         darkenOverlay: 0.70,   
-        isFrosted: true, // 🛡️ Frosted background kept
+        isFrosted: true, 
         child: Row(
           children: [
             if (isDesktop) buildSidebar(true),
@@ -319,25 +283,30 @@ class _StudentDashboardState extends State<StudentDashboard> {
 }
 
 // ========================================================================
-// 3. LIVE SCOREBOARD VIEW (STUDENT DASHBOARD CONTENT)
+// 2. CANDIDATE PLATFORMS VIEW
 // ========================================================================
-class LiveScoreboardView extends StatefulWidget {
-  const LiveScoreboardView({super.key});
+class CandidatePlatformsView extends StatefulWidget {
+  const CandidatePlatformsView({super.key});
 
   @override
-  State<LiveScoreboardView> createState() => _LiveScoreboardViewState();
+  State<CandidatePlatformsView> createState() => _CandidatePlatformsViewState();
 }
 
-class _LiveScoreboardViewState extends State<LiveScoreboardView> {
-  int _currentPositionIndex = 0;
-  List<PositionRanking> _rankingsData = [];
+class _CandidatePlatformsViewState extends State<CandidatePlatformsView> {
   bool _isLoading = true;
   String _errorMessage = '';
 
-  List<dynamic> _availablePolls = [];
   int? _selectedPollId;
+  String _pollTitle = "";
+  
+  Map<String, List<dynamic>> _groupedCandidates = {};
 
   final Color primaryColor = const Color(0xFF000B6B);
+
+  // Standard positional order to sort the list consistently
+  final List<String> standardPositions = [
+    "President", "Vice President", "Secretary", "Treasurer", "Auditor", "PIO"
+  ];
 
   @override
   void initState() {
@@ -351,22 +320,31 @@ class _LiveScoreboardViewState extends State<LiveScoreboardView> {
       if (pollResponse.statusCode == 200) {
         final List<dynamic> allPolls = jsonDecode(pollResponse.body);
         
-        _availablePolls = allPolls.where((p) {
+        // 🛠️ FILTER LOGIC: Find the FIRST published, unarchived, active poll
+        var activePolls = allPolls.where((p) {
           final isPublished = p['is_published'] == 1 || p['is_published'] == true;
           final isArchived = p['is_archived'] == 1 || p['is_archived'] == true;
           
-          return isPublished && !isArchived;
+          bool isEnded = p['status'] == 'Ended';
+          if (p['end_time'] != null) {
+            DateTime endTime = DateTime.parse(p['end_time']);
+            if (endTime.isBefore(DateTime.now())) {
+              isEnded = true;
+            }
+          }
+          
+          return isPublished && !isArchived && !isEnded;
         }).toList();
 
-        if (_availablePolls.isNotEmpty) {
-          var activePoll = _availablePolls.first;
+        if (activePolls.isNotEmpty) {
+          var activePoll = activePolls.first;
           _selectedPollId = activePoll['poll_id'];
-          
-          await _fetchResultsForPoll(_selectedPollId!);
+          _pollTitle = activePoll['title'] ?? "Active Election";
+          await _fetchCandidatesForPoll(_selectedPollId!);
         } else {
           setState(() {
             _isLoading = false;
-            _errorMessage = "No active elections right now.";
+            _errorMessage = "There are no active elections at this time.";
           });
         }
       } else {
@@ -380,113 +358,151 @@ class _LiveScoreboardViewState extends State<LiveScoreboardView> {
     }
   }
 
-  Future<void> _fetchResultsForPoll(int pollId) async {
+  Future<void> _fetchCandidatesForPoll(int pollId) async {
     setState(() {
       _isLoading = true;
       _errorMessage = '';
     });
 
     try {
-      final resultsResponse = await http.get(
-        Uri.parse('${ApiConfig.baseUrl}/api/polls/$pollId/results'),
+      final response = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/candidates/$pollId'));
+      if (response.statusCode != 200) {
+        throw Exception("Failed to fetch candidates");
+      }
+
+      final List<dynamic> candidates = jsonDecode(response.body);
+      Map<String, List<dynamic>> grouped = {};
+
+      for (var c in candidates) {
+        String pos = c['position'] ?? 'Unknown Position';
+        grouped.putIfAbsent(pos, () => []).add(c);
+      }
+
+      // Sort positions based on standard hierarchy
+      var sortedGrouped = Map.fromEntries(
+        grouped.entries.toList()..sort((a, b) {
+          int indexA = standardPositions.indexOf(a.key);
+          int indexB = standardPositions.indexOf(b.key);
+          if (indexA == -1) indexA = 999;
+          if (indexB == -1) indexB = 999;
+          return indexA.compareTo(indexB);
+        })
       );
-      if (resultsResponse.statusCode != 200) {
-        throw Exception("Failed to fetch results");
-      }
-
-      final List<dynamic> liveResults = jsonDecode(resultsResponse.body);
-
-      Map<String, List<CandidateResult>> groupedData = {
-        "President": [],
-        "Vice President": [],
-        "Secretary": [],
-        "Treasurer": [],
-        "Auditor": [],
-        "PIO": [],
-      };
-
-      for (var c in liveResults) {
-        String pos = c['position'];
-        if (groupedData.containsKey(pos)) {
-          groupedData[pos]!.add(
-            CandidateResult(
-              id: c['candidate_id'],
-              name: c['name'],
-              party: c['party_name'] ?? 'Independent',
-              photoUrl: c['photo_url'], 
-              votes: c['votes'],
-              percentage: c['percentage'],
-            ),
-          );
-        }
-      }
-
-      List<PositionRanking> formattedRankings = [];
-      groupedData.forEach((position, candidatesList) {
-        candidatesList.sort((a, b) => b.votes.compareTo(a.votes));
-        formattedRankings.add(
-          PositionRanking(positionName: position, candidates: candidatesList),
-        );
-      });
 
       setState(() {
-        _rankingsData = formattedRankings;
-        _currentPositionIndex = 0; 
+        _groupedCandidates = sortedGrouped;
         _isLoading = false;
       });
     } catch (e) {
       setState(() {
         _isLoading = false;
-        _errorMessage = "Could not fetch results for this poll.";
+        _errorMessage = "Could not fetch candidates for this poll.";
       });
     }
   }
 
-  void _goToPreviousPosition() {
-    if (_currentPositionIndex > 0) {
-      setState(() => _currentPositionIndex--);
-    }
-  }
+  void _showCandidateModal(dynamic candidate) {
+    String fullName = "${candidate['first_name']} ${candidate['middle_name'] ?? ''} ${candidate['last_name']}".replaceAll('  ', ' ').trim();
+    String platformBio = candidate['description_platform'] ?? 'No platform provided.';
+    List<dynamic> qas = candidate['qas'] ?? [];
 
-  void _goToNextPosition() {
-    if (_currentPositionIndex < _rankingsData.length - 1) {
-      setState(() => _currentPositionIndex++);
+    String formattedQA = "";
+    if (qas.isEmpty) {
+      formattedQA = "No Q&A responses available.";
+    } else {
+      for (int i = 0; i < qas.length; i++) {
+        formattedQA += "${i + 1}. ${qas[i]['question']}\n${qas[i]['answer']}\n\n";
+      }
     }
-  }
 
-  void _showPercentagePopup(CandidateResult candidate) {
     showDialog(
       context: context,
-      builder: (BuildContext context) {
+      builder: (context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15),
-          ),
-          title: Text(candidate.name, textAlign: TextAlign.center),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                "${candidate.percentage.toStringAsFixed(1)}%",
-                style: TextStyle(
-                  fontSize: 48,
-                  fontWeight: FontWeight.bold,
-                  color: primaryColor,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          contentPadding: const EdgeInsets.all(0),
+          content: Container(
+            width: 600,
+            constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.8),
+            child: Column(
+              children: [
+                // Modal Header
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: primaryColor,
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                  ),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 40,
+                        backgroundColor: Colors.white,
+                        backgroundImage: candidate['photo_url'] != null ? NetworkImage('${ApiConfig.baseUrl}/${candidate['photo_url']}') : null,
+                        child: candidate['photo_url'] == null ? Icon(Icons.person, size: 50, color: Colors.grey.shade400) : null,
+                      ),
+                      const SizedBox(width: 20),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(fullName, style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 5),
+                            Text("Running for ${candidate['position']}", style: const TextStyle(color: Colors.amber, fontSize: 16, fontWeight: FontWeight.w600)),
+                            const SizedBox(height: 2),
+                            Text("${candidate['party_name'] ?? 'Independent'} • ${candidate['course_year'] ?? 'N/A'}", style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close, color: Colors.white),
+                        onPressed: () => Navigator.pop(context),
+                      )
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                "Current vote share in ${_rankingsData[_currentPositionIndex].positionName} race.",
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text("Close"),
+                
+                // Scrollable Body
+                Expanded(
+                  child: Scrollbar(
+                    thumbVisibility: true,
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(25),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text("Platform & Bio", style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF000B6B))),
+                          const SizedBox(height: 10),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(15),
+                            decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.grey.shade200)),
+                            child: Text(platformBio, style: const TextStyle(fontSize: 14, height: 1.5, color: Colors.black87)),
+                          ),
+                          
+                          const SizedBox(height: 25),
+                          const Divider(),
+                          const SizedBox(height: 25),
+                          
+                          const Text("Candidate Q&A", style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF000B6B))),
+                          const SizedBox(height: 10),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(15),
+                            decoration: BoxDecoration(color: Colors.blue.shade50.withOpacity(0.5), borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.blue.shade100)),
+                            child: Text(
+                              formattedQA.trim(), 
+                              style: const TextStyle(fontSize: 14, height: 1.6, color: Colors.black87)
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         );
       },
     );
@@ -496,337 +512,154 @@ class _LiveScoreboardViewState extends State<LiveScoreboardView> {
   Widget build(BuildContext context) {
     bool isMobile = MediaQuery.of(context).size.width < 900;
 
-    Widget headerRow = Wrap(
-      alignment: WrapAlignment.spaceBetween,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      spacing: 15,
-      runSpacing: 15,
-      children: [
-        const Text(
-          "Dashboard",
-          style: TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
-        if (_availablePolls.isNotEmpty)
-          Container(
-            constraints: const BoxConstraints(maxWidth: 250),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.grey.shade300),
-            ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<int>(
-                isExpanded: true,
-                value: _selectedPollId,
-                icon: Icon(Icons.arrow_drop_down, color: primaryColor),
-                style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold),
-                items: _availablePolls.map((poll) {
-                  bool isExpired = false;
-                  if (poll['end_time'] != null) {
-                    DateTime endTime = DateTime.parse(poll['end_time']);
-                    isExpired = endTime.isBefore(DateTime.now());
-                  }
-                  String displayTitle = poll["title"] ?? "Election";
-                  if (isExpired || poll['status'] == 'Ended') {
-                    displayTitle = "$displayTitle (Ended)";
-                  }
-
-                  return DropdownMenuItem<int>(
-                    value: poll['poll_id'],
-                    child: Text(displayTitle, style: const TextStyle(color: Colors.black87), overflow: TextOverflow.ellipsis),
-                  );
-                }).toList(),
-                onChanged: (newPollId) {
-                  if (newPollId != null && newPollId != _selectedPollId) {
-                    setState(() => _selectedPollId = newPollId);
-                    _fetchResultsForPoll(newPollId);
-                  }
-                },
-              ),
-            ),
-          ),
-      ],
-    );
-
-    Widget bodyContent;
-
-    if (_isLoading) {
-      bodyContent = const Center(child: CircularProgressIndicator(color: Colors.white)); 
-    } else if (_errorMessage.isNotEmpty) {
-      bodyContent = Center(
-        child: Text(
-          _errorMessage,
-          style: const TextStyle(fontSize: 20, color: Colors.white), 
-        ),
-      );
-    } else if (_rankingsData.isEmpty) {
-      bodyContent = const Center(
-        child: Text(
-          "No data available for this poll.",
-          style: TextStyle(fontSize: 20, color: Colors.white), 
-        ),
-      );
-    } else {
-      final currentRanking = _rankingsData[_currentPositionIndex];
-      final candidates = currentRanking.candidates;
-
-      Widget podiumSection = Column(
-        children: [
-          Container(
-            width: isMobile ? double.infinity : 350,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.grey.shade300),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.arrow_left),
-                  onPressed: _currentPositionIndex == 0 ? null : _goToPreviousPosition,
-                ),
-                Flexible(
-                  child: Text(
-                    currentRanking.positionName.toUpperCase(),
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                    textAlign: TextAlign.center,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.arrow_right),
-                  onPressed: _currentPositionIndex == _rankingsData.length - 1 ? null : _goToNextPosition,
-                ),
-              ],
-            ),
-          ),
-          
-          Expanded(
-            child: Center(
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        if (candidates.length >= 2) _buildPodiumPerson(candidates[1], 2, isMobile),
-                        if (candidates.isNotEmpty) _buildPodiumPerson(candidates[0], 1, isMobile),
-                        if (candidates.length >= 3) _buildPodiumPerson(candidates[2], 3, isMobile),
-                      ],
-                    ),
-                    const SizedBox(height: 30),
-                    const Text(
-                      "top 3 candidates for the\nposition",
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 16, color: Colors.white70), 
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      );
-
-      Widget otherCandidatesSection = Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              "other candidates for the position",
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-            ),
-            const SizedBox(height: 20),
-            Expanded(
-              child: ListView.builder(
-                itemCount: candidates.length > 3 ? candidates.length - 3 : 0,
-                itemBuilder: (context, index) {
-                  final candidate = candidates[index + 3];
-                  return _buildOtherCandidateListTile(candidate);
-                },
-              ),
-            ),
-          ],
-        ),
-      );
-
-      if (candidates.isEmpty) {
-        bodyContent = const Center(
-          child: Text(
-            "No candidates assigned to this position yet.",
-            style: TextStyle(fontSize: 18, color: Colors.white), 
-          ),
-        );
-      } else if (isMobile) {
-        bodyContent = Column(
-          children: [
-            Expanded(flex: 5, child: podiumSection), 
-            const SizedBox(height: 20),
-            Expanded(flex: 4, child: otherCandidatesSection),
-          ],
-        );
-      } else {
-        bodyContent = Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(flex: 2, child: podiumSection),
-            const SizedBox(width: 40),
-            Expanded(flex: 1, child: otherCandidatesSection),
-          ],
-        );
-      }
-    }
-
     return Padding(
       padding: EdgeInsets.all(isMobile ? 15.0 : 30.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          headerRow,
-          const SizedBox(height: 30),
-          Expanded(child: bodyContent),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPodiumPerson(
-    CandidateResult candidate,
-    int rank,
-    bool isMobile,
-  ) {
-    double avatarRadius = rank == 1
-        ? (isMobile ? 50 : 60)
-        : (isMobile ? 40 : 50);
-    double iconSize = rank == 1 ? (isMobile ? 60 : 80) : (isMobile ? 50 : 60);
-
-    return GestureDetector(
-      onTap: () => _showPercentagePopup(candidate),
-      child: Column(
-        children: [
-          CircleAvatar(
-            radius: avatarRadius,
-            backgroundColor: Colors.white,
-            backgroundImage: candidate.photoUrl != null
-                ? NetworkImage('${ApiConfig.baseUrl}/${candidate.photoUrl}')
-                : null,
-            child: candidate.photoUrl == null
-                ? Icon(Icons.person, size: iconSize, color: Colors.grey)
-                : null,
-          ),
-          const SizedBox(height: 15),
-          Text(
-            candidate.name,
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: isMobile ? 14 : 16,
-              color: Colors.white, 
-            ),
-            textAlign: TextAlign.center,
-          ),
-          Text(
-            candidate.party,
-            style: TextStyle(
-              color: Colors.white70, 
-              fontSize: isMobile ? 10 : 12,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 5),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: Colors.white.withAlpha(25), 
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              "${candidate.votes} Votes",
-              style: const TextStyle(
-                color: Colors.white, 
-                fontWeight: FontWeight.bold,
-                fontSize: 12,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildOtherCandidateListTile(CandidateResult candidate) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 20.0),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 25, 
-            backgroundColor: Colors.grey,
-            backgroundImage: candidate.photoUrl != null
-                ? NetworkImage('${ApiConfig.baseUrl}/${candidate.photoUrl}')
-                : null,
-            child: candidate.photoUrl == null
-                ? const Icon(Icons.person, color: Colors.white)
-                : null,
-          ),
-          const SizedBox(width: 15),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "${candidate.name.toUpperCase()} AND ${candidate.party.toUpperCase()}",
-                  style: const TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "Dashboard",
+                    style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white),
                   ),
-                ),
-                const SizedBox(height: 5),
-                Container(
-                  height: 20,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[200],
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  alignment: Alignment.centerLeft,
-                  child: Container(
-                    height: 20,
-                    width: candidate.percentage > 0
-                        ? (candidate.percentage / 100) * 200
-                        : 0,
-                    decoration: BoxDecoration(
-                      color: Colors.green,
-                      borderRadius: BorderRadius.circular(10),
+                  if (_pollTitle.isNotEmpty)
+                    Text(
+                      _pollTitle,
+                      style: const TextStyle(color: Colors.amber, fontSize: 16, fontWeight: FontWeight.bold),
                     ),
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    alignment: Alignment.centerLeft,
-                    child: candidate.percentage > 0
-                        ? Text(
-                            "${candidate.percentage.toStringAsFixed(1)}%",
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          )
-                        : null,
-                  ),
-                ),
-              ],
-            ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          const Text("Review the candidates and their platforms before casting your vote.", style: TextStyle(color: Colors.white70, fontSize: 16)),
+          const SizedBox(height: 30),
+
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator(color: Colors.white))
+                : _errorMessage.isNotEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.event_busy_rounded, size: 80, color: Colors.white54),
+                            const SizedBox(height: 20),
+                            Text(_errorMessage, style: const TextStyle(fontSize: 22, color: Colors.white, fontWeight: FontWeight.w600)),
+                            const SizedBox(height: 10),
+                            const Text("Please check back when an election begins.", style: TextStyle(fontSize: 16, color: Colors.white70)),
+                          ],
+                        )
+                      )
+                    : _groupedCandidates.isEmpty
+                        ? const Center(child: Text("No candidates assigned to this election yet.", style: TextStyle(fontSize: 20, color: Colors.white)))
+                        : ListView.builder(
+                            itemCount: _groupedCandidates.length,
+                            itemBuilder: (context, index) {
+                              String position = _groupedCandidates.keys.elementAt(index);
+                              List<dynamic> candidates = _groupedCandidates[position]!;
+
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 35.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // 🛠️ CHANGED: Text is now white instead of amber
+                                    Text(
+                                      "Running for $position",
+                                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 0.5),
+                                    ),
+                                    const SizedBox(height: 15),
+                                    SizedBox(
+                                      height: 260, // 🛠️ INCREASED height for more info
+                                      child: ListView.builder(
+                                        scrollDirection: Axis.horizontal,
+                                        itemCount: candidates.length,
+                                        itemBuilder: (context, cIndex) {
+                                          var c = candidates[cIndex];
+                                          String fullName = "${c['first_name']} ${c['last_name']}";
+                                          String party = c['party_name'] ?? 'Independent';
+                                          String course = c['course_year'] ?? '';
+
+                                          return Container(
+                                            width: 180, // 🛠️ INCREASED width for comfort
+                                            margin: const EdgeInsets.only(right: 20),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white,
+                                              borderRadius: BorderRadius.circular(20),
+                                              boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, 5))],
+                                            ),
+                                            child: Padding(
+                                              padding: const EdgeInsets.all(12.0),
+                                              child: Column(
+                                                mainAxisAlignment: MainAxisAlignment.center,
+                                                children: [
+                                                  CircleAvatar(
+                                                    radius: 40,
+                                                    backgroundColor: Colors.grey.shade200,
+                                                    backgroundImage: c['photo_url'] != null ? NetworkImage('${ApiConfig.baseUrl}/${c['photo_url']}') : null,
+                                                    child: c['photo_url'] == null ? Icon(Icons.person, size: 45, color: Colors.grey.shade400) : null,
+                                                  ),
+                                                  const SizedBox(height: 12),
+                                                  Text(
+                                                    fullName,
+                                                    textAlign: TextAlign.center,
+                                                    style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: Color(0xFF000B6B)),
+                                                    maxLines: 2,
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                  const SizedBox(height: 6),
+                                                  // 🛠️ ADDED: Party Name
+                                                  Text(
+                                                    party.toUpperCase(),
+                                                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.blue.shade700, letterSpacing: 0.5),
+                                                    textAlign: TextAlign.center,
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                  const SizedBox(height: 2),
+                                                  // 🛠️ ADDED: Course and Year
+                                                  if (course.isNotEmpty)
+                                                    Text(
+                                                      course,
+                                                      style: const TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.w600),
+                                                      textAlign: TextAlign.center,
+                                                      maxLines: 1,
+                                                      overflow: TextOverflow.ellipsis,
+                                                    ),
+                                                  const Spacer(),
+                                                  SizedBox(
+                                                    width: double.infinity,
+                                                    child: ElevatedButton(
+                                                      style: ElevatedButton.styleFrom(
+                                                        backgroundColor: primaryColor,
+                                                        foregroundColor: Colors.white,
+                                                        padding: const EdgeInsets.symmetric(vertical: 10),
+                                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                                        elevation: 0,
+                                                      ),
+                                                      onPressed: () => _showCandidateModal(c),
+                                                      child: const Text("See More", style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
           ),
         ],
       ),

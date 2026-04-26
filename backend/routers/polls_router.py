@@ -54,6 +54,17 @@ def update_poll(poll_id: int, poll: PollUpdate, db: Session = Depends(get_db)):
     db.commit()
     return {"message": "Poll updated successfully"}
 
+@router.put("/api/polls/{poll_id}/publish")
+def publish_poll(poll_id: int, db: Session = Depends(get_db)):
+    db_poll = db.query(Poll).filter(Poll.poll_id == poll_id).first()
+    if not db_poll:
+        raise HTTPException(status_code=404, detail="Poll not found")
+    
+    # Set the poll to published
+    db_poll.is_published = True
+    db.commit()
+    return {"message": "Poll published successfully"}
+
 @router.put("/api/polls/{poll_id}/archive")
 def archive_poll(poll_id: int, is_archived: bool, db: Session = Depends(get_db)):
     db_poll = db.query(Poll).filter(Poll.poll_id == poll_id).first()

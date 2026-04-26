@@ -39,7 +39,7 @@ class _MyVotesViewState extends State<MyVotesView> {
       if (pollResponse.statusCode == 200) {
         final List<dynamic> allPolls = jsonDecode(pollResponse.body);
         
-        // 🛠️ THE FIX: Only filter by 'is_published'. 
+        // 🛠️ Only filter by 'is_published'. 
         // We removed the 'is_archived == 0' check so past elections remain visible!
         _polls = allPolls.where((p) => 
           (p['is_published'] == 1 || p['is_published'] == true)
@@ -142,7 +142,7 @@ class _MyVotesViewState extends State<MyVotesView> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return Center(child: CircularProgressIndicator(color: Colors.white)); // Updated color for dark background
+      return const Center(child: CircularProgressIndicator(color: Colors.white));
     }
 
     bool isMobile = MediaQuery.of(context).size.width < 900;
@@ -266,7 +266,6 @@ class _MyVotesViewState extends State<MyVotesView> {
                       style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold),
                       items: _polls.map((poll) {
                         
-                        // 🛠️ UI UPGRADE: Add (Archived) or (Ended) to the title so students know the status
                         String displayTitle = poll["title"] ?? "Election";
                         if (poll['is_archived'] == 1 || poll['is_archived'] == true) {
                           displayTitle = "$displayTitle (Archived)";
@@ -327,6 +326,15 @@ class _MyVotesViewState extends State<MyVotesView> {
     final int totalVotes = stats['votes'];
     final double percentage = (stats['percentage'] as num).toDouble();
 
+    // 🛠️ LOGIC: Check if the currently selected poll has officially ended or expired
+    bool isPollEnded = _selectedPoll!['status'] == 'Ended';
+    if (_selectedPoll!['end_time'] != null) {
+      DateTime endTime = DateTime.parse(_selectedPoll!['end_time']);
+      if (endTime.isBefore(DateTime.now())) {
+        isPollEnded = true;
+      }
+    }
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -359,42 +367,68 @@ class _MyVotesViewState extends State<MyVotesView> {
             const Divider(),
             const SizedBox(height: 20),
 
-            const Align(alignment: Alignment.centerLeft, child: Text("Live Election Results", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16))),
-            const SizedBox(height: 15),
+            // 🛠️ LOGIC: Show results ONLY if the election has concluded
+            if (isPollEnded) ...[
+              const Align(alignment: Alignment.centerLeft, child: Text("Final Election Results", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16))),
+              const SizedBox(height: 15),
 
-            Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.all(15),
-                    decoration: BoxDecoration(color: const Color(0xFFF5F5F5), borderRadius: BorderRadius.circular(10)),
-                    child: Column(
-                      children: [
-                        Icon(Icons.how_to_vote, color: primaryColor, size: 28),
-                        const SizedBox(height: 10),
-                        Text(totalVotes.toString(), style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: primaryColor)),
-                        const Text("Total Votes", style: TextStyle(fontSize: 12, color: Colors.grey)),
-                      ],
+              Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.all(15),
+                      decoration: BoxDecoration(color: const Color(0xFFF5F5F5), borderRadius: BorderRadius.circular(10)),
+                      child: Column(
+                        children: [
+                          Icon(Icons.how_to_vote, color: primaryColor, size: 28),
+                          const SizedBox(height: 10),
+                          Text(totalVotes.toString(), style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: primaryColor)),
+                          const Text("Total Votes", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 15),
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.all(15),
-                    decoration: BoxDecoration(color: const Color(0xFFF5F5F5), borderRadius: BorderRadius.circular(10)),
-                    child: Column(
-                      children: [
-                        Icon(Icons.pie_chart, color: primaryColor, size: 28),
-                        const SizedBox(height: 10),
-                        Text("${percentage.toStringAsFixed(1)}%", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: primaryColor)),
-                        const Text("Vote Share", style: TextStyle(fontSize: 12, color: Colors.grey)),
-                      ],
+                  const SizedBox(width: 15),
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.all(15),
+                      decoration: BoxDecoration(color: const Color(0xFFF5F5F5), borderRadius: BorderRadius.circular(10)),
+                      child: Column(
+                        children: [
+                          Icon(Icons.pie_chart, color: primaryColor, size: 28),
+                          const SizedBox(height: 10),
+                          Text("${percentage.toStringAsFixed(1)}%", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: primaryColor)),
+                          const Text("Vote Share", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                        ],
+                      ),
                     ),
                   ),
+                ],
+              ),
+            ] else ...[
+              // 🛠️ LOGIC: Show a lock message when the election is active
+              Container(
+                padding: const EdgeInsets.all(15),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.blue.shade100)
                 ),
-              ],
-            ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.lock_clock, color: primaryColor, size: 24),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Text(
+                        "Results are hidden while the election is active to ensure a fair voting environment. Check back when the poll ends!", 
+                        style: TextStyle(color: Colors.black87, fontSize: 13, height: 1.4)
+                      )
+                    ),
+                  ],
+                ),
+              )
+            ]
           ],
         ),
       ),

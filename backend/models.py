@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Enum as SQLEnum, JSON, ForeignKey
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Enum as SQLEnum, JSON, ForeignKey, Text
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -33,7 +33,8 @@ class Party(Base):
     __tablename__ = "parties"
     party_id = Column(Integer, primary_key=True, index=True)
     poll_id = Column(Integer, ForeignKey("polls.poll_id", ondelete="CASCADE"), nullable=False)
-    name = Column(String(100), unique=True, index=True) # 🛠️ CHANGED TO name
+    name = Column(String(100), unique=True, index=True)
+    platform_bio = Column(Text, nullable=True) 
     
 class Candidate(Base):
     __tablename__ = "candidates"
@@ -48,6 +49,20 @@ class Candidate(Base):
     description_platform = Column(String(500))
     photo_url = Column(String(255))
     poll = relationship("Poll", back_populates="candidates")
+    qas = relationship("CandidateQA", back_populates="candidate", cascade="all, delete-orphan")
+    
+class CandidateQA(Base):
+    __tablename__ = "candidate_qa"
+    qa_id = Column(Integer, primary_key=True, index=True)
+    candidate_id = Column(Integer, ForeignKey("candidates.candidate_id", ondelete="CASCADE"))
+    question = Column(String(255))
+    answer = Column(Text)
+    candidate = relationship("Candidate", back_populates="qas")
+
+class QuestionBank(Base):
+    __tablename__ = "question_bank"
+    question_id = Column(Integer, primary_key=True, index=True)
+    question_text = Column(String(255), nullable=False, unique=True)
 
 class Vote(Base):
     __tablename__ = "votes"
