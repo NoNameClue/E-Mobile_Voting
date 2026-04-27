@@ -55,7 +55,7 @@ def register_user(
 def login(user: UserLogin, db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.email == user.email).first()
     if not db_user or not pwd_context.verify(user.password, db_user.password_hash):
-        raise HTTPException(status_code=401, detail="Invalid email or password")
+        raise HTTPException(status_code=401, detail="WRONG PASSWORD BRO")
     
     if not db_user.is_active:
         raise HTTPException(status_code=403, detail="Account is disabled")
