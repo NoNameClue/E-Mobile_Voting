@@ -1,7 +1,10 @@
-fastapi 
-uvicorn 
-sqlalchemy 
+fastapi
+uvicorn
+sqlalchemy
 pymysql
 passlib[bcrypt]
 pyjwt
 pydantic
+python-multipart
+httpx
+pytest
