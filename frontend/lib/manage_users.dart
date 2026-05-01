@@ -19,6 +19,20 @@ class _ManageUsersState extends State<ManageUsers> {
   final TextEditingController _idController = TextEditingController();
   bool _isLoading = true;
 
+  int _rowsPerPage = 10;
+  int _currentPage = 0;
+
+  List<dynamic> _getPaginatedStudents() {
+    int start = _currentPage * _rowsPerPage;
+    int end = start + _rowsPerPage;
+
+    if (end > _filteredStudents.length) {
+      end = _filteredStudents.length;
+    }
+
+    return _filteredStudents.sublist(start, end);
+  }
+
   // 🛠️ ADDED: Exact list of courses copied from signup_page.dart
   final List<String> _courses = [
     'Bachelor of Science in Tourism Management',
@@ -126,6 +140,7 @@ class _ManageUsersState extends State<ManageUsers> {
     final id = _idController.text.toLowerCase();
 
     setState(() {
+      _currentPage = 0; // Reset to first page on new filter
       _filteredStudents = _allStudents.where((student) {
         final fullName = (student['full_name'] ?? '').toString().toLowerCase();
         final studentId = (student['student_number'] ?? '').toString().toLowerCase();
@@ -156,6 +171,7 @@ class _ManageUsersState extends State<ManageUsers> {
     final id = _idController.text.toLowerCase();
 
     setState(() {
+      _currentPage = 0; // Reset to first page on new filter
       _filteredStudents = _allStudents.where((student) {
         final fullName = (student['full_name'] ?? '').toString().toLowerCase();
         final studentId = (student['student_number'] ?? '').toString().toLowerCase();
@@ -180,7 +196,10 @@ class _ManageUsersState extends State<ManageUsers> {
     int deactivated = total - active;
     bool isMobile = MediaQuery.of(context).size.width < 700;
 
-    return Padding(
+    final paginatedStudents = _getPaginatedStudents();
+
+    return SingleChildScrollView(
+      child: Padding(
       padding: EdgeInsets.all(isMobile ? 15.0 : 30.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -234,15 +253,16 @@ class _ManageUsersState extends State<ManageUsers> {
           const SizedBox(height: 20),
 
           // List of Students
-          Expanded(
-            child: _isLoading
+          _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _filteredStudents.isEmpty
                     ? const Center(child: Text("No students found.", style: TextStyle(color: Colors.white, fontSize: 15)))
                     : ListView.builder(
-                      itemCount: _filteredStudents.length,
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: paginatedStudents.length,
                       itemBuilder: (context, index) {
-                        final student = _filteredStudents[index];
+                        final student = paginatedStudents[index];
                         final isActive = student['is_active'] == true;
 
                         return Card(
@@ -294,9 +314,59 @@ class _ManageUsersState extends State<ManageUsers> {
                         );
                       },
                     ),
+           
+          const SizedBox(height: 10),
+
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // Rows per page
+              Row(
+                children: [
+                  const Text("Rows: "),
+                  DropdownButton<int>(
+                    value: _rowsPerPage,
+                    items: [10, 20, 50, 100].map((e) {
+                      return DropdownMenuItem(value: e, child: Text("$e"));
+                    }).toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        _rowsPerPage = value!;
+                        _currentPage = 0;
+                      });
+                    },
+                  ),
+                ],
+              ),
+
+              // Range text
+              Text(
+                "Page ${_currentPage + 1}",
+                style: const TextStyle(color: Colors.white),
+              ),
+
+              // Buttons
+              Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back, color: Colors.white),
+                    onPressed: _currentPage > 0
+                        ? () => setState(() => _currentPage--)
+                        : null,
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.arrow_forward, color: Colors.white),
+                    onPressed: (_currentPage + 1) * _rowsPerPage < _filteredStudents.length
+                        ? () => setState(() => _currentPage++)
+                        : null,
+                  ),
+                ],
+              ),
+            ],
           ),
-        ],
+        ], 
       ),
+    ),
     );
   }
 
