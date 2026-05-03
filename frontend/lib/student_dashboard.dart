@@ -28,7 +28,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
   String? _profilePicUrl;
 
   final List<String> menuItems = [
-    "Dashboard",
+    "Home", // Changed from Dashboard
     "Vote",
     "View Parties",
     "My Votes",
@@ -264,7 +264,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
           : AppBar(
               backgroundColor: primaryColor,
               foregroundColor: Colors.white,
-              title: const Text("Student Portal", style: TextStyle(fontWeight: FontWeight.bold)),
+              title: Text(menuItems[selectedIndex], style: const TextStyle(fontWeight: FontWeight.bold)),
             ),
       drawer: isDesktop ? null : Drawer(child: buildSidebar(false)),
       body: SystemBackground(
@@ -525,7 +525,7 @@ class _CandidatePlatformsViewState extends State<CandidatePlatformsView> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    "Dashboard",
+                    "Home", // Changed from Dashboard
                     style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white),
                   ),
                   if (_pollTitle.isNotEmpty)
@@ -570,90 +570,84 @@ class _CandidatePlatformsViewState extends State<CandidatePlatformsView> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    // 🛠️ CHANGED: Text is now white instead of amber
                                     Text(
                                       "Running for $position",
                                       style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 0.5),
                                     ),
                                     const SizedBox(height: 15),
-                                    SizedBox(
-                                      height: 260, // 🛠️ INCREASED height for more info
-                                      child: ListView.builder(
-                                        scrollDirection: Axis.horizontal,
-                                        itemCount: candidates.length,
-                                        itemBuilder: (context, cIndex) {
-                                          var c = candidates[cIndex];
-                                          String fullName = "${c['first_name']} ${c['last_name']}";
-                                          String party = c['party_name'] ?? 'Independent';
-                                          String course = c['course_year'] ?? '';
+                                    // 🛠️ REPLACED: Horizontal ListView with Wrap Widget
+                                    Wrap(
+                                      spacing: 20, // horizontal spacing between cards
+                                      runSpacing: 20, // vertical spacing between rows
+                                      children: candidates.map<Widget>((c) {
+                                        String fullName = "${c['first_name']} ${c['last_name']}";
+                                        String party = c['party_name'] ?? 'Independent';
+                                        String course = c['course_year'] ?? '';
 
-                                          return Container(
-                                            width: 180, // 🛠️ INCREASED width for comfort
-                                            margin: const EdgeInsets.only(right: 20),
-                                            decoration: BoxDecoration(
-                                              color: Colors.white,
-                                              borderRadius: BorderRadius.circular(20),
-                                              boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, 5))],
-                                            ),
-                                            child: Padding(
-                                              padding: const EdgeInsets.all(12.0),
-                                              child: Column(
-                                                mainAxisAlignment: MainAxisAlignment.center,
-                                                children: [
-                                                  CircleAvatar(
-                                                    radius: 40,
-                                                    backgroundColor: Colors.grey.shade200,
-                                                    backgroundImage: c['photo_url'] != null ? NetworkImage('${ApiConfig.baseUrl}/${c['photo_url']}') : null,
-                                                    child: c['photo_url'] == null ? Icon(Icons.person, size: 45, color: Colors.grey.shade400) : null,
-                                                  ),
-                                                  const SizedBox(height: 12),
+                                        return Container(
+                                          width: 180, 
+                                          height: 260, // Added fixed height to ensure uniform sizing inside Wrap
+                                          decoration: BoxDecoration(
+                                            color: Colors.white,
+                                            borderRadius: BorderRadius.circular(20),
+                                            boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, 5))],
+                                          ),
+                                          child: Padding(
+                                            padding: const EdgeInsets.all(12.0),
+                                            child: Column(
+                                              mainAxisAlignment: MainAxisAlignment.center,
+                                              children: [
+                                                CircleAvatar(
+                                                  radius: 40,
+                                                  backgroundColor: Colors.grey.shade200,
+                                                  backgroundImage: c['photo_url'] != null ? NetworkImage('${ApiConfig.baseUrl}/${c['photo_url']}') : null,
+                                                  child: c['photo_url'] == null ? Icon(Icons.person, size: 45, color: Colors.grey.shade400) : null,
+                                                ),
+                                                const SizedBox(height: 12),
+                                                Text(
+                                                  fullName,
+                                                  textAlign: TextAlign.center,
+                                                  style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: Color(0xFF000B6B)),
+                                                  maxLines: 2,
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                                const SizedBox(height: 6),
+                                                Text(
+                                                  party.toUpperCase(),
+                                                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.blue.shade700, letterSpacing: 0.5),
+                                                  textAlign: TextAlign.center,
+                                                  maxLines: 1,
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                                const SizedBox(height: 2),
+                                                if (course.isNotEmpty)
                                                   Text(
-                                                    fullName,
-                                                    textAlign: TextAlign.center,
-                                                    style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: Color(0xFF000B6B)),
-                                                    maxLines: 2,
-                                                    overflow: TextOverflow.ellipsis,
-                                                  ),
-                                                  const SizedBox(height: 6),
-                                                  // 🛠️ ADDED: Party Name
-                                                  Text(
-                                                    party.toUpperCase(),
-                                                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.blue.shade700, letterSpacing: 0.5),
+                                                    course,
+                                                    style: const TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.w600),
                                                     textAlign: TextAlign.center,
                                                     maxLines: 1,
                                                     overflow: TextOverflow.ellipsis,
                                                   ),
-                                                  const SizedBox(height: 2),
-                                                  // 🛠️ ADDED: Course and Year
-                                                  if (course.isNotEmpty)
-                                                    Text(
-                                                      course,
-                                                      style: const TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.w600),
-                                                      textAlign: TextAlign.center,
-                                                      maxLines: 1,
-                                                      overflow: TextOverflow.ellipsis,
+                                                const Spacer(),
+                                                SizedBox(
+                                                  width: double.infinity,
+                                                  child: ElevatedButton(
+                                                    style: ElevatedButton.styleFrom(
+                                                      backgroundColor: primaryColor,
+                                                      foregroundColor: Colors.white,
+                                                      padding: const EdgeInsets.symmetric(vertical: 10),
+                                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                                      elevation: 0,
                                                     ),
-                                                  const Spacer(),
-                                                  SizedBox(
-                                                    width: double.infinity,
-                                                    child: ElevatedButton(
-                                                      style: ElevatedButton.styleFrom(
-                                                        backgroundColor: primaryColor,
-                                                        foregroundColor: Colors.white,
-                                                        padding: const EdgeInsets.symmetric(vertical: 10),
-                                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                                        elevation: 0,
-                                                      ),
-                                                      onPressed: () => _showCandidateModal(c),
-                                                      child: const Text("See More", style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-                                                    ),
+                                                    onPressed: () => _showCandidateModal(c),
+                                                    child: const Text("See More", style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
                                                   ),
-                                                ],
-                                              ),
+                                                ),
+                                              ],
                                             ),
-                                          );
-                                        },
-                                      ),
+                                          ),
+                                        );
+                                      }).toList(),
                                     ),
                                   ],
                                 ),

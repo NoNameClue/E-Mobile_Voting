@@ -14,12 +14,14 @@ class _ManageUsersState extends State<ManageUsers> {
   String _statusFilter = "all"; // All | Active | Deactivated
   List<dynamic> _allStudents = [];
   List<dynamic> _filteredStudents = []; 
-  final TextEditingController _firstNameController = TextEditingController();
-  final TextEditingController _lastNameController = TextEditingController();
-  final TextEditingController _idController = TextEditingController();
+  
+  // Replaced multiple controllers with a single controller and search criteria
+  final TextEditingController _searchController = TextEditingController();
+  String _searchCriteria = 'None'; 
+  
   bool _isLoading = true;
 
-  int _rowsPerPage = 10;
+  int _rowsPerPage = 20; // Adjusted default based on screenshot
   int _currentPage = 0;
 
   List<dynamic> _getPaginatedStudents() {
@@ -33,7 +35,7 @@ class _ManageUsersState extends State<ManageUsers> {
     return _filteredStudents.sublist(start, end);
   }
 
-  // 🛠️ ADDED: Exact list of courses copied from signup_page.dart
+  // Exact list of courses copied from signup_page.dart
   final List<String> _courses = [
     'Bachelor of Science in Tourism Management',
     'Bachelor of Science in Hospitality Management',
@@ -62,9 +64,7 @@ class _ManageUsersState extends State<ManageUsers> {
 
   @override
   void dispose() {
-    _firstNameController.dispose();
-    _lastNameController.dispose();
-    _idController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -134,10 +134,9 @@ class _ManageUsersState extends State<ManageUsers> {
     }
   }
 
+  // Unified filter function handling both status and text search
   void _applyFilters() {
-    final first = _firstNameController.text.toLowerCase();
-    final last = _lastNameController.text.toLowerCase();
-    final id = _idController.text.toLowerCase();
+    final query = _searchController.text.toLowerCase();
 
     setState(() {
       _currentPage = 0; // Reset to first page on new filter
@@ -150,10 +149,28 @@ class _ManageUsersState extends State<ManageUsers> {
         final firstName = parts.isNotEmpty ? parts.first : '';
         final lastName = parts.length > 1 ? parts.last : '';
 
-        final matchesSearch =
-            (first.isEmpty || firstName.contains(first)) &&
-            (last.isEmpty || lastName.contains(last)) &&
-            (id.isEmpty || studentId.contains(id));
+        bool matchesSearch = false;
+
+        if (query.isEmpty) {
+          matchesSearch = true;
+        } else {
+          switch (_searchCriteria) {
+            case 'First Name':
+              matchesSearch = firstName.contains(query);
+              break;
+            case 'Last Name':
+              matchesSearch = lastName.contains(query);
+              break;
+            case 'Student ID':
+              matchesSearch = studentId.contains(query);
+              break;
+            case 'None':
+            default:
+              // Global search checks both full name and student ID
+              matchesSearch = fullName.contains(query) || studentId.contains(query);
+              break;
+          }
+        }
 
         final matchesStatus =
             _statusFilter == "all" ||
@@ -161,30 +178,6 @@ class _ManageUsersState extends State<ManageUsers> {
             (_statusFilter == "deactivated" && !isActive);
 
         return matchesSearch && matchesStatus;
-      }).toList();
-    });
-  }
-
-  void _filterStudents() {
-    final first = _firstNameController.text.toLowerCase();
-    final last = _lastNameController.text.toLowerCase();
-    final id = _idController.text.toLowerCase();
-
-    setState(() {
-      _currentPage = 0; // Reset to first page on new filter
-      _filteredStudents = _allStudents.where((student) {
-        final fullName = (student['full_name'] ?? '').toString().toLowerCase();
-        final studentId = (student['student_number'] ?? '').toString().toLowerCase();
-
-        final nameParts = fullName.split(" ");
-
-        final firstName = nameParts.isNotEmpty ? nameParts.first : '';
-        final lastName = nameParts.length > 1 ? nameParts.last : '';
-
-        return
-          (first.isEmpty || firstName.contains(first)) &&
-          (last.isEmpty || lastName.contains(last)) &&
-          (id.isEmpty || studentId.contains(id));
       }).toList();
     });
   }
@@ -197,6 +190,11 @@ class _ManageUsersState extends State<ManageUsers> {
     bool isMobile = MediaQuery.of(context).size.width < 700;
 
     final paginatedStudents = _getPaginatedStudents();
+    
+    // Pagination Calculations
+    int totalFiltered = _filteredStudents.length;
+    int currentStart = totalFiltered == 0 ? 0 : (_currentPage * _rowsPerPage) + 1;
+    int currentEnd = currentStart + paginatedStudents.length - (totalFiltered == 0 ? 0 : 1);
 
     return SingleChildScrollView(
       child: Padding(
@@ -222,30 +220,56 @@ class _ManageUsersState extends State<ManageUsers> {
           ),
           const SizedBox(height: 25),
 
-          // 🛠️ CHANGED: Search Bar with Modern Styling
+          // Consolidated Search & Filter Bar
           Row(
             children: [
-              Expanded(
-                child: _buildSearchField(
-                  controller: _firstNameController,
-                  hint: "Search First Name",
-                  icon: Icons.person_search_outlined,
+              // Dropdown Filter
+              Container(
+                height: 45,
+                padding: const EdgeInsets.symmetric(horizontal: 15),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(25),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4)
+                    )
+                  ],
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: _searchCriteria,
+                    icon: const Icon(Icons.filter_list, color: Colors.grey, size: 20),
+                    style: const TextStyle(color: Colors.black87, fontSize: 14, fontWeight: FontWeight.w500),
+                    items: ['None', 'First Name', 'Last Name', 'Student ID']
+                        .map((String value) {
+                      return DropdownMenuItem<String>(
+                        value: value,
+                        child: Text(value == 'None' ? 'Global Search' : value),
+                      );
+                    }).toList(),
+                    onChanged: (String? newValue) {
+                      if (newValue != null) {
+                        setState(() {
+                          _searchCriteria = newValue;
+                        });
+                        _applyFilters();
+                      }
+                    },
+                  ),
                 ),
               ),
               const SizedBox(width: 15),
+              // Single Search Field
               Expanded(
                 child: _buildSearchField(
-                  controller: _lastNameController,
-                  hint: "Search Last Name",
-                  icon: Icons.person_search_outlined,
-                ),
-              ),
-              const SizedBox(width: 15),
-              Expanded(
-                child: _buildSearchField(
-                  controller: _idController,
-                  hint: "Search ID Number",
-                  icon: Icons.badge_outlined,
+                  controller: _searchController,
+                  hint: _searchCriteria == 'None' 
+                      ? "Search by Name or ID..." 
+                      : "Search by $_searchCriteria...",
+                  icon: Icons.search,
                 ),
               ),
             ],
@@ -256,7 +280,10 @@ class _ManageUsersState extends State<ManageUsers> {
           _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _filteredStudents.isEmpty
-                    ? const Center(child: Text("No students found.", style: TextStyle(color: Colors.white, fontSize: 15)))
+                    ? const Center(child: Padding(
+                        padding: EdgeInsets.all(20.0),
+                        child: Text("No students found.", style: TextStyle(color: Colors.white, fontSize: 15)),
+                      ))
                     : ListView.builder(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
@@ -315,55 +342,117 @@ class _ManageUsersState extends State<ManageUsers> {
                       },
                     ),
            
-          const SizedBox(height: 10),
+          const SizedBox(height: 15),
 
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              // Rows per page
-              Row(
+          // Updated Pagination Bar (White, Stretched, Black Text)
+          if (!_isLoading && _filteredStudents.isNotEmpty)
+            Container(
+              width: double.infinity, // Stretches to fit the page horizontally
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 18),
+              decoration: BoxDecoration(
+                color: Colors.white, // Changed background to white
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05), // Subtle shadow
+                    blurRadius: 10,
+                    offset: const Offset(0, 4)
+                  )
+                ],
+              ),
+              child: Wrap(
+                alignment: WrapAlignment.spaceBetween, // Pushes items to edges
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 15,
+                runSpacing: 10,
                 children: [
-                  const Text("Rows: "),
-                  DropdownButton<int>(
-                    value: _rowsPerPage,
-                    items: [10, 20, 50, 100].map((e) {
-                      return DropdownMenuItem(value: e, child: Text("$e"));
-                    }).toList(),
-                    onChanged: (value) {
-                      setState(() {
-                        _rowsPerPage = value!;
-                        _currentPage = 0;
-                      });
-                    },
+                  // Rows per page Dropdown
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text("Rows per page:", style: TextStyle(color: Colors.black54, fontSize: 13, fontWeight: FontWeight.w500)),
+                      const SizedBox(width: 10),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100, // Light grey for the dropdown box
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: Colors.grey.shade300)
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<int>(
+                            dropdownColor: Colors.white, 
+                            value: _rowsPerPage,
+                            icon: const Icon(Icons.keyboard_arrow_down, color: Colors.black87, size: 16),
+                            style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 14),
+                            items: [10, 20, 50, 100].map((e) {
+                              return DropdownMenuItem(
+                                value: e, 
+                                child: Text("$e", style: const TextStyle(color: Colors.black)),
+                              );
+                            }).toList(),
+                            selectedItemBuilder: (BuildContext context) {
+                              return [10, 20, 50, 100].map<Widget>((int e) {
+                                return Center(
+                                  child: Text(
+                                    "$e", 
+                                    style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold) // Black text for selected item
+                                  )
+                                );
+                              }).toList();
+                            },
+                            onChanged: (value) {
+                              setState(() {
+                                _rowsPerPage = value!;
+                                _currentPage = 0; // Reset on change
+                              });
+                            },
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  // Range Text and Navigation Controls Grouped
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Range Text indicating records displayed
+                      Text(
+                        "Showing $currentStart-$currentEnd of $totalFiltered",
+                        style: const TextStyle(color: Colors.black87, fontSize: 14, fontWeight: FontWeight.w500),
+                      ),
+                      const SizedBox(width: 15),
+                      // Navigation Controls
+                      IconButton(
+                        constraints: const BoxConstraints(),
+                        padding: const EdgeInsets.all(6),
+                        icon: Icon(Icons.chevron_left, color: _currentPage > 0 ? Colors.black87 : Colors.grey.shade300),
+                        onPressed: _currentPage > 0
+                            ? () => setState(() => _currentPage--)
+                            : null,
+                      ),
+                      const SizedBox(width: 4),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100, // Light grey highlight for the active button area
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: Colors.grey.shade300)
+                        ),
+                        child: IconButton(
+                          constraints: const BoxConstraints(),
+                          padding: const EdgeInsets.all(6),
+                          icon: Icon(Icons.chevron_right, color: currentEnd < totalFiltered ? Colors.black87 : Colors.grey.shade300),
+                          onPressed: currentEnd < totalFiltered
+                              ? () => setState(() => _currentPage++)
+                              : null,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-
-              // Range text
-              Text(
-                "Page ${_currentPage + 1}",
-                style: const TextStyle(color: Colors.white),
-              ),
-
-              // Buttons
-              Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Colors.white),
-                    onPressed: _currentPage > 0
-                        ? () => setState(() => _currentPage--)
-                        : null,
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.arrow_forward, color: Colors.white),
-                    onPressed: (_currentPage + 1) * _rowsPerPage < _filteredStudents.length
-                        ? () => setState(() => _currentPage++)
-                        : null,
-                  ),
-                ],
-              ),
-            ],
-          ),
+            ),
         ], 
       ),
     ),
@@ -397,7 +486,6 @@ class _ManageUsersState extends State<ManageUsers> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // 🛠️ CHANGED: Course Dropdown matches signup_page.dart
                       DropdownButtonFormField<String>(
                         value: selectedCourse,
                         isExpanded: true,
@@ -483,7 +571,6 @@ class _ManageUsersState extends State<ManageUsers> {
                       await http.put(
                         Uri.parse('${ApiConfig.baseUrl}/api/admin/users/${student['user_id']}'),
                         headers: {"Content-Type": "application/json"},
-                        // Send the properly selected dropdown value
                         body: jsonEncode({
                           "course": selectedCourse ?? student['course'],
                           "password": passwordController.text.isNotEmpty
@@ -516,7 +603,7 @@ class _ManageUsersState extends State<ManageUsers> {
     );
   }
 
-  // 🛠️ CHANGED: Modernized Search Field (Pill Shape + Drop Shadow + Icons)
+  // Modernized Search Field (Pill Shape + Drop Shadow + Icons)
   Widget _buildSearchField({
     required TextEditingController controller,
     required String hint,
@@ -537,7 +624,7 @@ class _ManageUsersState extends State<ManageUsers> {
       ),
       child: TextField(
         controller: controller,
-        onChanged: (_) => _filterStudents(),
+        onChanged: (_) => _applyFilters(),
         style: const TextStyle(fontSize: 14),
         decoration: InputDecoration(
           prefixIcon: Icon(icon, color: Colors.grey.shade500, size: 20),
