@@ -81,7 +81,11 @@ class _ManageStaffsState extends State<ManageStaffs> {
   void _showStaffModal({Map<String, dynamic>? existingStaff}) {
     final bool isEditing = existingStaff != null;
 
-    final TextEditingController nameCtrl = TextEditingController(text: isEditing ? existingStaff['full_name'] : '');
+    // Split into proper first, middle, and last name controllers
+    final TextEditingController firstNameCtrl = TextEditingController(text: isEditing ? existingStaff['first_name'] ?? '' : '');
+    final TextEditingController middleNameCtrl = TextEditingController(text: isEditing ? existingStaff['middle_name'] ?? '' : '');
+    final TextEditingController lastNameCtrl = TextEditingController(text: isEditing ? existingStaff['last_name'] ?? '' : '');
+    
     final TextEditingController emailCtrl = TextEditingController(text: isEditing ? existingStaff['email'] : '');
     final TextEditingController passCtrl = TextEditingController();
     final TextEditingController confirmCtrl = TextEditingController();
@@ -112,66 +116,79 @@ class _ManageStaffsState extends State<ManageStaffs> {
         builder: (context, setModalState) {
           return AlertDialog(
             title: Text(isEditing ? "Edit Officer" : "Create Staff"),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  GestureDetector(
-                    onTap: () => pickImage(setModalState),
-                    child: CircleAvatar(
-                      radius: 40,
-                      backgroundColor: Colors.grey[200],
-                      backgroundImage: imageBytes != null 
-                          ? MemoryImage(imageBytes!) 
-                          : (isEditing && existingStaff['profile_pic_url'] != null 
-                              ? NetworkImage('${ApiConfig.baseUrl}/${existingStaff['profile_pic_url']}') 
-                              : null) as ImageProvider?,
-                      child: imageBytes == null && (!isEditing || existingStaff['profile_pic_url'] == null)
-                          ? const Icon(Icons.camera_alt, size: 30, color: Colors.grey)
-                          : null,
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  const Text("Tap to upload photo", style: TextStyle(fontSize: 12, color: Colors.grey)),
-                  const SizedBox(height: 15),
-
-                  TextFormField(controller: nameCtrl, decoration: const InputDecoration(labelText: "Full Name", border: OutlineInputBorder())),
-                  const SizedBox(height: 10),
-                  TextFormField(controller: emailCtrl, decoration: const InputDecoration(labelText: "Email", border: OutlineInputBorder())),
-                  const SizedBox(height: 10),
-                  
-                  if (isEditing) 
-                    const Padding(
-                      padding: EdgeInsets.only(bottom: 8.0, top: 10),
-                      child: Text("Leave passwords blank to keep the current password.", style: TextStyle(fontSize: 12, color: Colors.orange)),
-                    ),
-
-                  TextFormField(
-                    controller: passCtrl,
-                    obscureText: obscurePassword,
-                    decoration: InputDecoration(
-                      labelText: isEditing ? "New Password (Optional)" : "Password",
-                      border: const OutlineInputBorder(),
-                      suffixIcon: IconButton(
-                        icon: Icon(obscurePassword ? Icons.visibility_off : Icons.visibility),
-                        onPressed: () => setModalState(() => obscurePassword = !obscurePassword),
+            content: SizedBox(
+              width: 400,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    GestureDetector(
+                      onTap: () => pickImage(setModalState),
+                      child: CircleAvatar(
+                        radius: 40,
+                        backgroundColor: Colors.grey[200],
+                        backgroundImage: imageBytes != null 
+                            ? MemoryImage(imageBytes!) 
+                            : (isEditing && existingStaff['profile_pic_url'] != null 
+                                ? NetworkImage('${ApiConfig.baseUrl}/${existingStaff['profile_pic_url']}') 
+                                : null) as ImageProvider?,
+                        child: imageBytes == null && (!isEditing || existingStaff['profile_pic_url'] == null)
+                            ? const Icon(Icons.camera_alt, size: 30, color: Colors.grey)
+                            : null,
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 10),
-                  TextFormField(
-                    controller: confirmCtrl,
-                    obscureText: obscureConfirm,
-                    decoration: InputDecoration(
-                      labelText: "Confirm Password",
-                      border: const OutlineInputBorder(),
-                      suffixIcon: IconButton(
-                        icon: Icon(obscureConfirm ? Icons.visibility_off : Icons.visibility),
-                        onPressed: () => setModalState(() => obscureConfirm = !obscureConfirm),
+                    const SizedBox(height: 5),
+                    const Text("Tap to upload photo", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    const SizedBox(height: 20),
+
+                    // Separate Name Fields
+                    Row(
+                      children: [
+                        Expanded(child: TextFormField(controller: firstNameCtrl, decoration: const InputDecoration(labelText: "First Name", border: OutlineInputBorder()))),
+                        const SizedBox(width: 10),
+                        Expanded(child: TextFormField(controller: middleNameCtrl, decoration: const InputDecoration(labelText: "M.I. (Opt)", border: OutlineInputBorder()))),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    TextFormField(controller: lastNameCtrl, decoration: const InputDecoration(labelText: "Last Name", border: OutlineInputBorder())),
+                    const SizedBox(height: 10),
+                    
+                    TextFormField(controller: emailCtrl, decoration: const InputDecoration(labelText: "Email", border: OutlineInputBorder())),
+                    const SizedBox(height: 10),
+                    
+                    if (isEditing) 
+                      const Padding(
+                        padding: EdgeInsets.only(bottom: 8.0, top: 10),
+                        child: Text("Leave passwords blank to keep the current password.", style: TextStyle(fontSize: 12, color: Colors.orange)),
+                      ),
+
+                    TextFormField(
+                      controller: passCtrl,
+                      obscureText: obscurePassword,
+                      decoration: InputDecoration(
+                        labelText: isEditing ? "New Password (Optional)" : "Password",
+                        border: const OutlineInputBorder(),
+                        suffixIcon: IconButton(
+                          icon: Icon(obscurePassword ? Icons.visibility_off : Icons.visibility),
+                          onPressed: () => setModalState(() => obscurePassword = !obscurePassword),
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 10),
+                    TextFormField(
+                      controller: confirmCtrl,
+                      obscureText: obscureConfirm,
+                      decoration: InputDecoration(
+                        labelText: "Confirm Password",
+                        border: const OutlineInputBorder(),
+                        suffixIcon: IconButton(
+                          icon: Icon(obscureConfirm ? Icons.visibility_off : Icons.visibility),
+                          onPressed: () => setModalState(() => obscureConfirm = !obscureConfirm),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
             actions: [
@@ -179,12 +196,13 @@ class _ManageStaffsState extends State<ManageStaffs> {
               ElevatedButton(
                 style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF000B6B), foregroundColor: Colors.white),
                 onPressed: isSaving ? null : () async {
-                  if (nameCtrl.text.isEmpty || emailCtrl.text.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Name and Email are required")));
+                  // Strict validation for required fields
+                  if (firstNameCtrl.text.isEmpty || lastNameCtrl.text.isEmpty || emailCtrl.text.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("First Name, Last Name, and Email are required!")));
                     return;
                   }
                   if (!isEditing && passCtrl.text.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Password is required for new staff")));
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Password is required for new staff!")));
                     return;
                   }
                   if (passCtrl.text != confirmCtrl.text) {
@@ -201,8 +219,12 @@ class _ManageStaffsState extends State<ManageStaffs> {
                     
                     var request = http.MultipartRequest(isEditing ? 'PUT' : 'POST', uri);
                     
-                    request.fields['full_name'] = nameCtrl.text;
-                    request.fields['email'] = emailCtrl.text;
+                    // Assign exact Form(...) keys expected by Python
+                    request.fields['first_name'] = firstNameCtrl.text.trim();
+                    request.fields['last_name'] = lastNameCtrl.text.trim();
+                    request.fields['middle_name'] = middleNameCtrl.text.trim();
+                    request.fields['email'] = emailCtrl.text.trim();
+                    
                     if (passCtrl.text.isNotEmpty) {
                       request.fields['password'] = passCtrl.text;
                     }
@@ -223,7 +245,7 @@ class _ManageStaffsState extends State<ManageStaffs> {
                       ));
                     } else {
                       var jsonResponse = jsonDecode(responseData);
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(jsonResponse['detail']), backgroundColor: Colors.red));
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(jsonResponse['detail'] ?? "Validation Error"), backgroundColor: Colors.red));
                     }
                   } catch (e) {
                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Server error occurred."), backgroundColor: Colors.red));
@@ -244,13 +266,15 @@ class _ManageStaffsState extends State<ManageStaffs> {
 
   void _showPermissionsModal(Map<String, dynamic> staff) {
     List<String> currentPermissions = List<String>.from(staff['permissions'] ?? []);
+    // Fallback name combination if full_name is null
+    String staffName = staff['full_name'] ?? "${staff['first_name']} ${staff['last_name']}";
 
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setModalState) {
           return AlertDialog(
-            title: Text("Permissions for ${staff['full_name']}"),
+            title: Text("Permissions for $staffName"),
             content: SizedBox(
               width: 400,
               child: ListView.builder(
@@ -304,7 +328,6 @@ class _ManageStaffsState extends State<ManageStaffs> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // --- MOBILE OVERFLOW FIX: Changed Row to Wrap ---
           Wrap(
             alignment: WrapAlignment.spaceBetween,
             crossAxisAlignment: WrapCrossAlignment.center,
@@ -330,6 +353,10 @@ class _ManageStaffsState extends State<ManageStaffs> {
                     separatorBuilder: (_, __) => const Divider(height: 1),
                     itemBuilder: (context, index) {
                       var staff = _staffList[index];
+                      // Bulletproof name display fallback
+                      String displayName = staff['full_name'] ?? "${staff['first_name'] ?? ''} ${staff['last_name'] ?? ''}".trim();
+                      if (displayName.isEmpty) displayName = "Unknown Staff";
+
                       return ListTile(
                         contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                         leading: CircleAvatar(
@@ -342,8 +369,8 @@ class _ManageStaffsState extends State<ManageStaffs> {
                               ? const Icon(Icons.security, color: Colors.white, size: 30)
                               : null,
                         ),
-                        title: Text(staff['full_name'], style: const TextStyle(fontWeight: FontWeight.bold)),
-                        subtitle: Text(staff['email']),
+                        title: Text(displayName, style: const TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: Text(staff['email'] ?? 'No email'),
                         
                         trailing: PopupMenuButton<String>(
                           icon: const Icon(Icons.more_vert),

@@ -20,7 +20,7 @@ jobs:
         python-version: '3.12'
 
     - name: Install dependencies
-      # 👇 Tell GitHub to run these commands inside the backend folder
+      # run these commands inside the backend folder
       working-directory: ./backend
       run: |
         python -m pip install --upgrade pip
@@ -28,6 +28,6 @@ jobs:
         pip install pytest pytest-sugar
 
     - name: Run Pytest
-      # 👇 Tell GitHub to run pytest inside the backend folder
+      # run pytest inside the backend folder
       working-directory: ./backend
       run: pytest test_main.py
