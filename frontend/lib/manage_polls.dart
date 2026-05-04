@@ -21,7 +21,6 @@ class _ManagePollsState extends State<ManagePolls> {
     _fetchPolls();
   }
 
-  // 🛠️ Formats raw ISO string from database to "Month DD, YYYY at HH:MM AM/PM"
   String _formatDateString(String? isoString) {
     if (isoString == null) return 'N/A';
     try {
@@ -32,7 +31,6 @@ class _ManagePollsState extends State<ManagePolls> {
     }
   }
 
-  // 🛠️ Formats Flutter DateTime objects for the Dialog menus
   String _formatDateTimeObj(DateTime? dt) {
     if (dt == null) return 'Select date & time';
     List<String> months = [
@@ -115,6 +113,7 @@ class _ManagePollsState extends State<ManagePolls> {
       context: context,
       builder: (context) {
         return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: const Text("Confirm Delete"),
           content: const Text("Are you sure? This cannot be undone."),
           actions: [
@@ -123,7 +122,7 @@ class _ManagePollsState extends State<ManagePolls> {
               child: const Text("Cancel"),
             ),
             ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
               onPressed: () {
                 Navigator.pop(context);
                 _deletePoll(pollId);
@@ -162,13 +161,12 @@ class _ManagePollsState extends State<ManagePolls> {
     }
   }
 
-  // 🛠️ NEW: Publish Summary Interceptor Dialog
   void _showPublishConfirmationDialog(int pollId, String title) {
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: Text("Publish Election: $title", style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF000B6B))),
           content: SizedBox(
             width: 500,
@@ -180,7 +178,7 @@ class _ManagePollsState extends State<ManagePolls> {
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: Colors.amber.shade50, 
-                    borderRadius: BorderRadius.circular(8), 
+                    borderRadius: BorderRadius.circular(16), 
                     border: Border.all(color: Colors.amber.shade400)
                   ),
                   child: Row(
@@ -220,7 +218,6 @@ class _ManagePollsState extends State<ManagePolls> {
                         return const Center(child: Text("⚠️ No candidates registered.\nAre you sure you want to publish an empty poll?", textAlign: TextAlign.center, style: TextStyle(color: Colors.red)));
                       }
 
-                      // Group by party
                       Map<String, List<dynamic>> grouped = {};
                       for (var c in candidates) {
                         String party = c['party_name'] ?? 'Independent';
@@ -237,7 +234,7 @@ class _ManagePollsState extends State<ManagePolls> {
                                 Container(
                                   width: double.infinity,
                                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                  decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(4)),
+                                  decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(16)),
                                   child: Text(entry.key, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF000B6B))),
                                 ),
                                 ...entry.value.map((candidate) {
@@ -267,12 +264,12 @@ class _ManagePollsState extends State<ManagePolls> {
               child: const Text("Cancel", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
             ),
             ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12)),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
               icon: const Icon(Icons.campaign, size: 18),
               label: const Text("Confirm & Publish", style: TextStyle(fontWeight: FontWeight.bold)),
               onPressed: () {
-                Navigator.pop(context); // Close Modal
-                _publishPoll(pollId);   // Execute Publish API
+                Navigator.pop(context);
+                _publishPoll(pollId); 
               },
             ),
           ],
@@ -286,6 +283,7 @@ class _ManagePollsState extends State<ManagePolls> {
       context: context,
       builder: (context) {
         return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: FutureBuilder(
             future: http.get(Uri.parse('${ApiConfig.baseUrl}/api/candidates/$pollId')),
             builder: (context, snapshot) {
@@ -392,6 +390,7 @@ class _ManagePollsState extends State<ManagePolls> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               title: Text(existingPoll == null ? 'Create New Poll (Draft)' : 'Edit Poll'),
               content: SingleChildScrollView(
                 child: Column(
@@ -399,7 +398,7 @@ class _ManagePollsState extends State<ManagePolls> {
                   children: [
                     TextField(
                       controller: titleController,
-                      decoration: const InputDecoration(labelText: 'Poll Title', border: OutlineInputBorder()),
+                      decoration: InputDecoration(labelText: 'Poll Title', border: OutlineInputBorder(borderRadius: BorderRadius.circular(16))),
                     ),
                     const SizedBox(height: 20),
                     ListTile(
@@ -435,7 +434,7 @@ class _ManagePollsState extends State<ManagePolls> {
                     Navigator.pop(context);
                     _savePoll(existingPoll?['poll_id'], titleController.text, startTime!, endTime!, isPublished);
                   },
-                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF000B6B), foregroundColor: Colors.white),
+                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF000B6B), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
                   child: const Text('Save Poll'),
                 )
               ],
@@ -487,7 +486,8 @@ class _ManagePollsState extends State<ManagePolls> {
                   label: const Text("Create Poll"),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: hasActivePoll ? Colors.grey.shade500 : Colors.amber, 
-                    foregroundColor: hasActivePoll ? Colors.grey.shade700 : Colors.white
+                    foregroundColor: hasActivePoll ? Colors.grey.shade700 : Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   ),
                   onPressed: hasActivePoll ? null : () => _showPollDialog(),
                 ),
@@ -520,6 +520,7 @@ class _ManagePollsState extends State<ManagePolls> {
                         return InkWell(
                           onTap: () => _openPollDetails(poll['poll_id'], poll['title']),
                           child: Card(
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                             margin: const EdgeInsets.only(bottom: 15),
                             child: ListTile(
                               contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -536,13 +537,13 @@ class _ManagePollsState extends State<ManagePolls> {
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   if (!isPublished) ...[
-                                    // 🛠️ REPLACED: Intercepts the publish action to show the summary modal
                                     ElevatedButton.icon(
                                       icon: const Icon(Icons.campaign, size: 18),
                                       label: const Text("Publish"),
                                       style: ElevatedButton.styleFrom(
                                         backgroundColor: Colors.green,
                                         foregroundColor: Colors.white,
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))
                                       ),
                                       onPressed: () => _showPublishConfirmationDialog(poll['poll_id'], poll['title']),
                                     ),
@@ -563,7 +564,7 @@ class _ManagePollsState extends State<ManagePolls> {
                                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                                         decoration: BoxDecoration(
                                           color: Colors.red.withOpacity(0.2),
-                                          borderRadius: BorderRadius.circular(12),
+                                          borderRadius: BorderRadius.circular(16),
                                           border: Border.all(color: Colors.red),
                                         ),
                                         child: const Text(
@@ -576,7 +577,7 @@ class _ManagePollsState extends State<ManagePolls> {
                                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                                         decoration: BoxDecoration(
                                           color: Colors.green.withOpacity(0.2),
-                                          borderRadius: BorderRadius.circular(12),
+                                          borderRadius: BorderRadius.circular(16),
                                           border: Border.all(color: Colors.green),
                                         ),
                                         child: const Text(
@@ -599,6 +600,7 @@ class _ManagePollsState extends State<ManagePolls> {
                                         showDialog(
                                           context: context,
                                           builder: (context) => AlertDialog(
+                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                                             title: Text(poll['title']),
                                             content: Text("Total Candidates: ${data['total_candidates']}\nParticipating Parties: ${data['total_parties']}"),
                                             actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text("Close"))],

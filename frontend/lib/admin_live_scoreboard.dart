@@ -163,7 +163,7 @@ class _AdminLiveScoreboardState extends State<AdminLiveScoreboard> {
                       width: constraints.maxWidth,
                       decoration: BoxDecoration(
                         color: Colors.grey.shade200,
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(16),
                       ),
                       child: Row(
                         children: [
@@ -173,7 +173,7 @@ class _AdminLiveScoreboardState extends State<AdminLiveScoreboard> {
                             width: constraints.maxWidth * flexValue,
                             decoration: BoxDecoration(
                               color: const Color(0xFF000B6B),
-                              borderRadius: BorderRadius.circular(10),
+                              borderRadius: BorderRadius.circular(16),
                             ),
                           ),
                         ],
@@ -189,12 +189,11 @@ class _AdminLiveScoreboardState extends State<AdminLiveScoreboard> {
     );
   }
 
-  // 🛠️ NEW: A helper widget that builds the position card independently
   Widget _buildPositionCard(String position, List<dynamic> candidates, int maxVotes) {
     return Card(
       margin: const EdgeInsets.only(bottom: 25),
       elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
         padding: const EdgeInsets.all(20.0),
         child: Column(
@@ -216,7 +215,6 @@ class _AdminLiveScoreboardState extends State<AdminLiveScoreboard> {
     );
   }
 
-  // 🛠️ NEW: Splitting logic into two columns for maximum screen real estate
   Widget _buildScoreboardGrid(Map<String, List<dynamic>> groupedResults, int maxVotes) {
     bool isMobile = MediaQuery.of(context).size.width < 800;
     List<String> positions = groupedResults.keys.toList();
@@ -296,7 +294,7 @@ class _AdminLiveScoreboardState extends State<AdminLiveScoreboard> {
                 Container(
                   width: 250,
                   padding: const EdgeInsets.symmetric(horizontal: 15),
-                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
+                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<int>(
                       isExpanded: true,
@@ -327,7 +325,6 @@ class _AdminLiveScoreboardState extends State<AdminLiveScoreboard> {
                 ? const Center(child: CircularProgressIndicator())
                 : _resultsData.isEmpty
                     ? const Center(child: Text("No live data found for this poll.", style: TextStyle(color: Colors.white)))
-                    // 🛠️ REPLACED: Uses the new two-column layout grid instead of a single ListView
                     : _buildScoreboardGrid(groupedResults, maxVotes),
           ),
         ],

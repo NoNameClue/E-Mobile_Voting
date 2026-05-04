@@ -52,12 +52,13 @@ class _ManageStaffsState extends State<ManageStaffs> {
     bool confirm = await showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text("Delete Officer"),
         content: const Text("Are you sure you want to remove this staff member? This action cannot be undone."),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancel")),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
             onPressed: () => Navigator.pop(context, true),
             child: const Text("Delete"),
           ),
@@ -81,7 +82,6 @@ class _ManageStaffsState extends State<ManageStaffs> {
   void _showStaffModal({Map<String, dynamic>? existingStaff}) {
     final bool isEditing = existingStaff != null;
 
-    // Split into proper first, middle, and last name controllers
     final TextEditingController firstNameCtrl = TextEditingController(text: isEditing ? existingStaff['first_name'] ?? '' : '');
     final TextEditingController middleNameCtrl = TextEditingController(text: isEditing ? existingStaff['middle_name'] ?? '' : '');
     final TextEditingController lastNameCtrl = TextEditingController(text: isEditing ? existingStaff['last_name'] ?? '' : '');
@@ -115,6 +115,7 @@ class _ManageStaffsState extends State<ManageStaffs> {
       builder: (context) => StatefulBuilder(
         builder: (context, setModalState) {
           return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             title: Text(isEditing ? "Edit Officer" : "Create Staff"),
             content: SizedBox(
               width: 400,
@@ -141,19 +142,18 @@ class _ManageStaffsState extends State<ManageStaffs> {
                     const Text("Tap to upload photo", style: TextStyle(fontSize: 12, color: Colors.grey)),
                     const SizedBox(height: 20),
 
-                    // Separate Name Fields
                     Row(
                       children: [
-                        Expanded(child: TextFormField(controller: firstNameCtrl, decoration: const InputDecoration(labelText: "First Name", border: OutlineInputBorder()))),
+                        Expanded(child: TextFormField(controller: firstNameCtrl, decoration: InputDecoration(labelText: "First Name", border: OutlineInputBorder(borderRadius: BorderRadius.circular(16))))),
                         const SizedBox(width: 10),
-                        Expanded(child: TextFormField(controller: middleNameCtrl, decoration: const InputDecoration(labelText: "M.I. (Opt)", border: OutlineInputBorder()))),
+                        Expanded(child: TextFormField(controller: middleNameCtrl, decoration: InputDecoration(labelText: "M.I. (Opt)", border: OutlineInputBorder(borderRadius: BorderRadius.circular(16))))),
                       ],
                     ),
                     const SizedBox(height: 10),
-                    TextFormField(controller: lastNameCtrl, decoration: const InputDecoration(labelText: "Last Name", border: OutlineInputBorder())),
+                    TextFormField(controller: lastNameCtrl, decoration: InputDecoration(labelText: "Last Name", border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)))),
                     const SizedBox(height: 10),
                     
-                    TextFormField(controller: emailCtrl, decoration: const InputDecoration(labelText: "Email", border: OutlineInputBorder())),
+                    TextFormField(controller: emailCtrl, decoration: InputDecoration(labelText: "Email", border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)))),
                     const SizedBox(height: 10),
                     
                     if (isEditing) 
@@ -167,7 +167,7 @@ class _ManageStaffsState extends State<ManageStaffs> {
                       obscureText: obscurePassword,
                       decoration: InputDecoration(
                         labelText: isEditing ? "New Password (Optional)" : "Password",
-                        border: const OutlineInputBorder(),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
                         suffixIcon: IconButton(
                           icon: Icon(obscurePassword ? Icons.visibility_off : Icons.visibility),
                           onPressed: () => setModalState(() => obscurePassword = !obscurePassword),
@@ -180,7 +180,7 @@ class _ManageStaffsState extends State<ManageStaffs> {
                       obscureText: obscureConfirm,
                       decoration: InputDecoration(
                         labelText: "Confirm Password",
-                        border: const OutlineInputBorder(),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
                         suffixIcon: IconButton(
                           icon: Icon(obscureConfirm ? Icons.visibility_off : Icons.visibility),
                           onPressed: () => setModalState(() => obscureConfirm = !obscureConfirm),
@@ -194,9 +194,8 @@ class _ManageStaffsState extends State<ManageStaffs> {
             actions: [
               TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
               ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF000B6B), foregroundColor: Colors.white),
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF000B6B), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
                 onPressed: isSaving ? null : () async {
-                  // Strict validation for required fields
                   if (firstNameCtrl.text.isEmpty || lastNameCtrl.text.isEmpty || emailCtrl.text.isEmpty) {
                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("First Name, Last Name, and Email are required!")));
                     return;
@@ -219,7 +218,6 @@ class _ManageStaffsState extends State<ManageStaffs> {
                     
                     var request = http.MultipartRequest(isEditing ? 'PUT' : 'POST', uri);
                     
-                    // Assign exact Form(...) keys expected by Python
                     request.fields['first_name'] = firstNameCtrl.text.trim();
                     request.fields['last_name'] = lastNameCtrl.text.trim();
                     request.fields['middle_name'] = middleNameCtrl.text.trim();
@@ -266,7 +264,6 @@ class _ManageStaffsState extends State<ManageStaffs> {
 
   void _showPermissionsModal(Map<String, dynamic> staff) {
     List<String> currentPermissions = List<String>.from(staff['permissions'] ?? []);
-    // Fallback name combination if full_name is null
     String staffName = staff['full_name'] ?? "${staff['first_name']} ${staff['last_name']}";
 
     showDialog(
@@ -274,6 +271,7 @@ class _ManageStaffsState extends State<ManageStaffs> {
       builder: (context) => StatefulBuilder(
         builder: (context, setModalState) {
           return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             title: Text("Permissions for $staffName"),
             content: SizedBox(
               width: 400,
@@ -302,7 +300,7 @@ class _ManageStaffsState extends State<ManageStaffs> {
             actions: [
               TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
               ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
                 onPressed: () async {
                   await http.put(
                     Uri.parse('${ApiConfig.baseUrl}/api/officers/${staff['user_id']}/permissions'),
@@ -336,7 +334,7 @@ class _ManageStaffsState extends State<ManageStaffs> {
             children: [
               const Text("Manage Election Officers", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white)),
               ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.amber, foregroundColor: const Color(0xFF000B6B)),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.amber, foregroundColor: const Color(0xFF000B6B), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
                 icon: const Icon(Icons.add),
                 label: const Text("Create Staff"),
                 onPressed: () => _showStaffModal(),
@@ -348,12 +346,12 @@ class _ManageStaffsState extends State<ManageStaffs> {
             ? const Center(child: CircularProgressIndicator())
             : Expanded(
                 child: Card(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   child: ListView.separated(
                     itemCount: _staffList.length,
                     separatorBuilder: (_, __) => const Divider(height: 1),
                     itemBuilder: (context, index) {
                       var staff = _staffList[index];
-                      // Bulletproof name display fallback
                       String displayName = staff['full_name'] ?? "${staff['first_name'] ?? ''} ${staff['last_name'] ?? ''}".trim();
                       if (displayName.isEmpty) displayName = "Unknown Staff";
 
@@ -374,6 +372,7 @@ class _ManageStaffsState extends State<ManageStaffs> {
                         
                         trailing: PopupMenuButton<String>(
                           icon: const Icon(Icons.more_vert),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                           onSelected: (value) {
                             if (value == 'permissions') _showPermissionsModal(staff);
                             if (value == 'edit') _showStaffModal(existingStaff: staff);

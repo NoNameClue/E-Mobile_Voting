@@ -146,13 +146,13 @@ class _VotingPageState extends State<VotingPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text('Confirm Your Ballot', style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),
         content: const Text('Are you sure you want to submit your final ballot? You cannot change these votes after submitting.'),
         actions: [
           TextButton(child: const Text('Review Again'), onPressed: () => Navigator.pop(context)),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: primaryColor),
+            style: ElevatedButton.styleFrom(backgroundColor: primaryColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
             child: const Text('Submit Ballot', style: TextStyle(color: Colors.white)),
             onPressed: () { Navigator.pop(context); _confirmAndSubmitVote(); },
           ),
@@ -173,7 +173,7 @@ class _VotingPageState extends State<VotingPage> {
         return Card(
           margin: EdgeInsets.only(bottom: bottomMargin),
           elevation: 2,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: Padding(
             padding: const EdgeInsets.all(20),
             child: Column(
@@ -222,7 +222,6 @@ class _VotingPageState extends State<VotingPage> {
     } else if (_isExpired) {
       bodyContent = _buildStatusView(Icons.timer_off, "Ballot Expired", "Voting is no longer allowed.", Colors.redAccent);
     } else if (_hasAlreadyVoted && !_isJustSubmitted) {
-      // 🛠️ Updated to show the friendly dynamic message when already voted
       bodyContent = _buildStatusView(
         Icons.how_to_vote, 
         "Already Voted", 
@@ -247,6 +246,7 @@ class _VotingPageState extends State<VotingPage> {
               backgroundColor: Colors.green,
               icon: const Icon(Icons.send, color: Colors.white),
               label: const Text("SUBMIT BALLOT", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             )
           : null,
           
@@ -280,7 +280,7 @@ class _VotingPageState extends State<VotingPage> {
             onPressed: widget.onReturnToDashboard,
             icon: const Icon(Icons.arrow_back),
             label: const Text("Go back to dashboard"),
-            style: ElevatedButton.styleFrom(backgroundColor: color, foregroundColor: Colors.black, padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14)),
+            style: ElevatedButton.styleFrom(backgroundColor: color, foregroundColor: Colors.black, padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
           )
         ],
       ),
@@ -302,7 +302,6 @@ class _VotingPageState extends State<VotingPage> {
               ],
             ),
           ),
-          // Dropdown completely removed here!
         ],
       ),
     );

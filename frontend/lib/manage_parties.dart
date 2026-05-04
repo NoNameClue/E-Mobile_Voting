@@ -166,12 +166,13 @@ class _ManagePartiesState extends State<ManageParties> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text("Delete $partyName?"),
         content: const Text("Are you sure you want to delete this party list?"),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
             onPressed: () {
               Navigator.pop(context); 
               _showDeleteConfirmation2(partyId, partyName); 
@@ -187,12 +188,13 @@ class _ManagePartiesState extends State<ManageParties> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text("Final Confirmation", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
         content: const Text("Are you REALLY sure? This action cannot be undone. Any candidates registered under this party will automatically be changed to 'Independent'."),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
             onPressed: () {
               Navigator.pop(context); 
               _deleteParty(partyId);  
@@ -213,7 +215,7 @@ void _showPartyDialog({Map<String, dynamic>? party}) {
       context: context,
       builder: (context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: Text(isEdit ? "Edit Party" : "Create New Party", style: const TextStyle(fontWeight: FontWeight.bold)),
           content: SizedBox(
             width: 450, 
@@ -225,7 +227,7 @@ void _showPartyDialog({Map<String, dynamic>? party}) {
                   decoration: InputDecoration(
                     labelText: "Party Name",
                     hintText: "e.g. Progressive Youth Party",
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
                     filled: true,
                     fillColor: Colors.grey.shade50
                   ),
@@ -242,7 +244,7 @@ void _showPartyDialog({Map<String, dynamic>? party}) {
                   decoration: InputDecoration(
                     labelText: "Platform / Bio (Optional)",
                     hintText: "Briefly describe the party's vision...",
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
                     alignLabelWithHint: true,
                     filled: true,
                     fillColor: Colors.grey.shade50
@@ -262,7 +264,7 @@ void _showPartyDialog({Map<String, dynamic>? party}) {
                 backgroundColor: const Color(0xFF000B6B), 
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))
               ),
               onPressed: () {
                 if (nameController.text.trim().isEmpty) {
@@ -292,7 +294,7 @@ void _showPartyDialog({Map<String, dynamic>? party}) {
       padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 6),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 3))],
       ),
       child: DropdownButtonHideUnderline(
@@ -363,7 +365,7 @@ void _showPartyDialog({Map<String, dynamic>? party}) {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: isLocked ? Colors.grey.shade300 : Colors.green, 
                         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                         elevation: isLocked ? 0 : 4, 
                       ),
                       onPressed: isLocked ? null : () => _showPartyDialog(), 
@@ -430,7 +432,7 @@ void _showPartyDialog({Map<String, dynamic>? party}) {
                                         Container(
                                           decoration: BoxDecoration(
                                             color: Colors.grey.shade50,
-                                            borderRadius: BorderRadius.circular(8),
+                                            borderRadius: BorderRadius.circular(16),
                                             border: Border.all(color: Colors.grey.shade200)
                                           ),
                                           child: Row(
@@ -466,7 +468,7 @@ void _showPartyDialog({Map<String, dynamic>? party}) {
                                       padding: const EdgeInsets.all(12),
                                       decoration: BoxDecoration(
                                         color: Colors.blue.shade50.withOpacity(0.5),
-                                        borderRadius: BorderRadius.circular(8),
+                                        borderRadius: BorderRadius.circular(16),
                                         border: Border.all(color: Colors.blue.shade100)
                                       ),
                                       child: Text(

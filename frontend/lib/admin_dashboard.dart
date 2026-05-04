@@ -13,7 +13,6 @@ import 'manage_candidates.dart';
 import 'election_result.dart';
 import 'admin_live_scoreboard.dart';
 import 'manage_parties.dart';
-// Note: candidates_registration.dart import removed because the feature is now inside Manage Candidates!
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -213,7 +212,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     showDialog(
       context: context,
       builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: Container(
           width: 600,
           padding: const EdgeInsets.all(0),
@@ -224,7 +223,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 padding: const EdgeInsets.all(20),
                 decoration: const BoxDecoration(
                   color: Color(0xFF000B6B), 
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(15))
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(16))
                 ),
                 child: Row(
                   children: [
@@ -254,7 +253,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                           Expanded(
                             child: Container(
                               padding: const EdgeInsets.all(15),
-                              decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.blue.shade100)),
+                              decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.blue.shade100)),
                               child: Column(
                                 children: [
                                   const Text("Voter Turnout", style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
@@ -268,7 +267,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                           Expanded(
                             child: Container(
                               padding: const EdgeInsets.all(15),
-                              decoration: BoxDecoration(color: Colors.green.shade50, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.green.shade100)),
+                              decoration: BoxDecoration(color: Colors.green.shade50, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.green.shade100)),
                               child: Column(
                                 children: [
                                   const Text("Total Votes Cast", style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
@@ -344,7 +343,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(color: Colors.white.withOpacity(0.1), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.white24)),
+            decoration: BoxDecoration(color: Colors.white.withOpacity(0.1), borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.white24)),
             child: const Center(child: Text("No recent polls have ended yet.", style: TextStyle(color: Colors.white70, fontStyle: FontStyle.italic))),
           ),
           
@@ -352,7 +351,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(25),
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 5))]),
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 5))]),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -365,7 +364,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         children: [
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.red.shade200)),
+                            decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.red.shade200)),
                             child: const Text("ENDED", style: TextStyle(color: Colors.red, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1)),
                           ),
                           const SizedBox(height: 8),
@@ -374,7 +373,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       ),
                     ),
                     ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF000B6B), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF000B6B), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
                       icon: const Icon(Icons.insights, size: 18),
                       label: const Text("See more details"),
                       onPressed: _showPollDetailsDialog,
@@ -433,7 +432,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   width: 50, 
                   height: 50, 
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8), 
+                    borderRadius: BorderRadius.circular(16), 
                     image: const DecorationImage(image: AssetImage('assets/images/lnu_logo.png'), fit: BoxFit.cover)
                   )
                 ),
@@ -466,7 +465,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       child: Container(
                         decoration: BoxDecoration(
                           color: _selectedMenuString == displayMenuItems[i] ? Colors.amber : Colors.transparent, 
-                          borderRadius: BorderRadius.circular(5)
+                          borderRadius: BorderRadius.circular(16)
                         ),
                         child: ListTile(
                           dense: true, 
@@ -530,7 +529,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white, 
-        borderRadius: BorderRadius.circular(12), 
+        borderRadius: BorderRadius.circular(16), 
         border: Border.all(color: Colors.grey.shade200), 
         boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 5))]
       ),
@@ -572,13 +571,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("You do not have permission to access this module.", style: TextStyle(color: Colors.white)), backgroundColor: Colors.red));
             }
           },
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(16),
       child: Container(
         width: 160, 
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: isLocked ? Colors.grey.shade400 : color, 
-          borderRadius: BorderRadius.circular(12), 
+          borderRadius: BorderRadius.circular(16), 
           boxShadow: [BoxShadow(color: (isLocked ? Colors.grey : color).withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))]
         ),
         child: Column(
@@ -640,7 +639,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
             padding: const EdgeInsets.all(20), 
             decoration: BoxDecoration(
               color: Colors.blue.shade50.withOpacity(0.9), 
-              borderRadius: BorderRadius.circular(12), 
+              borderRadius: BorderRadius.circular(16), 
               border: Border.all(color: Colors.blue.shade100)
             ),
             child: const Row(

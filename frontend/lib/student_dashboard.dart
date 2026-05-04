@@ -98,7 +98,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
                           width: 50,
                           height: 50,
                           decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(16),
                             image: const DecorationImage(
                               image: AssetImage('assets/images/lnu_logo.png'),
                               fit: BoxFit.cover,
@@ -175,7 +175,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
                           color: selectedIndex == i
                               ? Colors.amber
                               : Colors.transparent,
-                          borderRadius: BorderRadius.circular(5), 
+                          borderRadius: BorderRadius.circular(12), 
                         ),
                         child: ListTile(
                           dense: true, 
@@ -419,7 +419,7 @@ class _CandidatePlatformsViewState extends State<CandidatePlatformsView> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           contentPadding: const EdgeInsets.all(0),
           content: Container(
             width: 600,
@@ -431,7 +431,7 @@ class _CandidatePlatformsViewState extends State<CandidatePlatformsView> {
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
                     color: primaryColor,
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
                   ),
                   child: Row(
                     children: [
@@ -476,7 +476,7 @@ class _CandidatePlatformsViewState extends State<CandidatePlatformsView> {
                           Container(
                             width: double.infinity,
                             padding: const EdgeInsets.all(15),
-                            decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.grey.shade200)),
+                            decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.grey.shade200)),
                             child: Text(platformBio, style: const TextStyle(fontSize: 14, height: 1.5, color: Colors.black87)),
                           ),
                           
@@ -489,7 +489,7 @@ class _CandidatePlatformsViewState extends State<CandidatePlatformsView> {
                           Container(
                             width: double.infinity,
                             padding: const EdgeInsets.all(15),
-                            decoration: BoxDecoration(color: Colors.blue.shade50.withOpacity(0.5), borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.blue.shade100)),
+                            decoration: BoxDecoration(color: Colors.blue.shade50.withOpacity(0.5), borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.blue.shade100)),
                             child: Text(
                               formattedQA.trim(), 
                               style: const TextStyle(fontSize: 14, height: 1.6, color: Colors.black87)
@@ -589,7 +589,7 @@ class _CandidatePlatformsViewState extends State<CandidatePlatformsView> {
                                           height: 260, // Added fixed height to ensure uniform sizing inside Wrap
                                           decoration: BoxDecoration(
                                             color: Colors.white,
-                                            borderRadius: BorderRadius.circular(20),
+                                            borderRadius: BorderRadius.circular(16),
                                             boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, 5))],
                                           ),
                                           child: Padding(
@@ -636,7 +636,7 @@ class _CandidatePlatformsViewState extends State<CandidatePlatformsView> {
                                                       backgroundColor: primaryColor,
                                                       foregroundColor: Colors.white,
                                                       padding: const EdgeInsets.symmetric(vertical: 10),
-                                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                                                       elevation: 0,
                                                     ),
                                                     onPressed: () => _showCandidateModal(c),

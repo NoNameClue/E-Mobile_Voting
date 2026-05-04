@@ -111,7 +111,7 @@ class _ViewPartiesState extends State<ViewParties> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           titlePadding: const EdgeInsets.fromLTRB(25, 25, 25, 10),
           contentPadding: const EdgeInsets.fromLTRB(10, 10, 10, 20),
           title: Column(
@@ -130,7 +130,7 @@ class _ViewPartiesState extends State<ViewParties> {
                   padding: const EdgeInsets.all(15),
                   decoration: BoxDecoration(
                     color: Colors.blue.shade50.withOpacity(0.8),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(16),
                     border: Border.all(color: Colors.blue.shade200, width: 1.5)
                   ),
                   child: Scrollbar(
@@ -169,7 +169,7 @@ class _ViewPartiesState extends State<ViewParties> {
                     margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 6),
                     decoration: BoxDecoration(
                       color: Colors.grey.shade50,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(16),
                       border: Border.all(color: Colors.grey.shade200)
                     ),
                     child: ListTile(
@@ -192,7 +192,7 @@ class _ViewPartiesState extends State<ViewParties> {
             TextButton(
               style: TextButton.styleFrom(
                 padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))
               ),
               onPressed: () => Navigator.of(context).pop(),
               child: const Text("Close Window", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 16)),
@@ -226,7 +226,7 @@ class _ViewPartiesState extends State<ViewParties> {
                   padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 6),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(16),
                     boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 4))],
                   ),
                   child: DropdownButtonHideUnderline(
@@ -281,14 +281,14 @@ class _ViewPartiesState extends State<ViewParties> {
                           return Card(
                             elevation: 8,
                             shadowColor: Colors.black26,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                             child: InkWell(
                               onTap: () => _showPartyModal(partyName, partyCandidates),
-                              borderRadius: BorderRadius.circular(20),
+                              borderRadius: BorderRadius.circular(16),
                               child: Container(
                                 padding: const EdgeInsets.all(20.0),
                                 decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(20),
+                                  borderRadius: BorderRadius.circular(16),
                                   gradient: LinearGradient(
                                     colors: [Colors.white, Colors.blue.shade50.withOpacity(0.3)],
                                     begin: Alignment.topLeft,

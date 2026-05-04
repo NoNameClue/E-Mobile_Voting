@@ -5,9 +5,8 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'api_config.dart';
-import 'dart:typed_data'; // <-- FIX 1: Added for Uint8List
-import 'package:excel/excel.dart'
-    hide Border; // <-- FIX 2: Only ONE excel import, hiding Border
+import 'dart:typed_data'; 
+import 'package:excel/excel.dart' hide Border;
 
 class ElectionResultPage extends StatefulWidget {
   const ElectionResultPage({super.key});
@@ -76,10 +75,8 @@ class _ElectionResultPageState extends State<ElectionResultPage> {
   Future<void> _exportToExcel() async {
     if (_reportData == null) return;
 
-    // Create a new Excel Document
     var excel = Excel.createExcel();
 
-    // 1. Create Summary Sheet
     Sheet summarySheet = excel['Summary'];
     excel.setDefaultSheet('Summary');
 
@@ -88,7 +85,7 @@ class _ElectionResultPageState extends State<ElectionResultPage> {
     )['title'];
 
     summarySheet.appendRow([TextCellValue('Election Report: $pollTitle')]);
-    summarySheet.appendRow([TextCellValue('')]); // Blank row
+    summarySheet.appendRow([TextCellValue('')]); 
     summarySheet.appendRow([
       TextCellValue('Total Active Students:'),
       IntCellValue(_reportData!['summary']['total_active_students']),
@@ -102,16 +99,14 @@ class _ElectionResultPageState extends State<ElectionResultPage> {
       TextCellValue('${_reportData!['summary']['turnout_percentage']}%'),
     ]);
 
-    // 2. Add Data for each position
     final results = _reportData!['results'] as List;
 
     for (var positionData in results) {
-      summarySheet.appendRow([TextCellValue('')]); // Blank row spacing
+      summarySheet.appendRow([TextCellValue('')]); 
       summarySheet.appendRow([
         TextCellValue('--- ${positionData['position'].toUpperCase()} ---'),
       ]);
 
-      // Table Headers
       summarySheet.appendRow([
         TextCellValue('Rank'),
         TextCellValue('Candidate Name'),
@@ -121,7 +116,6 @@ class _ElectionResultPageState extends State<ElectionResultPage> {
         TextCellValue('Margin'),
       ]);
 
-      // Table Data
       for (var candidate in positionData['candidates']) {
         summarySheet.appendRow([
           IntCellValue(candidate['rank']),
@@ -136,11 +130,8 @@ class _ElectionResultPageState extends State<ElectionResultPage> {
       }
     }
 
-    // Save and download the file
     final fileBytes = excel.save();
     if (fileBytes != null) {
-      // In a web environment, this triggers a browser download.
-      // In desktop, you would use path_provider to save it to a local folder.
       await Printing.sharePdf(
         bytes: Uint8List.fromList(fileBytes),
         filename: 'Election_Results_$pollTitle.xlsx',
@@ -250,6 +241,7 @@ Future<void> _generatePdfAndPrint() async {
   ) {
     return Card(
       elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       margin: EdgeInsets.only(bottom: isMobile ? 15 : 0),
       child: Padding(
         padding: const EdgeInsets.all(20.0),
@@ -295,7 +287,7 @@ Future<void> _generatePdfAndPrint() async {
       padding: const EdgeInsets.symmetric(horizontal: 15),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.grey),
       ),
       child: DropdownButtonHideUnderline(
@@ -354,6 +346,7 @@ Future<void> _generatePdfAndPrint() async {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.blue,
                         foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))
                       ),
                     ),
                     ElevatedButton.icon(
@@ -363,6 +356,7 @@ Future<void> _generatePdfAndPrint() async {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.green,
                         foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))
                       ),
                     ),
                   ],
@@ -390,6 +384,7 @@ Future<void> _generatePdfAndPrint() async {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.blue,
                         foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                         padding: const EdgeInsets.symmetric(
                           horizontal: 20,
                           vertical: 15,
@@ -404,6 +399,7 @@ Future<void> _generatePdfAndPrint() async {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.green,
                         foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                         padding: const EdgeInsets.symmetric(
                           horizontal: 20,
                           vertical: 15,
@@ -524,6 +520,7 @@ Future<void> _generatePdfAndPrint() async {
                         margin: const EdgeInsets.only(bottom: 30),
                         elevation: 3,
                         color: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                         child: Padding(
                           padding: EdgeInsets.all(isMobile ? 15 : 20),
                           child: Column(
@@ -676,7 +673,7 @@ Future<void> _generatePdfAndPrint() async {
                                                               height: 8,
                                                               decoration: BoxDecoration(
                                                                 color: Colors.grey[300],
-                                                                borderRadius: BorderRadius.circular(4),
+                                                                borderRadius: BorderRadius.circular(16),
                                                               ),
                                                             ),
                                                             FractionallySizedBox(
@@ -685,7 +682,7 @@ Future<void> _generatePdfAndPrint() async {
                                                                 height: 8,
                                                                 decoration: BoxDecoration(
                                                                   color: Colors.blue,
-                                                                  borderRadius: BorderRadius.circular(4),
+                                                                  borderRadius: BorderRadius.circular(16),
                                                                 ),
                                                               ),
                                                             ),

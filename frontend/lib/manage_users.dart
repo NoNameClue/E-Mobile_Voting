@@ -229,7 +229,7 @@ class _ManageUsersState extends State<ManageUsers> {
                 padding: const EdgeInsets.symmetric(horizontal: 15),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(25),
+                  borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withOpacity(0.05),
@@ -294,7 +294,7 @@ class _ManageUsersState extends State<ManageUsers> {
 
                         return Card(
                           margin: const EdgeInsets.only(bottom: 6),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                           child: Opacity(
                             opacity: isActive ? 1.0 : 0.6, // Dim the card if deactivated
                             child: ListTile(
@@ -351,7 +351,7 @@ class _ManageUsersState extends State<ManageUsers> {
               padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 18),
               decoration: BoxDecoration(
                 color: Colors.white, // Changed background to white
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.05), // Subtle shadow
@@ -376,7 +376,7 @@ class _ManageUsersState extends State<ManageUsers> {
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
                         decoration: BoxDecoration(
                           color: Colors.grey.shade100, // Light grey for the dropdown box
-                          borderRadius: BorderRadius.circular(6),
+                          borderRadius: BorderRadius.circular(16),
                           border: Border.all(color: Colors.grey.shade300)
                         ),
                         child: DropdownButtonHideUnderline(
@@ -436,7 +436,7 @@ class _ManageUsersState extends State<ManageUsers> {
                       Container(
                         decoration: BoxDecoration(
                           color: Colors.grey.shade100, // Light grey highlight for the active button area
-                          borderRadius: BorderRadius.circular(6),
+                          borderRadius: BorderRadius.circular(16),
                           border: Border.all(color: Colors.grey.shade300)
                         ),
                         child: IconButton(
@@ -478,7 +478,7 @@ class _ManageUsersState extends State<ManageUsers> {
         return StatefulBuilder(
           builder: (context, setModalState) {
             return AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               title: const Text("Edit Student Details", style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF000B6B))),
               content: SingleChildScrollView(
                 child: SizedBox(
@@ -491,7 +491,7 @@ class _ManageUsersState extends State<ManageUsers> {
                         isExpanded: true,
                         decoration: InputDecoration(
                           labelText: "Course / Program",
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
                           contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
                         ),
                         items: _courses.map((String course) {
@@ -517,7 +517,7 @@ class _ManageUsersState extends State<ManageUsers> {
                         obscureText: obscure1,
                         decoration: InputDecoration(
                           labelText: "New Password",
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
                           contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
                           suffixIcon: IconButton(
                             icon: Icon(obscure1 ? Icons.visibility : Icons.visibility_off, color: Colors.grey),
@@ -532,7 +532,7 @@ class _ManageUsersState extends State<ManageUsers> {
                         obscureText: obscure2,
                         decoration: InputDecoration(
                           labelText: "Confirm Password",
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
                           contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
                           suffixIcon: IconButton(
                             icon: Icon(obscure2 ? Icons.visibility : Icons.visibility_off, color: Colors.grey),
@@ -555,7 +555,7 @@ class _ManageUsersState extends State<ManageUsers> {
                     backgroundColor: const Color(0xFF000B6B),
                     foregroundColor: Colors.white,
                     elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                   ),
                   child: const Text("Save Changes", style: TextStyle(fontWeight: FontWeight.bold)),
@@ -613,7 +613,7 @@ class _ManageUsersState extends State<ManageUsers> {
       height: 45, 
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(25), 
+        borderRadius: BorderRadius.circular(16), 
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05), 
@@ -653,13 +653,13 @@ class _ManageUsersState extends State<ManageUsers> {
         });
         _applyFilters();
       },
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(16),
       child: Container(
         width: 200,
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: isSelected ? Colors.grey.shade200 : Colors.white,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isSelected ? color : Colors.transparent, 
             width: 2,

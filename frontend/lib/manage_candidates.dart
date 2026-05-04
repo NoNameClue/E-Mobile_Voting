@@ -18,7 +18,6 @@ class _ManageCandidatesState extends State<ManageCandidates> {
   List<dynamic> _candidates = [];
   List<dynamic> _parties = []; 
   
-  // 🛠️ Dynamic Question Bank from Database
   List<Map<String, dynamic>> _questionBank = [];
   
   bool _isLoading = true;
@@ -42,10 +41,9 @@ class _ManageCandidatesState extends State<ManageCandidates> {
   void initState() {
     super.initState();
     _fetchPolls();
-    _fetchQuestions(); // 🛠️ Fetch dynamic questions on load
+    _fetchQuestions(); 
   }
 
-  // 🛠️ REPLACED: Now checks for both Ended AND Published states
   bool _isPollLocked() {
     if (_selectedPollId == null || _polls.isEmpty) return false;
     final poll = _polls.firstWhere((p) => p['poll_id'] == _selectedPollId, orElse: () => null);
@@ -57,7 +55,6 @@ class _ManageCandidatesState extends State<ManageCandidates> {
     return isEnded || isPublished;
   }
 
-  // 🛠️ Fetch Question Bank
   Future<void> _fetchQuestions() async {
     try {
       final response = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/questions'));
@@ -67,7 +64,6 @@ class _ManageCandidatesState extends State<ManageCandidates> {
         });
       }
     } catch (e) {
-      // Handle silently
     }
   }
 
@@ -80,7 +76,6 @@ class _ManageCandidatesState extends State<ManageCandidates> {
         });
       }
     } catch (e) {
-      // Handle silently
     }
   }
 
@@ -133,7 +128,6 @@ class _ManageCandidatesState extends State<ManageCandidates> {
     }
   }
 
-  // 🛠️ Manage Question Bank Dialog (Add, Edit, Delete)
   void _showManageQuestionsDialog() {
     showDialog(
       context: context,
@@ -143,6 +137,7 @@ class _ManageCandidatesState extends State<ManageCandidates> {
             final TextEditingController newQuestionCtrl = TextEditingController();
 
             return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               title: const Text("Manage Question Bank", style: TextStyle(color: Color(0xFF000B6B), fontWeight: FontWeight.bold)),
               content: SizedBox(
                 width: 500,
@@ -154,12 +149,12 @@ class _ManageCandidatesState extends State<ManageCandidates> {
                         Expanded(
                           child: TextField(
                             controller: newQuestionCtrl,
-                            decoration: const InputDecoration(labelText: "Add a new reusable question", border: OutlineInputBorder()),
+                            decoration: InputDecoration(labelText: "Add a new reusable question", border: OutlineInputBorder(borderRadius: BorderRadius.circular(16))),
                           ),
                         ),
                         const SizedBox(width: 10),
                         ElevatedButton(
-                          style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 18)),
+                          style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 18), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
                           onPressed: () async {
                             if (newQuestionCtrl.text.trim().isEmpty) return;
                             try {
@@ -171,7 +166,7 @@ class _ManageCandidatesState extends State<ManageCandidates> {
                               if (res.statusCode == 200) {
                                 newQuestionCtrl.clear();
                                 await _fetchQuestions();
-                                setModalState(() {}); // Refresh modal
+                                setModalState(() {}); 
                               } else {
                                 final err = jsonDecode(res.body);
                                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err['detail'] ?? "Error"), backgroundColor: Colors.red));
@@ -191,6 +186,7 @@ class _ManageCandidatesState extends State<ManageCandidates> {
                             itemBuilder: (context, index) {
                               final q = _questionBank[index];
                               return Card(
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                                 margin: const EdgeInsets.only(bottom: 8),
                                 child: ListTile(
                                   title: Text(q['question_text']),
@@ -231,10 +227,9 @@ class _ManageCandidatesState extends State<ManageCandidates> {
           },
         );
       }
-    ).then((_) => setState(() {})); // Refresh main UI dropdowns when closed
+    ).then((_) => setState(() {})); 
   }
 
-  // 🛠️ Edit Single Question Logic (Prevents Blanks)
   void _showEditSingleQuestionDialog(int qId, String currentText, VoidCallback onSuccess) {
     final TextEditingController editCtrl = TextEditingController(text: currentText);
     
@@ -242,16 +237,17 @@ class _ManageCandidatesState extends State<ManageCandidates> {
       context: context,
       builder: (context) {
         return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: const Text("Edit Question"),
           content: TextField(
             controller: editCtrl,
             maxLines: 2,
-            decoration: const InputDecoration(border: OutlineInputBorder()),
+            decoration: InputDecoration(border: OutlineInputBorder(borderRadius: BorderRadius.circular(16))),
           ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
             ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF000B6B), foregroundColor: Colors.white),
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF000B6B), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
               onPressed: () async {
                 if (editCtrl.text.trim().isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Question cannot be blank!"), backgroundColor: Colors.red));
@@ -307,7 +303,6 @@ class _ManageCandidatesState extends State<ManageCandidates> {
     }
     if (!uniqueParties.contains(selectedParty)) selectedParty = 'Independent';
 
-    // Q&A State Variables
     String? q1, q2, q3;
     final a1Ctrl = TextEditingController();
     final a2Ctrl = TextEditingController();
@@ -317,11 +312,9 @@ class _ManageCandidatesState extends State<ManageCandidates> {
     final customQ2Ctrl = TextEditingController();
     final customQ3Ctrl = TextEditingController();
 
-    // Map existing QAs.
     if (isEdit && candidate['qas'] != null) {
       List<dynamic> existingQAs = candidate['qas'];
       
-      // We check if the existing question matches our DB bank. If not, it falls back to custom.
       bool existsInBank(String qText) => _questionBank.any((dbQ) => dbQ['question_text'] == qText);
 
       if (existingQAs.isNotEmpty) { 
@@ -353,16 +346,15 @@ class _ManageCandidatesState extends State<ManageCandidates> {
         return StatefulBuilder(
           builder: (context, setStateDialog) {
             return Dialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               child: Container(
                 width: 700, 
                 constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.9),
                 child: Column(
                   children: [
-                    // HEADER
                     Container(
                       padding: const EdgeInsets.all(20),
-                      decoration: const BoxDecoration(color: Color(0xFF000B6B), borderRadius: BorderRadius.vertical(top: Radius.circular(15))),
+                      decoration: const BoxDecoration(color: Color(0xFF000B6B), borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -372,7 +364,6 @@ class _ManageCandidatesState extends State<ManageCandidates> {
                       ),
                     ),
                     
-                    // SCROLLABLE BODY
                     Expanded(
                       child: SingleChildScrollView(
                         padding: const EdgeInsets.all(30),
@@ -416,20 +407,20 @@ class _ManageCandidatesState extends State<ManageCandidates> {
 
                             Row(
                               children: [
-                                Expanded(flex: 3, child: TextField(controller: firstNameCtrl, decoration: const InputDecoration(labelText: 'First Name', border: OutlineInputBorder()))),
+                                Expanded(flex: 3, child: TextField(controller: firstNameCtrl, decoration: InputDecoration(labelText: 'First Name', border: OutlineInputBorder(borderRadius: BorderRadius.circular(16))))),
                                 const SizedBox(width: 10),
-                                Expanded(flex: 2, child: TextField(controller: middleNameCtrl, decoration: const InputDecoration(labelText: 'M.I.', border: OutlineInputBorder()))),
+                                Expanded(flex: 2, child: TextField(controller: middleNameCtrl, decoration: InputDecoration(labelText: 'M.I.', border: OutlineInputBorder(borderRadius: BorderRadius.circular(16))))),
                                 const SizedBox(width: 10),
-                                Expanded(flex: 3, child: TextField(controller: lastNameCtrl, decoration: const InputDecoration(labelText: 'Last Name', border: OutlineInputBorder()))),
+                                Expanded(flex: 3, child: TextField(controller: lastNameCtrl, decoration: InputDecoration(labelText: 'Last Name', border: OutlineInputBorder(borderRadius: BorderRadius.circular(16))))),
                               ],
                             ),
                             const SizedBox(height: 15),
 
                             Row(
                               children: [
-                                Expanded(flex: 2, child: DropdownButtonFormField<String>(value: selectedCourse, isExpanded: true, decoration: const InputDecoration(labelText: 'Course', border: OutlineInputBorder()), items: _courses.map((c) => DropdownMenuItem(value: c, child: Text(c, overflow: TextOverflow.ellipsis))).toList(), onChanged: (val) => setStateDialog(() => selectedCourse = val))),
+                                Expanded(flex: 2, child: DropdownButtonFormField<String>(value: selectedCourse, isExpanded: true, decoration: InputDecoration(labelText: 'Course', border: OutlineInputBorder(borderRadius: BorderRadius.circular(16))), items: _courses.map((c) => DropdownMenuItem(value: c, child: Text(c, overflow: TextOverflow.ellipsis))).toList(), onChanged: (val) => setStateDialog(() => selectedCourse = val))),
                                 const SizedBox(width: 10),
-                                Expanded(flex: 1, child: DropdownButtonFormField<String>(value: selectedYear, isExpanded: true, decoration: const InputDecoration(labelText: 'Year', border: OutlineInputBorder()), items: _years.map((y) => DropdownMenuItem(value: y, child: Text(y, overflow: TextOverflow.ellipsis))).toList(), onChanged: (val) => setStateDialog(() => selectedYear = val))),
+                                Expanded(flex: 1, child: DropdownButtonFormField<String>(value: selectedYear, isExpanded: true, decoration: InputDecoration(labelText: 'Year', border: OutlineInputBorder(borderRadius: BorderRadius.circular(16))), items: _years.map((y) => DropdownMenuItem(value: y, child: Text(y, overflow: TextOverflow.ellipsis))).toList(), onChanged: (val) => setStateDialog(() => selectedYear = val))),
                               ],
                             ),
                             
@@ -440,18 +431,17 @@ class _ManageCandidatesState extends State<ManageCandidates> {
 
                             Row(
                               children: [
-                                Expanded(child: DropdownButtonFormField<String>(value: selectedPosition, decoration: const InputDecoration(labelText: 'Running For', border: OutlineInputBorder()), items: _positions.map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(), onChanged: (val) => setStateDialog(() => selectedPosition = val))),
+                                Expanded(child: DropdownButtonFormField<String>(value: selectedPosition, decoration: InputDecoration(labelText: 'Running For', border: OutlineInputBorder(borderRadius: BorderRadius.circular(16))), items: _positions.map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(), onChanged: (val) => setStateDialog(() => selectedPosition = val))),
                                 const SizedBox(width: 10),
-                                Expanded(child: DropdownButtonFormField<String>(value: selectedParty, decoration: const InputDecoration(labelText: 'Party Affiliation', border: OutlineInputBorder()), items: uniqueParties.map((p) => DropdownMenuItem(value: p, child: Text(p, overflow: TextOverflow.ellipsis))).toList(), onChanged: (val) => setStateDialog(() => selectedParty = val))),
+                                Expanded(child: DropdownButtonFormField<String>(value: selectedParty, decoration: InputDecoration(labelText: 'Party Affiliation', border: OutlineInputBorder(borderRadius: BorderRadius.circular(16))), items: uniqueParties.map((p) => DropdownMenuItem(value: p, child: Text(p, overflow: TextOverflow.ellipsis))).toList(), onChanged: (val) => setStateDialog(() => selectedParty = val))),
                               ],
                             ),
                             const SizedBox(height: 15),
                             
-                            TextField(controller: platformCtrl, decoration: const InputDecoration(labelText: 'General Platform / Bio', border: OutlineInputBorder(), alignLabelWithHint: true), maxLines: 3),
+                            TextField(controller: platformCtrl, decoration: InputDecoration(labelText: 'General Platform / Bio', border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)), alignLabelWithHint: true), maxLines: 3),
 
                             const SizedBox(height: 30),
                             
-                            // 🛠️ Q&A HEADER WITH MANAGE BUTTON
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
@@ -464,9 +454,7 @@ class _ManageCandidatesState extends State<ManageCandidates> {
                                 ),
                                 TextButton.icon(
                                   onPressed: () {
-                                    // Open manager, then trigger a re-render of this dialog when it closes
                                     _showManageQuestionsDialog();
-                                    // Hack to refresh the dropdowns inside this modal after manager closes
                                     Future.delayed(const Duration(milliseconds: 500), () {
                                       if (mounted) setStateDialog(() {});
                                     });
@@ -490,17 +478,16 @@ class _ManageCandidatesState extends State<ManageCandidates> {
                       ),
                     ),
                     
-                    // FOOTER / ACTIONS
                     Container(
                       padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: const BorderRadius.vertical(bottom: Radius.circular(15))),
+                      decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16))),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
                           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold))),
                           const SizedBox(width: 10),
                           ElevatedButton(
-                            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF000B6B), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15)),
+                            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF000B6B), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
                             onPressed: () async {
                               // Validation
                               if (firstNameCtrl.text.trim().isEmpty || lastNameCtrl.text.trim().isEmpty) {
@@ -571,31 +558,27 @@ class _ManageCandidatesState extends State<ManageCandidates> {
     );
   }
 
-  // 🛠️ Dropdown dynamically builds from the DB list
   Widget _buildQASection(int index, String? selectedQ, TextEditingController answerCtrl, TextEditingController customCtrl, Function(String?) onChanged) {
     bool isCustom = selectedQ == "Write a one-time custom question...";
 
-    // Generate string list from DB maps
     List<String> dynamicItems = _questionBank.map((q) => q['question_text'] as String).toList();
     
-    // Failsafe: If editing a candidate with a legacy/deleted question, inject it so it doesn't crash
     if (selectedQ != null && !isCustom && !dynamicItems.contains(selectedQ)) {
       dynamicItems.insert(0, selectedQ);
     }
     
-    // Always append the one-off option
     dynamicItems.add("Write a one-time custom question...");
 
     return Container(
       padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(color: Colors.blue.shade50.withOpacity(0.5), borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.blue.shade100)),
+      decoration: BoxDecoration(color: Colors.blue.shade50.withOpacity(0.5), borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.blue.shade100)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           DropdownButtonFormField<String>(
             value: selectedQ,
             isExpanded: true,
-            decoration: InputDecoration(labelText: 'Question $index', filled: true, fillColor: Colors.white, border: const OutlineInputBorder()),
+            decoration: InputDecoration(labelText: 'Question $index', filled: true, fillColor: Colors.white, border: OutlineInputBorder(borderRadius: BorderRadius.circular(16))),
             items: dynamicItems.map((q) {
               return DropdownMenuItem(
                 value: q, 
@@ -617,14 +600,14 @@ class _ManageCandidatesState extends State<ManageCandidates> {
             const SizedBox(height: 10),
             TextField(
               controller: customCtrl,
-              decoration: const InputDecoration(labelText: 'Type your custom question here', filled: true, fillColor: Colors.white, border: OutlineInputBorder()),
+              decoration: InputDecoration(labelText: 'Type your custom question here', filled: true, fillColor: Colors.white, border: OutlineInputBorder(borderRadius: BorderRadius.circular(16))),
             ),
           ],
           
           const SizedBox(height: 10),
           TextField(
             controller: answerCtrl,
-            decoration: const InputDecoration(labelText: 'Candidate Answer', filled: true, fillColor: Colors.white, border: OutlineInputBorder()),
+            decoration: InputDecoration(labelText: 'Candidate Answer', filled: true, fillColor: Colors.white, border: OutlineInputBorder(borderRadius: BorderRadius.circular(16))),
             maxLines: 2,
           )
         ],
@@ -637,7 +620,6 @@ class _ManageCandidatesState extends State<ManageCandidates> {
     final filteredCandidates = _candidates.where((c) => c['position'] == _selectedPosition).toList();
     bool isMobile = MediaQuery.of(context).size.width < 700;
     
-    // 🛠️ REPLACED: Use the new lock variable
     bool isLocked = _isPollLocked(); 
 
     return Padding(
@@ -658,7 +640,7 @@ class _ManageCandidatesState extends State<ManageCandidates> {
                   if (_polls.isNotEmpty)
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 15),
-                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.grey)),
+                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.grey.shade300)),
                       child: DropdownButtonHideUnderline(
                         child: DropdownButton<int>(
                           value: _selectedPollId,
@@ -681,7 +663,7 @@ class _ManageCandidatesState extends State<ManageCandidates> {
                         backgroundColor: isLocked ? Colors.grey : Colors.amber, 
                         foregroundColor: const Color(0xFF000B6B), 
                         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18), 
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))
                       ),
                       icon: const Icon(Icons.person_add),
                       label: const Text("Register New Candidate", style: TextStyle(fontWeight: FontWeight.bold)),
@@ -727,7 +709,7 @@ class _ManageCandidatesState extends State<ManageCandidates> {
                         child: Container(
                           margin: EdgeInsets.only(bottom: isMobile ? 0 : 10, right: isMobile ? 10 : 0),
                           padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 15),
-                          decoration: BoxDecoration(color: isSelected ? const Color(0xFFD6D6D6) : Colors.grey[200], border: isSelected ? Border.all(color: Colors.grey, width: 2) : null, borderRadius: BorderRadius.circular(4)),
+                          decoration: BoxDecoration(color: isSelected ? const Color(0xFFD6D6D6) : Colors.grey[200], border: isSelected ? Border.all(color: Colors.grey, width: 2) : null, borderRadius: BorderRadius.circular(16)),
                           child: Center(child: Text('Candidates for $position', style: TextStyle(fontSize: 14, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal))),
                         ),
                       );
@@ -738,7 +720,10 @@ class _ManageCandidatesState extends State<ManageCandidates> {
                 // Candidates List Area
                 Expanded(
                   child: Container(
-                    color: Colors.grey[300],
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                     padding: const EdgeInsets.all(20),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -757,6 +742,7 @@ class _ManageCandidatesState extends State<ManageCandidates> {
                                   itemBuilder: (context, index) {
                                     final candidate = filteredCandidates[index];
                                     return Card(
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                                       margin: const EdgeInsets.only(bottom: 10),
                                       child: ListTile(
                                         leading: CircleAvatar(
