@@ -26,6 +26,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
   String _studentName = "Loading...";
   String _studentId = "";
   String? _profilePicUrl;
+  bool _shownLoginSnack = false;
 
   final List<String> menuItems = [
     "Home", // Changed from Dashboard
@@ -40,6 +41,30 @@ class _StudentDashboardState extends State<StudentDashboard> {
   void initState() {
     super.initState();
     _fetchUserProfile(); 
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    if (_shownLoginSnack) return;
+
+    final args = ModalRoute.of(context)?.settings.arguments as Map?;
+
+    if (args != null && args['loginSuccess'] == true) {
+      _shownLoginSnack = true;
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text("Login Successful"),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      });
+    }
   }
 
   Future<void> _fetchUserProfile() async {

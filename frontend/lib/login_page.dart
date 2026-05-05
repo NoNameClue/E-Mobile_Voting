@@ -78,9 +78,17 @@ class _LoginPageState extends State<LoginPage> {
         if (!mounted) return;
         
         if (userRole == 'Admin' || userRole == 'Staff') {
-          Navigator.pushReplacementNamed(context, '/admin_dashboard');
+          Navigator.pushReplacementNamed(
+            context,
+            '/admin_dashboard',
+            arguments: {'loginSuccess': true},
+          );
         } else {
-          Navigator.pushReplacementNamed(context, '/student_home');
+          Navigator.pushReplacementNamed(
+            context,
+            '/student_home',
+            arguments: {'loginSuccess': true},
+          );
         }
       } else {
         setState(() => _errorMessage = data['detail'] ?? 'Login failed');
@@ -101,10 +109,18 @@ class _LoginPageState extends State<LoginPage> {
         key: _formKey,
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             
-            const Text('Welcome Back', style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
+            const Text(
+              'Welcome Back',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
             const SizedBox(height: 8),
             const Text('Please enter your university details to sign in and vote.', style: TextStyle(color: Colors.white70, fontSize: 14)),
             const SizedBox(height: 30),
@@ -184,4 +200,23 @@ class _LoginPageState extends State<LoginPage> {
       ),
     );
   }
+  // @override
+  // void didChangeDependencies() {
+  //   super.didChangeDependencies();
+
+  //   final args = ModalRoute.of(context)?.settings.arguments as Map?;
+
+  //   if (args != null && args['loginSuccess'] == true) {
+  //     WidgetsBinding.instance.addPostFrameCallback((_) {
+  //       ScaffoldMessenger.of(context).showSnackBar(
+  //         SnackBar(
+  //           content: const Text("Login Successful"),
+  //           backgroundColor: Colors.green,
+  //           behavior: SnackBarBehavior.floating,
+  //           duration: const Duration(seconds: 2),
+  //         ),
+  //       );
+  //     });
+  //   }
+  // }
 }

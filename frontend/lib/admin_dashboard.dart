@@ -38,6 +38,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
   Map<String, dynamic>? _mostRecentPollData;
   bool _isLoadingRecentPoll = true; 
   bool _hasActivePoll = false;
+  bool _shownLoginSnack = false;
 
   final List<String> _masterMenuItems = [
     "Dashboard",
@@ -59,6 +60,30 @@ class _AdminDashboardState extends State<AdminDashboard> {
     _fetchUserProfile(); 
     _fetchUserCount();
     _fetchRecentPolls();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    if (_shownLoginSnack) return;
+
+    final args = ModalRoute.of(context)?.settings.arguments as Map?;
+
+    if (args != null && args['loginSuccess'] == true) {
+      _shownLoginSnack = true;
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text("Login Successful"),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      });
+    }
   }
 
   Future<void> _loadUserAccess() async {
@@ -597,20 +622,73 @@ class _AdminDashboardState extends State<AdminDashboard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text("System Dashboard", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white)),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                "System Dashboard",
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.green,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.circle, size: 10, color: Colors.white),
+                    SizedBox(width: 6),
+                    Text(
+                      "Online",
+                      style: TextStyle(color: Colors.white, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 5),
           const Text("Overview of the LNU Voting System", style: TextStyle(color: Colors.white70, fontSize: 16)),
           const SizedBox(height: 30),
           
           const Text("Student Demographics", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
           const SizedBox(height: 15),
-          Wrap(
-            spacing: 20, 
-            runSpacing: 20,
+          Row(
             children: [
-              buildStatCard("Total Registered\nStudents", _totalStudents.toString(), Icons.groups, Colors.blue),
-              buildStatCard("Active\nAccounts", _activeStudents.toString(), Icons.check_circle, Colors.green),
-              buildStatCard("Deactivated\nAccounts", _deactivatedStudents.toString(), Icons.block, Colors.red),
+              Expanded(
+                child: buildStatCard(
+                  "Total Registered\nStudents",
+                  _totalStudents.toString(),
+                  Icons.groups,
+                  Colors.blue,
+                ),
+              ),
+              const SizedBox(width: 15),
+
+              Expanded(
+                child: buildStatCard(
+                  "Active\nAccounts",
+                  _activeStudents.toString(),
+                  Icons.check_circle,
+                  Colors.green,
+                ),
+              ),
+              const SizedBox(width: 15),
+
+              Expanded(
+                child: buildStatCard(
+                  "Deactivated\nAccounts",
+                  _deactivatedStudents.toString(),
+                  Icons.block,
+                  Colors.red,
+                ),
+              ),
             ],
           ),
           
@@ -635,30 +713,30 @@ class _AdminDashboardState extends State<AdminDashboard> {
           buildRecentPollsWidget(),
           
           const SizedBox(height: 40),
-          Container(
-            padding: const EdgeInsets.all(20), 
-            decoration: BoxDecoration(
-              color: Colors.blue.shade50.withOpacity(0.9), 
-              borderRadius: BorderRadius.circular(16), 
-              border: Border.all(color: Colors.blue.shade100)
-            ),
-            child: const Row(
-              children: [
-                Icon(Icons.info_outline, color: Colors.blue, size: 30),
-                SizedBox(width: 15),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text("System Status: Online & Secure", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
-                      SizedBox(height: 5),
-                      Text("The backend server is successfully connected. Database queries are running normally.", style: TextStyle(color: Colors.black87, fontSize: 13)),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
+          // Container(
+          //   padding: const EdgeInsets.all(20), 
+          //   decoration: BoxDecoration(
+          //     color: Colors.blue.shade50.withOpacity(0.9), 
+          //     borderRadius: BorderRadius.circular(16), 
+          //     border: Border.all(color: Colors.blue.shade100)
+          //   ),
+          //   child: const Row(
+          //     children: [
+          //       Icon(Icons.info_outline, color: Colors.blue, size: 30),
+          //       SizedBox(width: 15),
+          //       Expanded(
+          //         child: Column(
+          //           crossAxisAlignment: CrossAxisAlignment.start,
+          //           children: [
+          //             Text("System Status: Online & Secure", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
+          //             SizedBox(height: 5),
+          //             Text("The backend server is successfully connected. Database queries are running normally.", style: TextStyle(color: Colors.black87, fontSize: 13)),
+          //           ],
+          //         ),
+          //       ),
+          //     ],
+          //   ),
+          // ),
         ],
       ),
     );
