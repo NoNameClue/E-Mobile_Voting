@@ -287,36 +287,36 @@ void _showPartyDialog({Map<String, dynamic>? party}) {
     );
   }
 
+  // 🛠️ M3 Upgrade: DropdownMenu for modern rendering
   Widget _buildPollDropdown() {
     if (_polls.isEmpty) return const SizedBox.shrink();
-    return Container(
-      constraints: const BoxConstraints(maxWidth: 280), 
-      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 3))],
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<int>(
-          isExpanded: true, 
-          value: _selectedPollId,
-          icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF000B6B), size: 28),
-          style: const TextStyle(color: Color(0xFF000B6B), fontWeight: FontWeight.w800, fontSize: 16),
-          items: _polls.map<DropdownMenuItem<int>>((poll) {
-            return DropdownMenuItem<int>(
-              value: poll['poll_id'],
-              child: Text(poll['title'] ?? "Election", style: const TextStyle(color: Colors.black87), overflow: TextOverflow.ellipsis),
-            );
-          }).toList(),
-          onChanged: (newPollId) {
-            if (newPollId != null && newPollId != _selectedPollId) {
-              setState(() {
-                _selectedPollId = newPollId;
-              });
-              _fetchData(); 
-            }
-          },
+    return SizedBox(
+      width: 280,
+      child: DropdownMenu<int>(
+        expandedInsets: EdgeInsets.zero,
+        initialSelection: _selectedPollId,
+        requestFocusOnTap: false, // Prevents typing/keyboard
+        onSelected: (newPollId) {
+          if (newPollId != null && newPollId != _selectedPollId) {
+            setState(() { _selectedPollId = newPollId; });
+            _fetchData(); 
+          }
+        },
+        dropdownMenuEntries: _polls.map<DropdownMenuEntry<int>>((poll) {
+          return DropdownMenuEntry<int>(
+            value: poll['poll_id'],
+            label: poll['title'] ?? "Election",
+          );
+        }).toList(),
+        textStyle: const TextStyle(color: Color(0xFF000B6B), fontWeight: FontWeight.w800, fontSize: 16),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide.none,
+          ),
         ),
       ),
     );
@@ -460,7 +460,6 @@ void _showPartyDialog({Map<String, dynamic>? party}) {
                                     ],
                                   ),
                                   
-                                  // MODERN BIGGER BIO BOX
                                   if (platformBio != null && platformBio.isNotEmpty) ...[
                                     const SizedBox(height: 15),
                                     Container(
@@ -477,7 +476,7 @@ void _showPartyDialog({Map<String, dynamic>? party}) {
                                           fontSize: 14, 
                                           color: Colors.black87, 
                                           fontWeight: FontWeight.w500,
-                                          height: 1.4 // Increased line height for readability
+                                          height: 1.4 
                                         ),
                                         maxLines: 3,
                                         overflow: TextOverflow.ellipsis,

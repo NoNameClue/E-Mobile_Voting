@@ -347,36 +347,36 @@ class _MyVotesViewState extends State<MyVotesView> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text("My Votes", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white)),
+              // 🛠️ CHANGED: Material 3 DropdownMenu replacing old DropdownButton
               if (_polls.isNotEmpty)
-                Container(
-                  constraints: const BoxConstraints(maxWidth: 250),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.grey.shade300),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<Map<String, dynamic>>(
-                      isExpanded: true,
-                      value: _selectedPoll,
-                      icon: Icon(Icons.arrow_drop_down, color: primaryColor),
-                      style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold),
-                      items: _polls.map((poll) {
-                        
-                        String displayTitle = poll["title"] ?? "Election";
-                        if (poll['is_archived'] == 1 || poll['is_archived'] == true) {
-                          displayTitle = "$displayTitle (Archived)";
-                        } else if (poll['status'] == 'Ended') {
-                          displayTitle = "$displayTitle (Ended)";
-                        }
-
-                        return DropdownMenuItem<Map<String, dynamic>>(
-                          value: poll as Map<String, dynamic>,
-                          child: Text(displayTitle, style: const TextStyle(color: Colors.black87), overflow: TextOverflow.ellipsis),
-                        );
-                      }).toList(),
-                      onChanged: _onPollChanged,
+                SizedBox(
+                  width: 250,
+                  child: DropdownMenu<Map<String, dynamic>>(
+                    expandedInsets: EdgeInsets.zero,
+                    initialSelection: _selectedPoll,
+                    requestFocusOnTap: false, // Prevents typing/keyboard
+                    onSelected: _onPollChanged,
+                    dropdownMenuEntries: _polls.map((poll) {
+                      String displayTitle = poll["title"] ?? "Election";
+                      if (poll['is_archived'] == 1 || poll['is_archived'] == true) {
+                        displayTitle = "$displayTitle (Archived)";
+                      } else if (poll['status'] == 'Ended') {
+                        displayTitle = "$displayTitle (Ended)";
+                      }
+                      return DropdownMenuEntry<Map<String, dynamic>>(
+                        value: poll as Map<String, dynamic>,
+                        label: displayTitle,
+                      );
+                    }).toList(),
+                    textStyle: TextStyle(color: primaryColor, fontWeight: FontWeight.bold),
+                    inputDecorationTheme: InputDecorationTheme(
+                      filled: true,
+                      fillColor: Colors.white,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 15),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16), 
+                        borderSide: BorderSide(color: Colors.grey.shade300)
+                      ),
                     ),
                   ),
                 ),

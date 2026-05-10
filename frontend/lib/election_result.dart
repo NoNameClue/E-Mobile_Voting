@@ -30,9 +30,7 @@ class _ElectionResultPageState extends State<ElectionResultPage> {
 
   Future<void> _fetchPolls() async {
     try {
-      final response = await http.get(
-        Uri.parse('${ApiConfig.baseUrl}/api/polls'),
-      );
+      final response = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/polls'));
       if (response.statusCode == 200) {
         final polls = jsonDecode(response.body);
         setState(() {
@@ -55,9 +53,7 @@ class _ElectionResultPageState extends State<ElectionResultPage> {
     setState(() => _isLoading = true);
 
     try {
-      final response = await http.get(
-        Uri.parse('${ApiConfig.baseUrl}/api/polls/$_selectedPollId/report'),
-      );
+      final response = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/polls/$_selectedPollId/report'));
       if (response.statusCode == 200) {
         setState(() {
           _reportData = jsonDecode(response.body);
@@ -69,79 +65,38 @@ class _ElectionResultPageState extends State<ElectionResultPage> {
     }
   }
 
-  // ===========================================================================
-  // EXPORT TO EXCEL LOGIC
-  // ===========================================================================
   Future<void> _exportToExcel() async {
     if (_reportData == null) return;
-
     var excel = Excel.createExcel();
-
     Sheet summarySheet = excel['Summary'];
     excel.setDefaultSheet('Summary');
-
-    String pollTitle = _polls.firstWhere(
-      (p) => p['poll_id'] == _selectedPollId,
-    )['title'];
+    String pollTitle = _polls.firstWhere((p) => p['poll_id'] == _selectedPollId)['title'];
 
     summarySheet.appendRow([TextCellValue('Election Report: $pollTitle')]);
     summarySheet.appendRow([TextCellValue('')]); 
-    summarySheet.appendRow([
-      TextCellValue('Total Active Students:'),
-      IntCellValue(_reportData!['summary']['total_active_students']),
-    ]);
-    summarySheet.appendRow([
-      TextCellValue('Total Ballots Cast:'),
-      IntCellValue(_reportData!['summary']['total_voters']),
-    ]);
-    summarySheet.appendRow([
-      TextCellValue('Voter Turnout:'),
-      TextCellValue('${_reportData!['summary']['turnout_percentage']}%'),
-    ]);
+    summarySheet.appendRow([TextCellValue('Total Active Students:'), IntCellValue(_reportData!['summary']['total_active_students'])]);
+    summarySheet.appendRow([TextCellValue('Total Ballots Cast:'), IntCellValue(_reportData!['summary']['total_voters'])]);
+    summarySheet.appendRow([TextCellValue('Voter Turnout:'), TextCellValue('${_reportData!['summary']['turnout_percentage']}%')]);
 
     final results = _reportData!['results'] as List;
 
     for (var positionData in results) {
       summarySheet.appendRow([TextCellValue('')]); 
-      summarySheet.appendRow([
-        TextCellValue('--- ${positionData['position'].toUpperCase()} ---'),
-      ]);
-
-      summarySheet.appendRow([
-        TextCellValue('Rank'),
-        TextCellValue('Candidate Name'),
-        TextCellValue('Party'),
-        TextCellValue('Votes'),
-        TextCellValue('Percentage'),
-        TextCellValue('Margin'),
-      ]);
-
+      summarySheet.appendRow([TextCellValue('--- ${positionData['position'].toUpperCase()} ---')]);
+      summarySheet.appendRow([TextCellValue('Rank'), TextCellValue('Candidate Name'), TextCellValue('Party'), TextCellValue('Votes'), TextCellValue('Percentage'), TextCellValue('Margin')]);
       for (var candidate in positionData['candidates']) {
         summarySheet.appendRow([
-          IntCellValue(candidate['rank']),
-          TextCellValue(candidate['name']),
-          TextCellValue(candidate['party_name']),
-          IntCellValue(candidate['votes']),
-          TextCellValue('${candidate['percentage']}%'),
-          TextCellValue(
-            candidate['margin'] != null ? '+${candidate['margin']}%' : '-',
-          ),
+          IntCellValue(candidate['rank']), TextCellValue(candidate['name']), TextCellValue(candidate['party_name']), IntCellValue(candidate['votes']), TextCellValue('${candidate['percentage']}%'), TextCellValue(candidate['margin'] != null ? '+${candidate['margin']}%' : '-')
         ]);
       }
     }
 
     final fileBytes = excel.save();
     if (fileBytes != null) {
-      await Printing.sharePdf(
-        bytes: Uint8List.fromList(fileBytes),
-        filename: 'Election_Results_$pollTitle.xlsx',
-      );
+      await Printing.sharePdf(bytes: Uint8List.fromList(fileBytes), filename: 'Election_Results_$pollTitle.xlsx');
     }
   }
 
-  // ===========================================================================
-  // PRINT TO PDF LOGIC
-  // ===========================================================================
 Future<void> _generatePdfAndPrint() async {
     if (_reportData == null) return;
 
@@ -154,21 +109,8 @@ Future<void> _generatePdfAndPrint() async {
         margin: const pw.EdgeInsets.all(32),
         build: (pw.Context context) {
           return [
-            // HEADER
-            pw.Header(
-              level: 0,
-              child: pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  pw.Text('Official Election Report', style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold)),
-                  pw.Text(pollTitle, style: const pw.TextStyle(fontSize: 14, color: PdfColors.grey700)),
-                  pw.SizedBox(height: 10),
-                ],
-              ),
-            ),
+            pw.Header(level: 0, child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [pw.Text('Official Election Report', style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold)), pw.Text(pollTitle, style: const pw.TextStyle(fontSize: 14, color: PdfColors.grey700)), pw.SizedBox(height: 10)])),
             pw.SizedBox(height: 10),
-
-            // SUMMARY BOX
             pw.Container(
               padding: const pw.EdgeInsets.all(10),
               decoration: pw.BoxDecoration(border: pw.Border.all(color: PdfColors.grey), borderRadius: const pw.BorderRadius.all(pw.Radius.circular(5))),
@@ -182,37 +124,26 @@ Future<void> _generatePdfAndPrint() async {
               ),
             ),
             pw.SizedBox(height: 20),
-
-            // --- SCALABLE COMPACT TABLES (2 PER PAGE) ---
             pw.Wrap(
               spacing: 0,
-              runSpacing: 20, // Forces spacing between tables
+              runSpacing: 20, 
               children: (_reportData!['results'] as List).map((positionData) {
                 return pw.Container(
-                  width: double.infinity, // Ensures it takes full width of A4
+                  width: double.infinity, 
                   child: pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
-                      pw.Text(
-                        positionData['position'].toUpperCase(),
-                        style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900),
-                      ),
+                      pw.Text(positionData['position'].toUpperCase(), style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900)),
                       pw.SizedBox(height: 5),
-
-                      // SCALABLE PDF TABLE
                       pw.TableHelper.fromTextArray(
                         context: context,
-                        cellStyle: const pw.TextStyle(fontSize: 10), // Scaled down text to fit better
+                        cellStyle: const pw.TextStyle(fontSize: 10), 
                         headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10),
                         headerDecoration: const pw.BoxDecoration(color: PdfColors.grey200),
                         data: <List<String>>[
                           <String>['Rank', 'Candidate Name', 'Party', 'Votes', 'Percentage'],
                           ...((positionData['candidates'] as List).map((c) => [
-                                '#${c['rank']}',
-                                c['name'] + (c['is_winner'] ? ' (Winner)' : ''),
-                                c['party_name'],
-                                c['votes'].toString(),
-                                '${c['percentage']}%',
+                                '#${c['rank']}', c['name'] + (c['is_winner'] ? ' (Winner)' : ''), c['party_name'], c['votes'].toString(), '${c['percentage']}%',
                               ])),
                         ],
                       ),
@@ -229,16 +160,7 @@ Future<void> _generatePdfAndPrint() async {
     await Printing.layoutPdf(onLayout: (PdfPageFormat format) async => pdf.save());
   }
 
-  // ===========================================================================
-  // UI BUILDERS
-  // ===========================================================================
-
-  Widget _buildSummaryCard(
-    String title,
-    String value,
-    IconData icon,
-    bool isMobile,
-  ) {
+  Widget _buildSummaryCard(String title, String value, IconData icon, bool isMobile) {
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -256,22 +178,9 @@ Future<void> _generatePdfAndPrint() async {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      color: Colors.grey,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                  Text(title, style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
                   const SizedBox(height: 5),
-                  Text(
-                    value,
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  Text(value, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
                 ],
               ),
             ),
@@ -283,31 +192,30 @@ Future<void> _generatePdfAndPrint() async {
 
   Widget _buildDropdown() {
     if (_polls.isEmpty) return const SizedBox.shrink();
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 15),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<int>(
-          value: _selectedPollId,
-          items: _polls.map<DropdownMenuItem<int>>((poll) {
-            return DropdownMenuItem<int>(
-              value: poll['poll_id'],
-              child: Text(
-                poll['title'],
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-            );
-          }).toList(),
-          onChanged: (int? newValue) {
-            setState(() {
-              _selectedPollId = newValue;
-              _fetchReport();
-            });
-          },
+    return SizedBox(
+      width: 250,
+      child: DropdownMenu<int>(
+        expandedInsets: EdgeInsets.zero,
+        initialSelection: _selectedPollId,
+        requestFocusOnTap: false, // 🛠️ Prevents typing/keyboard popup
+        onSelected: (int? newValue) {
+          setState(() {
+            _selectedPollId = newValue;
+            _fetchReport();
+          });
+        },
+        dropdownMenuEntries: _polls.map((poll) {
+          return DropdownMenuEntry<int>(
+            value: poll['poll_id'],
+            label: poll['title'],
+            style: MenuItemButton.styleFrom(textStyle: const TextStyle(fontWeight: FontWeight.bold))
+          );
+        }).toList(),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 15),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Colors.grey)),
         ),
       ),
     );
@@ -322,15 +230,11 @@ Future<void> _generatePdfAndPrint() async {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // --- HEADER & BUTTONS ---
           if (isMobile)
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  "Election Report",
-                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white),
-                ),
+                const Text("Election Report", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white)),
                 const SizedBox(height: 15),
                 Wrap(
                   spacing: 10,
@@ -338,26 +242,16 @@ Future<void> _generatePdfAndPrint() async {
                   children: [
                     _buildDropdown(),
                     ElevatedButton.icon(
-                      onPressed: _reportData == null
-                          ? null
-                          : _generatePdfAndPrint,
+                      onPressed: _reportData == null ? null : _generatePdfAndPrint,
                       icon: const Icon(Icons.print),
                       label: const Text('Print / PDF'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))
-                      ),
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
                     ),
                     ElevatedButton.icon(
                       onPressed: _reportData == null ? null : _exportToExcel,
                       icon: const Icon(Icons.table_chart),
                       label: const Text('Export Excel'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))
-                      ),
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
                     ),
                   ],
                 ),
@@ -367,44 +261,23 @@ Future<void> _generatePdfAndPrint() async {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  "Election Report",
-                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white),
-                ),
+                const Text("Election Report", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white)),
                 Row(
                   children: [
                     _buildDropdown(),
                     const SizedBox(width: 15),
                     ElevatedButton.icon(
-                      onPressed: _reportData == null
-                          ? null
-                          : _generatePdfAndPrint,
+                      onPressed: _reportData == null ? null : _generatePdfAndPrint,
                       icon: const Icon(Icons.print),
                       label: const Text('Print / PDF'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 15,
-                        ),
-                      ),
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)), padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15)),
                     ),
                     const SizedBox(width: 10),
                     ElevatedButton.icon(
                       onPressed: _reportData == null ? null : _exportToExcel,
                       icon: const Icon(Icons.table_chart),
                       label: const Text('Export Excel'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 15,
-                        ),
-                      ),
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)), padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15)),
                     ),
                   ],
                 ),
@@ -413,7 +286,6 @@ Future<void> _generatePdfAndPrint() async {
 
           SizedBox(height: isMobile ? 20 : 30),
 
-          // --- MAIN CONTENT ---
           if (_isLoading)
             const Expanded(child: Center(child: CircularProgressIndicator()))
           else if (_reportData == null)
@@ -422,27 +294,11 @@ Future<void> _generatePdfAndPrint() async {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(
-                      Icons.assessment_outlined,
-                      size: 90,
-                      color: Colors.grey,
-                    ),
+                    Icon(Icons.assessment_outlined, size: 90, color: Colors.grey),
                     SizedBox(height: 20),
-                    Text(
-                      "Awaiting Election Results",
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.grey,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
+                    Text("Awaiting Election Results", style: TextStyle(fontSize: 20, fontWeight: FontWeight.w500, color: Colors.grey), textAlign: TextAlign.center),
                     SizedBox(height: 10),
-                    Text(
-                      "The report will appear once voting data is available.",
-                      style: TextStyle(fontSize: 14, color: Colors.grey),
-                      textAlign: TextAlign.center,
-                    ),
+                    Text("The report will appear once voting data is available.", style: TextStyle(fontSize: 14, color: Colors.grey), textAlign: TextAlign.center),
                   ],
                 ),
               ),
@@ -453,68 +309,27 @@ Future<void> _generatePdfAndPrint() async {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // SUMMARY CARDS
                     if (isMobile)
                       Column(
                         children: [
-                          _buildSummaryCard(
-                            "Total Active Students",
-                            _reportData!['summary']['total_active_students']
-                                .toString(),
-                            Icons.group,
-                            isMobile,
-                          ),
-                          _buildSummaryCard(
-                            "Total Ballots Cast",
-                            _reportData!['summary']['total_voters'].toString(),
-                            Icons.how_to_vote,
-                            isMobile,
-                          ),
-                          _buildSummaryCard(
-                            "Voter Turnout",
-                            "${_reportData!['summary']['turnout_percentage']}%",
-                            Icons.pie_chart,
-                            isMobile,
-                          ),
+                          _buildSummaryCard("Total Active Students", _reportData!['summary']['total_active_students'].toString(), Icons.group, isMobile),
+                          _buildSummaryCard("Total Ballots Cast", _reportData!['summary']['total_voters'].toString(), Icons.how_to_vote, isMobile),
+                          _buildSummaryCard("Voter Turnout", "${_reportData!['summary']['turnout_percentage']}%", Icons.pie_chart, isMobile),
                         ],
                       )
                     else
                       Row(
                         children: [
-                          Expanded(
-                            child: _buildSummaryCard(
-                              "Total Active Students",
-                              _reportData!['summary']['total_active_students']
-                                  .toString(),
-                              Icons.group,
-                              isMobile,
-                            ),
-                          ),
+                          Expanded(child: _buildSummaryCard("Total Active Students", _reportData!['summary']['total_active_students'].toString(), Icons.group, isMobile)),
                           const SizedBox(width: 20),
-                          Expanded(
-                            child: _buildSummaryCard(
-                              "Total Ballots Cast",
-                              _reportData!['summary']['total_voters']
-                                  .toString(),
-                              Icons.how_to_vote,
-                              isMobile,
-                            ),
-                          ),
+                          Expanded(child: _buildSummaryCard("Total Ballots Cast", _reportData!['summary']['total_voters'].toString(), Icons.how_to_vote, isMobile)),
                           const SizedBox(width: 20),
-                          Expanded(
-                            child: _buildSummaryCard(
-                              "Voter Turnout",
-                              "${_reportData!['summary']['turnout_percentage']}%",
-                              Icons.pie_chart,
-                              isMobile,
-                            ),
-                          ),
+                          Expanded(child: _buildSummaryCard("Voter Turnout", "${_reportData!['summary']['turnout_percentage']}%", Icons.pie_chart, isMobile)),
                         ],
                       ),
 
                     SizedBox(height: isMobile ? 20 : 30),
 
-                    // DATATABLES
                     ...(_reportData!['results'] as List).map((positionData) {
                       return Card(
                         margin: const EdgeInsets.only(bottom: 30),
@@ -526,14 +341,7 @@ Future<void> _generatePdfAndPrint() async {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              Text(
-                                "Position: ${positionData['position'].toUpperCase()}",
-                                style: const TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF000B6B),
-                                ),
-                              ),
+                              Text("Position: ${positionData['position'].toUpperCase()}", style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF000B6B))),
                               const Divider(),
 
                               LayoutBuilder(
@@ -541,196 +349,37 @@ Future<void> _generatePdfAndPrint() async {
                                   return SingleChildScrollView(
                                     scrollDirection: Axis.horizontal,
                                     child: ConstrainedBox(
-                                      constraints: BoxConstraints(
-                                        minWidth: isMobile
-                                            ? 0
-                                            : constraints.maxWidth,
-                                      ),
+                                      constraints: BoxConstraints(minWidth: isMobile ? 0 : constraints.maxWidth),
                                       child: DataTable(
-                                        headingRowColor:
-                                            WidgetStateProperty.all(
-                                              Colors.grey[200],
-                                            ),
+                                        headingRowColor: WidgetStateProperty.all(Colors.grey[200]),
                                         columnSpacing: isMobile ? 20 : 50,
                                         columns: const [
-                                          DataColumn(
-                                            label: Text(
-                                              'Rank',
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                          ),
-                                          DataColumn(
-                                            label: Text(
-                                              'Candidate Name',
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                          ),
-                                          DataColumn(
-                                            label: Text(
-                                              'Party',
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                          ),
-                                          DataColumn(
-                                            label: Text(
-                                              'Votes',
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                          ),
-                                          DataColumn(
-                                            label: Text(
-                                              'Percentage',
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                          ),
-                                          DataColumn(
-                                            label: Text(
-                                              'Margin',
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                          ),
+                                          DataColumn(label: Text('Rank', style: TextStyle(fontWeight: FontWeight.bold))),
+                                          DataColumn(label: Text('Candidate Name', style: TextStyle(fontWeight: FontWeight.bold))),
+                                          DataColumn(label: Text('Party', style: TextStyle(fontWeight: FontWeight.bold))),
+                                          DataColumn(label: Text('Votes', style: TextStyle(fontWeight: FontWeight.bold))),
+                                          DataColumn(label: Text('Percentage', style: TextStyle(fontWeight: FontWeight.bold))),
+                                          DataColumn(label: Text('Margin', style: TextStyle(fontWeight: FontWeight.bold))),
                                         ],
-                                        rows: (positionData['candidates'] as List).map((
-                                          candidate,
-                                        ) {
-                                          final bool isWinner =
-                                              candidate['is_winner'];
-                                          final textStyle = TextStyle(
-                                            fontWeight: isWinner
-                                                ? FontWeight.bold
-                                                : FontWeight.normal,
-                                            color: isWinner
-                                                ? Colors.green[800]
-                                                : Colors.black87,
-                                          );
+                                        rows: (positionData['candidates'] as List).map((candidate) {
+                                          final bool isWinner = candidate['is_winner'];
+                                          final textStyle = TextStyle(fontWeight: isWinner ? FontWeight.bold : FontWeight.normal, color: isWinner ? Colors.green[800] : Colors.black87);
 
                                           return DataRow(
-                                            color: isWinner
-                                                ? WidgetStateProperty.all(
-                                                    Colors.green.withOpacity(
-                                                      0.05,
-                                                    ),
-                                                  )
-                                                : null,
+                                            color: isWinner ? WidgetStateProperty.all(Colors.green.withOpacity(0.05)) : null,
                                             cells: [
-                                              DataCell(
-                                                Text(
-                                                  '#${candidate['rank']}',
-                                                  style: textStyle,
-                                                ),
-                                              ),
-                                              DataCell(
-                                                Row(
-                                                  children: [
-                                                    if (isWinner)
-                                                      const Icon(
-                                                        Icons.emoji_events,
-                                                        color: Colors.amber,
-                                                        size: 20,
-                                                      ),
-                                                    if (isWinner)
-                                                      const SizedBox(width: 5),
-                                                    Text(
-                                                      candidate['name'],
-                                                      style: textStyle,
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                              DataCell(
-                                                Text(
-                                                  candidate['party_name'],
-                                                  style: textStyle,
-                                                ),
-                                              ),
-                                              DataCell(
-                                                Text(
-                                                  candidate['votes'].toString(),
-                                                  style: textStyle,
-                                                ),
-                                              ),
-                                              DataCell(
-                                                SizedBox(
-                                                  width: 120,
-                                                  child: Row(
-                                                    children: [
-                                                      Expanded(
-                                                        child: Stack(
-                                                          children: [
-                                                            Container(
-                                                              height: 8,
-                                                              decoration: BoxDecoration(
-                                                                color: Colors.grey[300],
-                                                                borderRadius: BorderRadius.circular(16),
-                                                              ),
-                                                            ),
-                                                            FractionallySizedBox(
-                                                              widthFactor: (candidate['percentage'] ?? 0) / 100,
-                                                              child: Container(
-                                                                height: 8,
-                                                                decoration: BoxDecoration(
-                                                                  color: Colors.blue,
-                                                                  borderRadius: BorderRadius.circular(16),
-                                                                ),
-                                                              ),
-                                                            ),
-                                                          ],
-                                                        ),
-                                                      ),
-                                                      const SizedBox(width: 6),
-                                                      Text(
-                                                        '${candidate['percentage']}%',
-                                                        style: textStyle.copyWith(fontSize: 12),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ),
-                                              DataCell(
-                                                Builder(
-                                                  builder: (_) {
-                                                    final margin = candidate['margin'];
-                                                    final votes = candidate['votes'];
-
-                                                    // Detect tie safely
-                                                    final isTie = margin == 0;
-
-                                                    String displayText;
-                                                    Color displayColor;
-
-                                                    if (margin == null) {
-                                                      displayText = '-';
-                                                      displayColor = Colors.grey;
-                                                    } else if (isTie) {
-                                                      displayText = 'Tie';
-                                                      displayColor = Colors.orange;
-                                                    } else {
-                                                      displayText = '+${margin}%';
-                                                      displayColor = Colors.blue.shade700;
-                                                    }
-
-                                                    return Text(
-                                                      displayText,
-                                                      style: TextStyle(
-                                                        color: displayColor,
-                                                        fontWeight: FontWeight.bold,
-                                                      ),
-                                                    );
-                                                  },
-                                                ),
-                                              ),
+                                              DataCell(Text('#${candidate['rank']}', style: textStyle)),
+                                              DataCell(Row(children: [if (isWinner) const Icon(Icons.emoji_events, color: Colors.amber, size: 20), if (isWinner) const SizedBox(width: 5), Text(candidate['name'], style: textStyle)])),
+                                              DataCell(Text(candidate['party_name'], style: textStyle)),
+                                              DataCell(Text(candidate['votes'].toString(), style: textStyle)),
+                                              DataCell(SizedBox(width: 120, child: Row(children: [Expanded(child: Stack(children: [Container(height: 8, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(16))), FractionallySizedBox(widthFactor: (candidate['percentage'] ?? 0) / 100, child: Container(height: 8, decoration: BoxDecoration(color: Colors.blue, borderRadius: BorderRadius.circular(16))))])), const SizedBox(width: 6), Text('${candidate['percentage']}%', style: textStyle.copyWith(fontSize: 12))]))),
+                                              DataCell(Builder(builder: (_) {
+                                                final margin = candidate['margin'];
+                                                final isTie = margin == 0;
+                                                String displayText; Color displayColor;
+                                                if (margin == null) { displayText = '-'; displayColor = Colors.grey; } else if (isTie) { displayText = 'Tie'; displayColor = Colors.orange; } else { displayText = '+${margin}%'; displayColor = Colors.blue.shade700; }
+                                                return Text(displayText, style: TextStyle(color: displayColor, fontWeight: FontWeight.bold));
+                                              })),
                                             ],
                                           );
                                         }).toList(),
@@ -742,51 +391,21 @@ Future<void> _generatePdfAndPrint() async {
 
                               const SizedBox(height: 15),
 
-                              // TABLE FOOTER
                               if (isMobile)
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(
-                                      "Total Valid Votes: ${positionData['total_votes']}",
-                                      style: const TextStyle(
-                                        color: Colors.grey,
-                                        fontStyle: FontStyle.italic,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
+                                    Text("Total Valid Votes: ${positionData['total_votes']}", style: const TextStyle(color: Colors.grey, fontStyle: FontStyle.italic, fontWeight: FontWeight.bold)),
                                     const SizedBox(height: 5),
-                                    Text(
-                                      "Total Candidates: ${(positionData['candidates'] as List).length}",
-                                      style: const TextStyle(
-                                        color: Colors.grey,
-                                        fontStyle: FontStyle.italic,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
+                                    Text("Total Candidates: ${(positionData['candidates'] as List).length}", style: const TextStyle(color: Colors.grey, fontStyle: FontStyle.italic, fontWeight: FontWeight.bold)),
                                   ],
                                 )
                               else
                                 Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Text(
-                                      "Total Valid Votes: ${positionData['total_votes']}",
-                                      style: const TextStyle(
-                                        color: Colors.grey,
-                                        fontStyle: FontStyle.italic,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    Text(
-                                      "Total Candidates: ${(positionData['candidates'] as List).length}",
-                                      style: const TextStyle(
-                                        color: Colors.grey,
-                                        fontStyle: FontStyle.italic,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
+                                    Text("Total Valid Votes: ${positionData['total_votes']}", style: const TextStyle(color: Colors.grey, fontStyle: FontStyle.italic, fontWeight: FontWeight.bold)),
+                                    Text("Total Candidates: ${(positionData['candidates'] as List).length}", style: const TextStyle(color: Colors.grey, fontStyle: FontStyle.italic, fontWeight: FontWeight.bold)),
                                   ],
                                 ),
                             ],

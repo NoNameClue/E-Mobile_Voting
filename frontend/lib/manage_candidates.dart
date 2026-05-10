@@ -418,9 +418,31 @@ class _ManageCandidatesState extends State<ManageCandidates> {
 
                             Row(
                               children: [
-                                Expanded(flex: 2, child: DropdownButtonFormField<String>(value: selectedCourse, isExpanded: true, decoration: InputDecoration(labelText: 'Course', border: OutlineInputBorder(borderRadius: BorderRadius.circular(16))), items: _courses.map((c) => DropdownMenuItem(value: c, child: Text(c, overflow: TextOverflow.ellipsis))).toList(), onChanged: (val) => setStateDialog(() => selectedCourse = val))),
+                                Expanded(
+                                  flex: 2, 
+                                  child: DropdownMenu<String>(
+                                    expandedInsets: EdgeInsets.zero,
+                                    initialSelection: selectedCourse,
+                                    requestFocusOnTap: false, // Prevents typing
+                                    label: const Text('Course'),
+                                    onSelected: (val) => setStateDialog(() => selectedCourse = val),
+                                    dropdownMenuEntries: _courses.map((c) => DropdownMenuEntry(value: c, label: c)).toList(),
+                                    inputDecorationTheme: InputDecorationTheme(border: OutlineInputBorder(borderRadius: BorderRadius.circular(16))),
+                                  )
+                                ),
                                 const SizedBox(width: 10),
-                                Expanded(flex: 1, child: DropdownButtonFormField<String>(value: selectedYear, isExpanded: true, decoration: InputDecoration(labelText: 'Year', border: OutlineInputBorder(borderRadius: BorderRadius.circular(16))), items: _years.map((y) => DropdownMenuItem(value: y, child: Text(y, overflow: TextOverflow.ellipsis))).toList(), onChanged: (val) => setStateDialog(() => selectedYear = val))),
+                                Expanded(
+                                  flex: 1, 
+                                  child: DropdownMenu<String>(
+                                    expandedInsets: EdgeInsets.zero,
+                                    initialSelection: selectedYear,
+                                    requestFocusOnTap: false, // Prevents typing
+                                    label: const Text('Year'),
+                                    onSelected: (val) => setStateDialog(() => selectedYear = val),
+                                    dropdownMenuEntries: _years.map((y) => DropdownMenuEntry(value: y, label: y)).toList(),
+                                    inputDecorationTheme: InputDecorationTheme(border: OutlineInputBorder(borderRadius: BorderRadius.circular(16))),
+                                  )
+                                ),
                               ],
                             ),
                             
@@ -431,9 +453,29 @@ class _ManageCandidatesState extends State<ManageCandidates> {
 
                             Row(
                               children: [
-                                Expanded(child: DropdownButtonFormField<String>(value: selectedPosition, decoration: InputDecoration(labelText: 'Running For', border: OutlineInputBorder(borderRadius: BorderRadius.circular(16))), items: _positions.map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(), onChanged: (val) => setStateDialog(() => selectedPosition = val))),
+                                Expanded(
+                                  child: DropdownMenu<String>(
+                                    expandedInsets: EdgeInsets.zero,
+                                    initialSelection: selectedPosition,
+                                    requestFocusOnTap: false, // Prevents typing
+                                    label: const Text('Running For'),
+                                    onSelected: (val) => setStateDialog(() => selectedPosition = val),
+                                    dropdownMenuEntries: _positions.map((p) => DropdownMenuEntry(value: p, label: p)).toList(),
+                                    inputDecorationTheme: InputDecorationTheme(border: OutlineInputBorder(borderRadius: BorderRadius.circular(16))),
+                                  )
+                                ),
                                 const SizedBox(width: 10),
-                                Expanded(child: DropdownButtonFormField<String>(value: selectedParty, decoration: InputDecoration(labelText: 'Party Affiliation', border: OutlineInputBorder(borderRadius: BorderRadius.circular(16))), items: uniqueParties.map((p) => DropdownMenuItem(value: p, child: Text(p, overflow: TextOverflow.ellipsis))).toList(), onChanged: (val) => setStateDialog(() => selectedParty = val))),
+                                Expanded(
+                                  child: DropdownMenu<String>(
+                                    expandedInsets: EdgeInsets.zero,
+                                    initialSelection: selectedParty,
+                                    requestFocusOnTap: false, // Prevents typing
+                                    label: const Text('Party Affiliation'),
+                                    onSelected: (val) => setStateDialog(() => selectedParty = val),
+                                    dropdownMenuEntries: uniqueParties.map((p) => DropdownMenuEntry(value: p, label: p)).toList(),
+                                    inputDecorationTheme: InputDecorationTheme(border: OutlineInputBorder(borderRadius: BorderRadius.circular(16))),
+                                  )
+                                ),
                               ],
                             ),
                             const SizedBox(height: 15),
@@ -489,7 +531,6 @@ class _ManageCandidatesState extends State<ManageCandidates> {
                           ElevatedButton(
                             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF000B6B), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
                             onPressed: () async {
-                              // Validation
                               if (firstNameCtrl.text.trim().isEmpty || lastNameCtrl.text.trim().isEmpty) {
                                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('First Name and Last Name are required.'), backgroundColor: Colors.red));
                                 return;
@@ -575,25 +616,30 @@ class _ManageCandidatesState extends State<ManageCandidates> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          DropdownButtonFormField<String>(
-            value: selectedQ,
-            isExpanded: true,
-            decoration: InputDecoration(labelText: 'Question $index', filled: true, fillColor: Colors.white, border: OutlineInputBorder(borderRadius: BorderRadius.circular(16))),
-            items: dynamicItems.map((q) {
-              return DropdownMenuItem(
-                value: q, 
-                child: Text(
-                  q, 
-                  overflow: TextOverflow.ellipsis, 
-                  style: TextStyle(
+          DropdownMenu<String>(
+            expandedInsets: EdgeInsets.zero,
+            initialSelection: selectedQ,
+            requestFocusOnTap: false, // Prevents typing
+            label: Text('Question $index'),
+            onSelected: onChanged,
+            dropdownMenuEntries: dynamicItems.map((q) {
+              return DropdownMenuEntry<String>(
+                value: q,
+                label: q,
+                style: MenuItemButton.styleFrom(
+                  foregroundColor: q == "Write a one-time custom question..." ? const Color(0xFF000B6B) : Colors.black87,
+                  textStyle: TextStyle(
                     fontSize: 13, 
                     fontWeight: q == "Write a one-time custom question..." ? FontWeight.bold : FontWeight.normal,
-                    color: q == "Write a one-time custom question..." ? const Color(0xFF000B6B) : Colors.black87
                   )
                 )
               );
             }).toList(),
-            onChanged: onChanged,
+            inputDecorationTheme: InputDecorationTheme(
+              filled: true,
+              fillColor: Colors.white,
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16))
+            ),
           ),
           
           if (isCustom) ...[
@@ -638,20 +684,32 @@ class _ManageCandidatesState extends State<ManageCandidates> {
                 spacing: 10,
                 children: [
                   if (_polls.isNotEmpty)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 15),
-                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.grey.shade300)),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<int>(
-                          value: _selectedPollId,
-                          items: _polls.map<DropdownMenuItem<int>>((poll) => DropdownMenuItem<int>(value: poll['poll_id'], child: Text(poll['title'], style: const TextStyle(fontWeight: FontWeight.bold)))).toList(),
-                          onChanged: (int? newValue) {
-                            setState(() {
-                              _selectedPollId = newValue;
-                              _fetchPartiesForPoll(newValue!);
-                              _fetchCandidates();
-                            });
-                          },
+                    DropdownMenu<int>(
+                      initialSelection: _selectedPollId,
+                      requestFocusOnTap: false, // Prevents typing
+                      onSelected: (int? newValue) {
+                        if (newValue != null) {
+                          setState(() {
+                            _selectedPollId = newValue;
+                            _fetchPartiesForPoll(newValue);
+                            _fetchCandidates();
+                          });
+                        }
+                      },
+                      dropdownMenuEntries: _polls.map<DropdownMenuEntry<int>>((poll) {
+                        return DropdownMenuEntry<int>(
+                          value: poll['poll_id'], 
+                          label: poll['title'],
+                        );
+                      }).toList(),
+                      textStyle: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black87),
+                      inputDecorationTheme: InputDecorationTheme(
+                        filled: true,
+                        fillColor: Colors.white,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 15),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16), 
+                          borderSide: BorderSide(color: Colors.grey.shade300)
                         ),
                       ),
                     ),

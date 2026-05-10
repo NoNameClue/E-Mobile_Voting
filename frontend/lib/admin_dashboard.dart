@@ -75,11 +75,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
       WidgetsBinding.instance.addPostFrameCallback((_) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text("Login Successful"),
+          const SnackBar(
+            content: Text("Login Successful"),
             backgroundColor: Colors.green,
             behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 2),
+            duration: Duration(seconds: 2),
           ),
         );
       });
@@ -327,7 +327,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(posData['position'], style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+                                    Text(posData['position'], style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
                                     Text("${winner['name']} (${winner['party_name']})", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                                   ],
                                 ),
@@ -406,7 +406,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   ],
                 ),
                 const Padding(padding: EdgeInsets.symmetric(vertical: 20), child: Divider()),
-                const Text("Elected Officials Overview", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+                // 🛠️ CHANGED: Text color changed to black
+                const Text("Elected Officials Overview", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
                 const SizedBox(height: 15),
                 Wrap(
                   spacing: 20,
@@ -425,7 +426,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(posData['position'], style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                                Text(posData['position'], style: const TextStyle(fontSize: 12, color: Colors.black)),
                                 Text(winner['name'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14), overflow: TextOverflow.ellipsis),
                               ],
                             ),
@@ -439,98 +440,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
             ),
           ),
       ],
-    );
-  }
-
-  Widget buildSidebar(bool isDesktop) {
-    return Container(
-      width: 250,
-      color: const Color(0xFF000B6B),
-      child: Column(
-        children: [
-          const SizedBox(height: 30),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 5.0),
-            child: Row(
-              children: [
-                Container(
-                  width: 50, 
-                  height: 50, 
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16), 
-                    image: const DecorationImage(image: AssetImage('assets/images/lnu_logo.png'), fit: BoxFit.cover)
-                  )
-                ),
-                const SizedBox(width: 10),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Leyte Normal University', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
-                      Text('(System Name)', style: TextStyle(color: Colors.white, fontSize: 10)),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 35),
-          Text(_userRole == "Staff" ? "STAFF PANEL" : "ADMIN PANEL", style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
-          const SizedBox(height: 35),
-          Transform.scale(scale: 0.80, child: const RealtimeClock(textColor: Colors.white, isCenterAligned: true)),
-          const SizedBox(height: 10),
-          const Divider(color: Colors.white24, height: 1),
-          Expanded(
-            child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  for (int i = 0; i < displayMenuItems.length; i++)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 0, horizontal: 10),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: _selectedMenuString == displayMenuItems[i] ? Colors.amber : Colors.transparent, 
-                          borderRadius: BorderRadius.circular(16)
-                        ),
-                        child: ListTile(
-                          dense: true, 
-                          visualDensity: const VisualDensity(horizontal: 0, vertical: -4), 
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 0),
-                          leading: Icon(
-                            _getMenuIcon(displayMenuItems[i]), 
-                            size: 20, 
-                            color: _selectedMenuString == displayMenuItems[i] ? const Color(0xFF000B6B) : Colors.white70
-                          ),
-                          title: Text(
-                            displayMenuItems[i], 
-                            style: TextStyle(
-                              fontSize: 13, 
-                              color: _selectedMenuString == displayMenuItems[i] ? const Color(0xFF000B6B) : Colors.white, 
-                              fontWeight: _selectedMenuString == displayMenuItems[i] ? FontWeight.bold : FontWeight.normal
-                            )
-                          ),
-                          onTap: () {
-                            setState(() => _selectedMenuString = displayMenuItems[i]);
-                            if (!isDesktop) Navigator.pop(context);
-                          },
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ),
-          const Divider(color: Colors.white24, height: 1),
-          ListTile(
-            dense: true, 
-            visualDensity: const VisualDensity(horizontal: 0, vertical: -4), 
-            leading: const Icon(Icons.logout, color: Colors.white, size: 20), 
-            title: const Text("Logout", style: TextStyle(color: Colors.white, fontSize: 13)),
-            onTap: logout,
-          ),
-          const SizedBox(height: 10),
-        ],
-      ),
     );
   }
 
@@ -548,43 +457,162 @@ class _AdminDashboardState extends State<AdminDashboard> {
     }
   }
 
-  Widget buildStatCard(String title, String value, IconData icon, Color color) {
+  Widget buildSidebar(bool isDesktop) {
+    double sidebarWidth = isDesktop ? 280.0 : 250.0;
+    double menuFontSize = isDesktop ? 15.0 : 13.0;
+    double menuIconSize = isDesktop ? 22.0 : 20.0;
+
     return Container(
-      width: 260, 
-      padding: const EdgeInsets.all(20),
+      width: sidebarWidth,
+      color: const Color(0xFF000B6B),
+      child: Column(
+        children: [
+          const SizedBox(height: 20), 
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 5.0),
+            child: Row(
+              children: [
+                Container(
+                  width: 70, 
+                  height: 70, 
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16), 
+                    image: const DecorationImage(image: AssetImage('assets/images/lnu_logo.png'), fit: BoxFit.cover)
+                  )
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Leyte Normal University', style: TextStyle(color: Colors.white, fontSize: isDesktop ? 14 : 12, fontWeight: FontWeight.bold)),
+                      Text('(System Name)', style: TextStyle(color: Colors.white, fontSize: isDesktop ? 11 : 10)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20), 
+          Text(_userRole == "Staff" ? "STAFF PANEL" : "ADMIN PANEL", style: TextStyle(color: Colors.white, fontSize: isDesktop ? 20 : 18, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+          const SizedBox(height: 20), 
+          Transform.scale(scale: isDesktop ? 0.90 : 0.80, child: const RealtimeClock(textColor: Colors.white, isCenterAligned: true)),
+          const SizedBox(height: 10),
+          const Divider(color: Colors.white24, height: 1),
+          Expanded(
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  const SizedBox(height: 10),
+                  for (int i = 0; i < displayMenuItems.length; i++)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 15), 
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: _selectedMenuString == displayMenuItems[i] ? Colors.amber : Colors.transparent, 
+                          borderRadius: BorderRadius.circular(16)
+                        ),
+                        child: ListTile(
+                          dense: true, 
+                          visualDensity: const VisualDensity(horizontal: 0, vertical: -2), 
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 0),
+                          leading: Icon(
+                            _getMenuIcon(displayMenuItems[i]), 
+                            size: menuIconSize, 
+                            color: _selectedMenuString == displayMenuItems[i] ? const Color(0xFF000B6B) : Colors.white70
+                          ),
+                          title: Text(
+                            displayMenuItems[i], 
+                            style: TextStyle(
+                              fontSize: menuFontSize, 
+                              color: _selectedMenuString == displayMenuItems[i] ? const Color(0xFF000B6B) : Colors.white, 
+                              fontWeight: _selectedMenuString == displayMenuItems[i] ? FontWeight.bold : FontWeight.w500
+                            )
+                          ),
+                          onTap: () {
+                            setState(() => _selectedMenuString = displayMenuItems[i]);
+                            if (!isDesktop) Navigator.pop(context);
+                          },
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          const Divider(color: Colors.white24, height: 1),
+          ListTile(
+            dense: true, 
+            visualDensity: const VisualDensity(horizontal: 0, vertical: -4), 
+            leading: Icon(Icons.logout, color: Colors.white, size: menuIconSize), 
+            title: Text("Logout", style: TextStyle(color: Colors.white, fontSize: menuFontSize)),
+            onTap: logout,
+          ),
+          const SizedBox(height: 10),
+        ],
+      ),
+    );
+  }
+
+  Widget buildStatCard(String title, String value, IconData icon, Color color, bool isMobile) {
+    return Container(
+      padding: EdgeInsets.all(isMobile ? 12 : 20),
       decoration: BoxDecoration(
         color: Colors.white, 
         borderRadius: BorderRadius.circular(16), 
         border: Border.all(color: Colors.grey.shade200), 
         boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 5))]
       ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(15), 
-            decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle), 
-            child: Icon(icon, size: 30, color: color)
+      child: isMobile 
+        ? Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10), 
+                decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle), 
+                child: Icon(icon, size: 24, color: color)
+              ),
+              const SizedBox(height: 10),
+              _isLoadingStats 
+                ? const SizedBox(height: 15, width: 15, child: CircularProgressIndicator(strokeWidth: 2)) 
+                : Text(value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey[800])),
+              const SizedBox(height: 5),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                // 🛠️ CHANGED: Text color changed to black
+                child: Text(title, textAlign: TextAlign.center, style: const TextStyle(color: Colors.black, fontSize: 11, fontWeight: FontWeight.w600)),
+              ),
+            ],
+          )
+        : Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(15), 
+                decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle), 
+                child: Icon(icon, size: 30, color: color)
+              ),
+              const SizedBox(width: 20),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // 🛠️ CHANGED: Text color changed to black
+                    Text(title, style: const TextStyle(color: Colors.black, fontSize: 13, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 5),
+                    _isLoadingStats 
+                      ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2)) 
+                      : Text(value, style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.grey[800])),
+                  ],
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 20),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: TextStyle(color: Colors.grey[600], fontSize: 13, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 5),
-                _isLoadingStats 
-                  ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2)) 
-                  : Text(value, style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.grey[800])),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 
-  Widget buildQuickActionButton(String title, IconData icon, String navigateToTitle, Color color) {
+  Widget buildQuickActionButton(BuildContext context, String title, IconData icon, String navigateToTitle, Color color, bool isMobile) {
     bool isLocked = navigateToTitle == "Live Scoreboard" && !_hasActivePoll;
+    double cardWidth = isMobile ? (MediaQuery.of(context).size.width - 90) / 2 : 160;
     
     return InkWell(
       onTap: isLocked 
@@ -598,8 +626,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
           },
       borderRadius: BorderRadius.circular(16),
       child: Container(
-        width: 160, 
-        padding: const EdgeInsets.all(20),
+        width: cardWidth, 
+        padding: EdgeInsets.all(isMobile ? 15 : 20),
         decoration: BoxDecoration(
           color: isLocked ? Colors.grey.shade400 : color, 
           borderRadius: BorderRadius.circular(16), 
@@ -607,9 +635,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
         ),
         child: Column(
           children: [
-            Icon(icon, size: 40, color: Colors.white),
+            Icon(icon, size: isMobile ? 30 : 40, color: Colors.white),
             const SizedBox(height: 10),
-            Text(title, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            Text(title, textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: isMobile ? 12 : 14)),
           ],
         ),
       ),
@@ -617,6 +645,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
   }
 
   Widget buildDashboardHome() {
+    bool isMobile = MediaQuery.of(context).size.width < 900;
+    
     return SingleChildScrollView(
       padding: const EdgeInsets.all(30),
       child: Column(
@@ -624,16 +654,18 @@ class _AdminDashboardState extends State<AdminDashboard> {
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const Text(
-                "System Dashboard",
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
+              Expanded(
+                child: Text(
+                  "System Dashboard",
+                  style: TextStyle(
+                    fontSize: isMobile ? 22 : 28,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
               ),
-
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
@@ -641,6 +673,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: const Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(Icons.circle, size: 10, color: Colors.white),
                     SizedBox(width: 6),
@@ -659,6 +692,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           
           const Text("Student Demographics", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
           const SizedBox(height: 15),
+          
           Row(
             children: [
               Expanded(
@@ -667,9 +701,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   _totalStudents.toString(),
                   Icons.groups,
                   Colors.blue,
+                  isMobile
                 ),
               ),
-              const SizedBox(width: 15),
+              SizedBox(width: isMobile ? 10 : 15),
 
               Expanded(
                 child: buildStatCard(
@@ -677,9 +712,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   _activeStudents.toString(),
                   Icons.check_circle,
                   Colors.green,
+                  isMobile
                 ),
               ),
-              const SizedBox(width: 15),
+              SizedBox(width: isMobile ? 10 : 15),
 
               Expanded(
                 child: buildStatCard(
@@ -687,6 +723,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   _deactivatedStudents.toString(),
                   Icons.block,
                   Colors.red,
+                  isMobile
                 ),
               ),
             ],
@@ -702,41 +739,15 @@ class _AdminDashboardState extends State<AdminDashboard> {
             spacing: 20, 
             runSpacing: 20,
             children: [
-              buildQuickActionButton("Create New\nElection Poll", Icons.add_chart, "Manage Polls", const Color(0xFF000B6B)),
-              buildQuickActionButton("Manage\nCandidates", Icons.how_to_reg, "Manage Candidates", Colors.amber.shade700),
-              buildQuickActionButton("Manage\nUser Accounts", Icons.manage_accounts, "Users / Account Control", Colors.teal),
-              buildQuickActionButton("View Live\nScoreboard", Icons.live_tv, "Live Scoreboard", Colors.deepPurple), 
+              buildQuickActionButton(context, "Create New\nElection Poll", Icons.add_chart, "Manage Polls", const Color(0xFF000B6B), isMobile),
+              buildQuickActionButton(context, "Manage\nCandidates", Icons.how_to_reg, "Manage Candidates", Colors.amber.shade700, isMobile),
+              buildQuickActionButton(context, "Manage\nUser Accounts", Icons.manage_accounts, "Users / Account Control", const Color(0xFF000B6B), isMobile),
+              buildQuickActionButton(context, "View Live\nScoreboard", Icons.live_tv, "Live Scoreboard", Colors.amber.shade700, isMobile), 
             ],
           ),
           
           const SizedBox(height: 40),
           buildRecentPollsWidget(),
-          
-          const SizedBox(height: 40),
-          // Container(
-          //   padding: const EdgeInsets.all(20), 
-          //   decoration: BoxDecoration(
-          //     color: Colors.blue.shade50.withOpacity(0.9), 
-          //     borderRadius: BorderRadius.circular(16), 
-          //     border: Border.all(color: Colors.blue.shade100)
-          //   ),
-          //   child: const Row(
-          //     children: [
-          //       Icon(Icons.info_outline, color: Colors.blue, size: 30),
-          //       SizedBox(width: 15),
-          //       Expanded(
-          //         child: Column(
-          //           crossAxisAlignment: CrossAxisAlignment.start,
-          //           children: [
-          //             Text("System Status: Online & Secure", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
-          //             SizedBox(height: 5),
-          //             Text("The backend server is successfully connected. Database queries are running normally.", style: TextStyle(color: Colors.black87, fontSize: 13)),
-          //           ],
-          //         ),
-          //       ),
-          //     ],
-          //   ),
-          // ),
         ],
       ),
     );

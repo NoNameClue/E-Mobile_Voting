@@ -7,7 +7,6 @@ import 'package:image_picker/image_picker.dart';
 import 'auth_layout.dart'; 
 import 'widgets/modern_text_field.dart';
 import 'api_config.dart'; 
-import 'widgets/realtime_clock.dart';
 
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
@@ -17,7 +16,6 @@ class SignupPage extends StatefulWidget {
 }
 
 class _SignupPageState extends State<SignupPage> {
-  // 🛠️ CHANGED: Split name into 3 controllers
   final TextEditingController _firstNameController = TextEditingController();
   final TextEditingController _middleNameController = TextEditingController();
   final TextEditingController _lastNameController = TextEditingController();
@@ -40,6 +38,16 @@ class _SignupPageState extends State<SignupPage> {
   XFile? _profileImage;
   Uint8List? _profileImageBytes;
   final ImagePicker _picker = ImagePicker();
+
+  // 🛠️ ADDED: Password Strength State Variables
+  int _passwordStrength = 0; 
+  List<String> _missingRequirements = [
+    "12+ characters", 
+    "uppercase", 
+    "lowercase", 
+    "number", 
+    "special character (.,?!@#\$%)"
+  ];
 
   final List<String> _courses = [
     'Bachelor of Science in Tourism Management',
@@ -72,9 +80,147 @@ class _SignupPageState extends State<SignupPage> {
     }
   }
 
+  // 🛠️ ADDED: Real-time Password Strength Evaluation Logic
+  void _evaluatePasswordStrength(String password) {
+    List<String> missing = [];
+    int metConditions = 0;
+
+    // 1. Length >= 12
+    if (password.length >= 12) {
+      metConditions++;
+    } else {
+      missing.add("12+ characters");
+    }
+
+    // 2. Uppercase Letter
+    if (RegExp(r'[A-Z]').hasMatch(password)) {
+      metConditions++;
+    } else {
+      missing.add("uppercase letter");
+    }
+
+    // 3. Lowercase Letter
+    if (RegExp(r'[a-z]').hasMatch(password)) {
+      metConditions++;
+    } else {
+      missing.add("lowercase letter");
+    }
+
+    // 4. Number
+    if (RegExp(r'[0-9]').hasMatch(password)) {
+      metConditions++;
+    } else {
+      missing.add("number");
+    }
+
+    // 5. Special Character
+    if (RegExp(r'[.,?!@#\$%]').hasMatch(password)) {
+      metConditions++;
+    } else {
+      missing.add("special character (.,?!@#\$%)");
+    }
+
+    // Determine Strength Level (0 = None, 1 = Weak, 2 = Fair, 3 = Strong)
+    int strength = 0;
+    if (password.isEmpty) {
+      strength = 0;
+    } else if (metConditions <= 2) {
+      strength = 1; // Weak
+    } else if (metConditions <= 4) {
+      strength = 2; // Fair
+    } else if (metConditions == 5) {
+      strength = 3; // Strong
+    }
+
+    setState(() {
+      _passwordStrength = strength;
+      _missingRequirements = missing;
+    });
+  }
+
+  // 🛠️ ADDED: Password Strength UI Indicator
+  Widget _buildPasswordStrengthIndicator() {
+    if (_passwordController.text.isEmpty) return const SizedBox.shrink();
+
+    Color strengthColor = Colors.grey;
+    String strengthLabel = "";
+
+    if (_passwordStrength == 1) {
+      strengthColor = Colors.redAccent;
+      strengthLabel = "Weak";
+    } else if (_passwordStrength == 2) {
+      strengthColor = Colors.orangeAccent;
+      strengthLabel = "Fair";
+    } else if (_passwordStrength == 3) {
+      strengthColor = Colors.greenAccent;
+      strengthLabel = "Strong";
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 5.0, bottom: 10.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Container(
+                  height: 6,
+                  decoration: BoxDecoration(
+                    color: _passwordStrength >= 1 ? strengthColor : Colors.white24,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 5),
+              Expanded(
+                child: Container(
+                  height: 6,
+                  decoration: BoxDecoration(
+                    color: _passwordStrength >= 2 ? strengthColor : Colors.white24,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 5),
+              Expanded(
+                child: Container(
+                  height: 6,
+                  decoration: BoxDecoration(
+                    color: _passwordStrength >= 3 ? strengthColor : Colors.white24,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                strengthLabel,
+                style: TextStyle(color: strengthColor, fontWeight: FontWeight.bold, fontSize: 12),
+              ),
+            ],
+          ),
+          if (_missingRequirements.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 6.0),
+              child: Text(
+                "Missing: ${_missingRequirements.join(', ')}",
+                style: const TextStyle(color: Colors.orangeAccent, fontSize: 11, height: 1.3),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _handleRegister() async {
     if (!_formKey.currentState!.validate()) return;
     
+    // 🛠️ ADDED: Prevent submission if password is not strictly strong
+    if (_passwordStrength < 3) {
+      setState(() => _errorMessage = "Please meet all password requirements before registering.");
+      return;
+    }
+
     if (_passwordController.text != _confirmPasswordController.text) {
       setState(() => _errorMessage = "Passwords do not match!");
       return;
@@ -86,7 +232,6 @@ class _SignupPageState extends State<SignupPage> {
       var request = http.MultipartRequest('POST', Uri.parse('${ApiConfig.baseUrl}/api/register'));
       
       request.fields['student_number'] = _studentIdController.text.trim();
-      // 🛠️ CHANGED: Added the three distinct name parts
       request.fields['first_name'] = _firstNameController.text.trim();
       request.fields['middle_name'] = _middleNameController.text.trim();
       request.fields['last_name'] = _lastNameController.text.trim();
@@ -121,6 +266,10 @@ class _SignupPageState extends State<SignupPage> {
           
           _profileImage = null; 
           _profileImageBytes = null; 
+          
+          // Reset password strength UI
+          _passwordStrength = 0;
+          _missingRequirements = ["12+ characters", "uppercase", "lowercase", "number", "special character (.,?!@#\$%)"];
         });
       } else {
         setState(() => _errorMessage = data['detail'] ?? 'Registration failed');
@@ -177,7 +326,6 @@ class _SignupPageState extends State<SignupPage> {
             ),
             const SizedBox(height: 20),
 
-            // 🛠️ CHANGED: Split Name Fields
             Row(
               children: [
                 Expanded(
@@ -279,8 +427,8 @@ class _SignupPageState extends State<SignupPage> {
                       },
                       validator: (value) => value == null || value.isEmpty ? 'Required' : null,
                     ),
-                    ),
                   ),
+                ),
               ],
             ),
 
@@ -288,12 +436,14 @@ class _SignupPageState extends State<SignupPage> {
               controller: _passwordController,
               obscureText: _obscurePassword,
               style: const TextStyle(color: Colors.black87),
+              onChanged: _evaluatePasswordStrength, // 🛠️ ADDED: Real-time listener
               decoration: InputDecoration(
                 hintText: 'Password',
                 hintStyle: const TextStyle(color: Colors.black54),
                 filled: true,
                 fillColor: Colors.white,
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                errorStyle: TextStyle(color: Colors.red.shade300, fontWeight: FontWeight.w600),
                 suffixIcon: IconButton(
                   icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility, color: Colors.black54),
                   onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
@@ -301,11 +451,15 @@ class _SignupPageState extends State<SignupPage> {
               ),
               validator: (value) {
                 if (value == null || value.isEmpty) return 'Password is required';
-                if (value.length < 12) return 'Min. 12 characters required';
+                if (_passwordStrength < 3) return 'Please meet all password requirements';
                 return null;
               },
             ),
-            const SizedBox(height: 15), 
+            
+            // 🛠️ ADDED: The visual indicator below the password field
+            _buildPasswordStrengthIndicator(),
+
+            const SizedBox(height: 5), 
             
             TextFormField(
               controller: _confirmPasswordController,

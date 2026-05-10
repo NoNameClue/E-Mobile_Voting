@@ -11,17 +11,16 @@ class ManageUsers extends StatefulWidget {
 }
 
 class _ManageUsersState extends State<ManageUsers> {
-  String _statusFilter = "all"; // All | Active | Deactivated
+  String _statusFilter = "all"; 
   List<dynamic> _allStudents = [];
   List<dynamic> _filteredStudents = []; 
   
-  // Replaced multiple controllers with a single controller and search criteria
   final TextEditingController _searchController = TextEditingController();
   String _searchCriteria = 'None'; 
   
   bool _isLoading = true;
 
-  int _rowsPerPage = 20; // Adjusted default based on screenshot
+  int _rowsPerPage = 20; 
   int _currentPage = 0;
 
   List<dynamic> _getPaginatedStudents() {
@@ -35,7 +34,6 @@ class _ManageUsersState extends State<ManageUsers> {
     return _filteredStudents.sublist(start, end);
   }
 
-  // Exact list of courses copied from signup_page.dart
   final List<String> _courses = [
     'Bachelor of Science in Tourism Management',
     'Bachelor of Science in Hospitality Management',
@@ -98,12 +96,10 @@ class _ManageUsersState extends State<ManageUsers> {
 
       if (response.statusCode == 200) {
         setState(() {
-          // Update in main list
           final indexAll = _allStudents.indexWhere((s) => s['user_id'] == userId);
           if (indexAll != -1) {
             _allStudents[indexAll]['is_active'] = newStatus;
           }
-          // Update in filtered list so UI refreshes immediately
           final indexFiltered = _filteredStudents.indexWhere((s) => s['user_id'] == userId);
           if (indexFiltered != -1) {
             _filteredStudents[indexFiltered]['is_active'] = newStatus;
@@ -134,12 +130,11 @@ class _ManageUsersState extends State<ManageUsers> {
     }
   }
 
-  // Unified filter function handling both status and text search
   void _applyFilters() {
     final query = _searchController.text.toLowerCase();
 
     setState(() {
-      _currentPage = 0; // Reset to first page on new filter
+      _currentPage = 0; 
       _filteredStudents = _allStudents.where((student) {
         final fullName = (student['full_name'] ?? '').toString().toLowerCase();
         final studentId = (student['student_number'] ?? '').toString().toLowerCase();
@@ -166,7 +161,6 @@ class _ManageUsersState extends State<ManageUsers> {
               break;
             case 'None':
             default:
-              // Global search checks both full name and student ID
               matchesSearch = fullName.contains(query) || studentId.contains(query);
               break;
           }
@@ -191,7 +185,6 @@ class _ManageUsersState extends State<ManageUsers> {
 
     final paginatedStudents = _getPaginatedStudents();
     
-    // Pagination Calculations
     int totalFiltered = _filteredStudents.length;
     int currentStart = totalFiltered == 0 ? 0 : (_currentPage * _rowsPerPage) + 1;
     int currentEnd = currentStart + paginatedStudents.length - (totalFiltered == 0 ? 0 : 1);
@@ -202,31 +195,27 @@ class _ManageUsersState extends State<ManageUsers> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
           const Text("Users & Account Control", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white)),
           const SizedBox(height: 5),
           const Text("Manage student access and deactivate accounts if necessary.", style: TextStyle(color: Colors.white70, fontSize: 16)),
           const SizedBox(height: 20),
 
-          // Stats Cards
-          Wrap(
-            spacing: 20,
-            runSpacing: 20,
+          Row(
             children: [
-              _buildStatCard("Total Students", total.toString(), Icons.people, Colors.blue, "all"),
-              _buildStatCard("Active Accounts", active.toString(), Icons.check_circle, Colors.green, "active"),
-              _buildStatCard("Deactivated", deactivated.toString(), Icons.cancel, Colors.red, "deactivated"),
+              Expanded(child: _buildStatCard("Total", total.toString(), Icons.people, Colors.blue, "all", isMobile)),
+              SizedBox(width: isMobile ? 8 : 20),
+              Expanded(child: _buildStatCard("Active", active.toString(), Icons.check_circle, Colors.green, "active", isMobile)),
+              SizedBox(width: isMobile ? 8 : 20),
+              Expanded(child: _buildStatCard("Deactivated", deactivated.toString(), Icons.cancel, Colors.red, "deactivated", isMobile)),
             ],
           ),
           const SizedBox(height: 25),
 
-          // Consolidated Search & Filter Bar
           Row(
             children: [
-              // Dropdown Filter
+              // 🛠️ CHANGED: Material 3 DropdownMenu replacing the old DropdownButton
               Container(
                 height: 45,
-                padding: const EdgeInsets.symmetric(horizontal: 15),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
@@ -238,31 +227,31 @@ class _ManageUsersState extends State<ManageUsers> {
                     )
                   ],
                 ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: _searchCriteria,
-                    icon: const Icon(Icons.filter_list, color: Colors.grey, size: 20),
-                    style: const TextStyle(color: Colors.black87, fontSize: 14, fontWeight: FontWeight.w500),
-                    items: ['None', 'First Name', 'Last Name', 'Student ID']
-                        .map((String value) {
-                      return DropdownMenuItem<String>(
-                        value: value,
-                        child: Text(value == 'None' ? 'Global Search' : value),
-                      );
-                    }).toList(),
-                    onChanged: (String? newValue) {
-                      if (newValue != null) {
-                        setState(() {
-                          _searchCriteria = newValue;
-                        });
-                        _applyFilters();
-                      }
-                    },
+                child: DropdownMenu<String>(
+                  initialSelection: _searchCriteria,
+                  requestFocusOnTap: false, // Prevents keyboard/typing
+                  onSelected: (String? newValue) {
+                    if (newValue != null) {
+                      setState(() {
+                        _searchCriteria = newValue;
+                      });
+                      _applyFilters();
+                    }
+                  },
+                  dropdownMenuEntries: ['None', 'First Name', 'Last Name', 'Student ID'].map((String value) {
+                    return DropdownMenuEntry<String>(
+                      value: value,
+                      label: value == 'None' ? 'Global Search' : value,
+                    );
+                  }).toList(),
+                  textStyle: const TextStyle(color: Colors.black87, fontSize: 14, fontWeight: FontWeight.w500),
+                  inputDecorationTheme: const InputDecorationTheme(
+                    contentPadding: EdgeInsets.symmetric(horizontal: 15),
+                    border: InputBorder.none, // Removes borders to match the container
                   ),
                 ),
               ),
               const SizedBox(width: 15),
-              // Single Search Field
               Expanded(
                 child: _buildSearchField(
                   controller: _searchController,
@@ -276,9 +265,8 @@ class _ManageUsersState extends State<ManageUsers> {
           ),
           const SizedBox(height: 20),
 
-          // List of Students
           _isLoading
-                ? const Center(child: CircularProgressIndicator())
+                ? const Center(child: CircularProgressIndicator(color: Colors.white))
                 : _filteredStudents.isEmpty
                     ? const Center(child: Padding(
                         padding: EdgeInsets.all(20.0),
@@ -296,7 +284,7 @@ class _ManageUsersState extends State<ManageUsers> {
                           margin: const EdgeInsets.only(bottom: 6),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                           child: Opacity(
-                            opacity: isActive ? 1.0 : 0.6, // Dim the card if deactivated
+                            opacity: isActive ? 1.0 : 0.6, 
                             child: ListTile(
                               contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                               dense: true,  
@@ -344,86 +332,61 @@ class _ManageUsersState extends State<ManageUsers> {
            
           const SizedBox(height: 15),
 
-          // Updated Pagination Bar (White, Stretched, Black Text)
           if (!_isLoading && _filteredStudents.isNotEmpty)
             Container(
-              width: double.infinity, // Stretches to fit the page horizontally
+              width: double.infinity, 
               padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 18),
               decoration: BoxDecoration(
-                color: Colors.white, // Changed background to white
+                color: Colors.white, 
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05), // Subtle shadow
+                    color: Colors.black.withOpacity(0.05), 
                     blurRadius: 10,
                     offset: const Offset(0, 4)
                   )
                 ],
               ),
               child: Wrap(
-                alignment: WrapAlignment.spaceBetween, // Pushes items to edges
+                alignment: WrapAlignment.spaceBetween, 
                 crossAxisAlignment: WrapCrossAlignment.center,
                 spacing: 15,
                 runSpacing: 10,
                 children: [
-                  // Rows per page Dropdown
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const Text("Rows per page:", style: TextStyle(color: Colors.black54, fontSize: 13, fontWeight: FontWeight.w500)),
                       const SizedBox(width: 10),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade100, // Light grey for the dropdown box
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: Colors.grey.shade300)
-                        ),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<int>(
-                            dropdownColor: Colors.white, 
-                            value: _rowsPerPage,
-                            icon: const Icon(Icons.keyboard_arrow_down, color: Colors.black87, size: 16),
-                            style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 14),
-                            items: [10, 20, 50, 100].map((e) {
-                              return DropdownMenuItem(
-                                value: e, 
-                                child: Text("$e", style: const TextStyle(color: Colors.black)),
-                              );
-                            }).toList(),
-                            selectedItemBuilder: (BuildContext context) {
-                              return [10, 20, 50, 100].map<Widget>((int e) {
-                                return Center(
-                                  child: Text(
-                                    "$e", 
-                                    style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold) // Black text for selected item
-                                  )
-                                );
-                              }).toList();
-                            },
-                            onChanged: (value) {
-                              setState(() {
-                                _rowsPerPage = value!;
-                                _currentPage = 0; // Reset on change
-                              });
-                            },
-                          ),
+                      // 🛠️ CHANGED: RequestFocusOnTap added to Rows Per Page
+                      DropdownMenu<int>(
+                        initialSelection: _rowsPerPage,
+                        requestFocusOnTap: false, 
+                        onSelected: (value) {
+                          if (value != null) {
+                            setState(() { _rowsPerPage = value; _currentPage = 0; });
+                          }
+                        },
+                        dropdownMenuEntries: [10, 20, 50, 100].map((e) => DropdownMenuEntry<int>(value: e, label: "$e")).toList(),
+                        textStyle: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 14),
+                        inputDecorationTheme: InputDecorationTheme(
+                          filled: true,
+                          fillColor: Colors.grey.shade100,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 15),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey.shade300)),
                         ),
                       ),
                     ],
                   ),
 
-                  // Range Text and Navigation Controls Grouped
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Range Text indicating records displayed
                       Text(
                         "Showing $currentStart-$currentEnd of $totalFiltered",
                         style: const TextStyle(color: Colors.black87, fontSize: 14, fontWeight: FontWeight.w500),
                       ),
                       const SizedBox(width: 15),
-                      // Navigation Controls
                       IconButton(
                         constraints: const BoxConstraints(),
                         padding: const EdgeInsets.all(6),
@@ -435,7 +398,7 @@ class _ManageUsersState extends State<ManageUsers> {
                       const SizedBox(width: 4),
                       Container(
                         decoration: BoxDecoration(
-                          color: Colors.grey.shade100, // Light grey highlight for the active button area
+                          color: Colors.grey.shade100, 
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(color: Colors.grey.shade300)
                         ),
@@ -460,10 +423,9 @@ class _ManageUsersState extends State<ManageUsers> {
   }
 
   void _showEditUserDialog(dynamic student) {
-    // Determine initial dropdown value safely
     String? selectedCourse = student['course'];
     if (selectedCourse != null && !_courses.contains(selectedCourse)) {
-      selectedCourse = null; // Prevent crash if DB has an old/custom value not in the array
+      selectedCourse = null; 
     }
 
     final passwordController = TextEditingController();
@@ -482,33 +444,30 @@ class _ManageUsersState extends State<ManageUsers> {
               title: const Text("Edit Student Details", style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF000B6B))),
               content: SingleChildScrollView(
                 child: SizedBox(
-                  width: 400, // Make dialog slightly wider for better dropdown fit
+                  width: 400, 
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      DropdownButtonFormField<String>(
-                        value: selectedCourse,
-                        isExpanded: true,
-                        decoration: InputDecoration(
-                          labelText: "Course / Program",
+                      // 🛠️ CHANGED: RequestFocusOnTap added to Course
+                      DropdownMenu<String>(
+                        expandedInsets: EdgeInsets.zero,
+                        initialSelection: selectedCourse,
+                        requestFocusOnTap: false,
+                        label: const Text("Course / Program"),
+                        onSelected: (String? newValue) {
+                          setModalState(() { selectedCourse = newValue; });
+                        },
+                        dropdownMenuEntries: _courses.map((String course) {
+                          return DropdownMenuEntry<String>(
+                            value: course,
+                            label: course,
+                            style: MenuItemButton.styleFrom(textStyle: const TextStyle(fontSize: 13)),
+                          );
+                        }).toList(),
+                        inputDecorationTheme: InputDecorationTheme(
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
                           contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
                         ),
-                        items: _courses.map((String course) {
-                          return DropdownMenuItem<String>(
-                            value: course,
-                            child: Text(
-                              course,
-                              style: const TextStyle(fontSize: 13),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          );
-                        }).toList(),
-                        onChanged: (String? newValue) {
-                          setModalState(() {
-                            selectedCourse = newValue;
-                          });
-                        },
                       ),
                       const SizedBox(height: 20),
 
@@ -603,7 +562,6 @@ class _ManageUsersState extends State<ManageUsers> {
     );
   }
 
-  // Modernized Search Field (Pill Shape + Drop Shadow + Icons)
   Widget _buildSearchField({
     required TextEditingController controller,
     required String hint,
@@ -643,6 +601,7 @@ class _ManageUsersState extends State<ManageUsers> {
     IconData icon,
     Color color,
     String filterType,
+    bool isMobile
   ) {
     final bool isSelected = _statusFilter == filterType;
 
@@ -655,8 +614,7 @@ class _ManageUsersState extends State<ManageUsers> {
       },
       borderRadius: BorderRadius.circular(16),
       child: Container(
-        width: 200,
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.all(isMobile ? 10 : 20),
         decoration: BoxDecoration(
           color: isSelected ? Colors.grey.shade200 : Colors.white,
           borderRadius: BorderRadius.circular(16),
@@ -666,31 +624,54 @@ class _ManageUsersState extends State<ManageUsers> {
           ),
           boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10)],
         ),
-        child: Row(
-          children: [
-            CircleAvatar(
-              backgroundColor: color.withOpacity(0.2),
-              child: Icon(icon, color: color),
-            ),
-            const SizedBox(width: 15),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                    overflow: TextOverflow.ellipsis, 
-                  ),
-                  Text(
-                    count,
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-                ],
-              ),
+        child: isMobile 
+          ? Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircleAvatar(
+                  radius: 16,
+                  backgroundColor: color.withOpacity(0.2),
+                  child: Icon(icon, color: color, size: 18),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  count,
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 10),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis, 
+                ),
+              ],
             )
-          ],
-        ),
+          : Row(
+              children: [
+                CircleAvatar(
+                  backgroundColor: color.withOpacity(0.2),
+                  child: Icon(icon, color: color),
+                ),
+                const SizedBox(width: 15),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                        overflow: TextOverflow.ellipsis, 
+                      ),
+                      Text(
+                        count,
+                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                )
+              ],
+            ),
       ),
     );
   }

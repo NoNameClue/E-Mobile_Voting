@@ -22,7 +22,6 @@ class _AdminLiveScoreboardState extends State<AdminLiveScoreboard> {
   void initState() {
     super.initState();
     _fetchPolls();
-    // Auto-refresh every 10 seconds
     _refreshTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
       if (_selectedPollId != null) {
         _fetchResultsData(showLoading: false);
@@ -42,7 +41,6 @@ class _AdminLiveScoreboardState extends State<AdminLiveScoreboard> {
       if (response.statusCode == 200) {
         final polls = jsonDecode(response.body);
         setState(() {
-          // Only Active polls make sense for LIVE scoreboard
           _polls = polls.where((p) => p['status'] == 'Active').toList();
           if (_polls.isNotEmpty) {
             _selectedPollId = _polls[0]['poll_id'];
@@ -89,7 +87,6 @@ class _AdminLiveScoreboardState extends State<AdminLiveScoreboard> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Photo
           Container(
             width: 45,
             height: 45,
@@ -109,7 +106,6 @@ class _AdminLiveScoreboardState extends State<AdminLiveScoreboard> {
           ),
           const SizedBox(width: 15),
 
-          // Name & Progress Bar
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -155,7 +151,6 @@ class _AdminLiveScoreboardState extends State<AdminLiveScoreboard> {
                 ),
                 const SizedBox(height: 8),
 
-                // Animated Progress Bar
                 LayoutBuilder(
                   builder: (context, constraints) {
                     return Container(
@@ -227,10 +222,8 @@ class _AdminLiveScoreboardState extends State<AdminLiveScoreboard> {
       Widget card = _buildPositionCard(pos, groupedResults[pos]!, maxVotes);
       
       if (isMobile) {
-        // If mobile, stack everything into one single left column
         leftColumn.add(card);
       } else {
-        // If desktop/tablet, stagger them into two columns
         if (i % 2 == 0) {
           leftColumn.add(card);
         } else {
@@ -255,7 +248,8 @@ class _AdminLiveScoreboardState extends State<AdminLiveScoreboard> {
 
   @override
   Widget build(BuildContext context) {
-    // Process Data
+    bool isMobile = MediaQuery.of(context).size.width < 800;
+
     int maxVotes = 0;
     Map<String, List<dynamic>> groupedResults = {};
 
@@ -270,59 +264,90 @@ class _AdminLiveScoreboardState extends State<AdminLiveScoreboard> {
       groupedResults[pos]!.add(cand);
     }
 
-    // Sort Candidates by Votes
     for (var pos in groupedResults.keys) {
       groupedResults[pos]!.sort((a, b) => b['votes'].compareTo(a['votes']));
     }
+
+    // Determine the current poll title
+    String currentPollTitle = "";
+    if (_selectedPollId != null && _polls.isNotEmpty) {
+      final currentPoll = _polls.firstWhere((p) => p['poll_id'] == _selectedPollId, orElse: () => null);
+      if (currentPoll != null) {
+        currentPollTitle = currentPoll['title'] ?? "";
+      }
+    }
+
+    Widget headerTexts = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "Live Election Scoreboard", 
+          style: TextStyle(fontSize: isMobile ? 22 : 28, fontWeight: FontWeight.bold, color: Colors.white),
+          softWrap: true,
+        ),
+        Text(
+          "Real-time results. Updates automatically every 10 seconds.", 
+          style: TextStyle(color: Colors.white70, fontSize: isMobile ? 12 : 14),
+          softWrap: true,
+        ),
+      ],
+    );
+
+    // Replaced Dropdown with a static Title Label
+    Widget pollTitleWidget = currentPollTitle.isNotEmpty 
+        ? Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 4))],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.how_to_vote, color: Color(0xFF000B6B), size: 20),
+                const SizedBox(width: 10),
+                Flexible(
+                  child: Text(
+                    currentPollTitle,
+                    style: const TextStyle(
+                      color: Color(0xFF000B6B),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          )
+        : const SizedBox.shrink();
 
     return Padding(
       padding: const EdgeInsets.all(30.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text("Live Election Scoreboard", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white)),
-                  Text("Real-time results. Updates automatically every 10 seconds.", style: TextStyle(color: Colors.white70)),
-                ],
-              ),
-              if (_polls.isNotEmpty)
-                Container(
-                  width: 250,
-                  padding: const EdgeInsets.symmetric(horizontal: 15),
-                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<int>(
-                      isExpanded: true,
-                      value: _selectedPollId,
-                      items: _polls.map((poll) {
-                        return DropdownMenuItem<int>(
-                          value: poll['poll_id'],
-                          child: Text(poll['title'], overflow: TextOverflow.ellipsis),
-                        );
-                      }).toList(),
-                      onChanged: (val) {
-                        if (val != null) {
-                          setState(() {
-                            _selectedPollId = val;
-                            _fetchResultsData();
-                          });
-                        }
-                      },
-                    ),
-                  ),
-                ),
-            ],
-          ),
+          if (isMobile) ...[
+            headerTexts,
+            const SizedBox(height: 15),
+            pollTitleWidget,
+          ] else ...[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(child: headerTexts),
+                const SizedBox(width: 15),
+                pollTitleWidget,
+              ],
+            ),
+          ],
+          
           const SizedBox(height: 30),
           
           Expanded(
             child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
+                ? const Center(child: CircularProgressIndicator(color: Colors.white))
                 : _resultsData.isEmpty
                     ? const Center(child: Text("No live data found for this poll.", style: TextStyle(color: Colors.white)))
                     : _buildScoreboardGrid(groupedResults, maxVotes),

@@ -16,6 +16,18 @@ class LnuVotingApp extends StatelessWidget {
     return MaterialApp(
       title: 'LNU Voting System',
       theme: ThemeData(
+        // 🛠️ TICKET 1: Enforces modern Material 3 UI globally
+        useMaterial3: true, 
+        
+        // 🛠️ TICKET 1: Strict 5-Color LNU Palette
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF000B6B),
+          primary: const Color(0xFF000B6B), // LNU Blue
+          secondary: Colors.amber,          // LNU Gold
+          surface: Colors.white,            // Clean white for cards/modals
+          background: const Color(0xFFE5E5E5), // Frosted/System background base
+        ),
+        
         primaryColor: const Color(0xFF000B6B),
         scaffoldBackgroundColor: const Color(0xFFE5E5E5), 
         fontFamily: 'Roboto',
@@ -29,25 +41,5 @@ class LnuVotingApp extends StatelessWidget {
       },
       debugShowCheckedModeBanner: false,
     );
-    // return Scaffold(
-    //   body: ResponsiveScreen(
-    //     child: Center(
-    //       child: Column(
-    //         children: [
-    //           Text("LNU Voting System", style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
-    //           SizedBox(height: 20),
-    //           ElevatedButton(
-    //             onPressed: () => Navigator.pushNamed(context, '/login'),
-    //             child: Text("Login"),
-    //           ),
-    //           ElevatedButton(
-    //             onPressed: () => Navigator.pushNamed(context, '/signup'),
-    //             child: Text("Sign Up"),
-    //           ),
-    //         ],
-    //         )
-    //     )
-    //     )
-    // );
   }
 }

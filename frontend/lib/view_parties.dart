@@ -142,7 +142,7 @@ class _ViewPartiesState extends State<ViewParties> {
                           fontSize: 15, 
                           color: Colors.black, 
                           fontWeight: FontWeight.w500,
-                          height: 1.4 // Better line spacing
+                          height: 1.4 
                         ),
                         textAlign: TextAlign.center,
                       ),
@@ -223,25 +223,31 @@ class _ViewPartiesState extends State<ViewParties> {
               if (_polls.isNotEmpty)
                 Container(
                   constraints: BoxConstraints(maxWidth: isMobile ? MediaQuery.of(context).size.width - 30 : 280), 
-                  padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 6),
                   decoration: BoxDecoration(
-                    color: Colors.white,
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 4))],
                   ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<Map<String, dynamic>>(
-                      isExpanded: true, 
-                      value: _selectedPoll,
-                      icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF000B6B), size: 28),
-                      style: const TextStyle(color: Color(0xFF000B6B), fontWeight: FontWeight.w800, fontSize: 16),
-                      items: _polls.map((poll) {
-                        return DropdownMenuItem<Map<String, dynamic>>(
-                          value: poll,
-                          child: Text(poll["title"] ?? "Election", style: const TextStyle(color: Colors.black87), overflow: TextOverflow.ellipsis),
-                        );
-                      }).toList(),
-                      onChanged: _onPollChanged,
+                  // 🛠️ CHANGED: Used DropdownMenu natively handling the popover
+                  child: DropdownMenu<Map<String, dynamic>>(
+                    expandedInsets: EdgeInsets.zero,
+                    initialSelection: _selectedPoll,
+                    requestFocusOnTap: false, // Prevents keyboard/typing
+                    onSelected: _onPollChanged,
+                    dropdownMenuEntries: _polls.map((poll) {
+                      return DropdownMenuEntry<Map<String, dynamic>>(
+                        value: poll as Map<String, dynamic>,
+                        label: poll["title"] ?? "Election",
+                      );
+                    }).toList(),
+                    textStyle: const TextStyle(color: Color(0xFF000B6B), fontWeight: FontWeight.w800, fontSize: 16),
+                    inputDecorationTheme: InputDecorationTheme(
+                      filled: true,
+                      fillColor: Colors.white,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide.none,
+                      ),
                     ),
                   ),
                 ),

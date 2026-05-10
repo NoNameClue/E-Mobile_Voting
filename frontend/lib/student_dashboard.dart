@@ -29,7 +29,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
   bool _shownLoginSnack = false;
 
   final List<String> menuItems = [
-    "Home", // Changed from Dashboard
+    "Home", 
     "Vote",
     "View Parties",
     "My Votes",
@@ -56,11 +56,11 @@ class _StudentDashboardState extends State<StudentDashboard> {
 
       WidgetsBinding.instance.addPostFrameCallback((_) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text("Login Successful"),
+          const SnackBar(
+            content: Text("Login Successful"),
             backgroundColor: Colors.green,
             behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 2),
+            duration: Duration(seconds: 2),
           ),
         );
       });
@@ -103,9 +103,26 @@ class _StudentDashboardState extends State<StudentDashboard> {
     Navigator.pushReplacementNamed(context, '/login');
   }
 
+  IconData _getStudentMenuIcon(String title) {
+    switch (title) {
+      case "Home": return Icons.home_rounded;
+      case "Vote": return Icons.how_to_vote_rounded;
+      case "View Parties": return Icons.flag_rounded;
+      case "My Votes": return Icons.fact_check_rounded;
+      case "FAQs": return Icons.help_outline_rounded;
+      case "About Us": return Icons.info_outline_rounded;
+      default: return Icons.circle;
+    }
+  }
+
   Widget buildSidebar(bool isDesktop) {
+    // 🛠️ Dynamic Sizing
+    double sidebarWidth = isDesktop ? 280.0 : 250.0;
+    double menuFontSize = isDesktop ? 15.0 : 13.0;
+    double menuIconSize = isDesktop ? 22.0 : 20.0;
+
     return Container(
-      width: 250,
+      width: sidebarWidth,
       color: primaryColor,
       child: Column(
         children: [
@@ -113,15 +130,15 @@ class _StudentDashboardState extends State<StudentDashboard> {
             child: SingleChildScrollView(
               child: Column(
                 children: [
-                  const SizedBox(height: 30), 
+                  const SizedBox(height: 20), // 🛠️ Reduced Whitespace
                   
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 5.0),
                     child: Row(
                       children: [
                         Container(
-                          width: 50,
-                          height: 50,
+                          width: 70, // 🛠️ Increased Logo size
+                          height: 70,
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(16),
                             image: const DecorationImage(
@@ -131,7 +148,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
                           ),
                         ),
                         const SizedBox(width: 10), 
-                        const Expanded(
+                        Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -139,7 +156,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
                                 'Leyte Normal University',
                                 style: TextStyle(
                                   color: Colors.white,
-                                  fontSize: 12, 
+                                  fontSize: isDesktop ? 14 : 12, 
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -147,7 +164,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
                                 '(System Name)',
                                 style: TextStyle(
                                   color: Colors.white,
-                                  fontSize: 10, 
+                                  fontSize: isDesktop ? 11 : 10, 
                                 ),
                               ),
                             ],
@@ -156,16 +173,16 @@ class _StudentDashboardState extends State<StudentDashboard> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 20), // 🛠️ Reduced Whitespace
 
                   CircleAvatar(
-                    radius: 50,
+                    radius: isDesktop ? 45 : 40,
                     backgroundColor: Colors.white,
                     backgroundImage: _profilePicUrl != null
                         ? NetworkImage('${ApiConfig.baseUrl}/$_profilePicUrl')
                         : null,
                     child: _profilePicUrl == null
-                        ? const Icon(Icons.person, size: 60, color: Colors.grey)
+                        ? Icon(Icons.person, size: isDesktop ? 50 : 45, color: Colors.grey)
                         : null,
                   ),
                   const SizedBox(height: 10),
@@ -173,49 +190,54 @@ class _StudentDashboardState extends State<StudentDashboard> {
                   Text(
                     "$_studentName\nID: $_studentId",
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Colors.white,
-                      fontSize: 15, 
+                      fontSize: isDesktop ? 16 : 14, 
                       fontWeight: FontWeight.bold, 
                       letterSpacing: 1.1,
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 15), // 🛠️ Reduced Whitespace
 
                   Transform.scale(
-                    scale: 0.80, 
+                    scale: isDesktop ? 0.90 : 0.80, 
                     child: const RealtimeClock(textColor: Colors.white, isCenterAligned: true),
                   ),
                   
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 15),
 
                   for (int i = 0; i < menuItems.length; i++)
                     Padding(
                       padding: const EdgeInsets.symmetric(
-                        vertical: 0, 
-                        horizontal: 10, 
+                        vertical: 4, 
+                        horizontal: 15, // 🛠️ Added Horizontal Margin to un-stick from edges
                       ),
                       child: Container(
                         decoration: BoxDecoration(
                           color: selectedIndex == i
                               ? Colors.amber
                               : Colors.transparent,
-                          borderRadius: BorderRadius.circular(12), 
+                          borderRadius: BorderRadius.circular(16), 
                         ),
                         child: ListTile(
                           dense: true, 
-                          visualDensity: const VisualDensity(horizontal: 0, vertical: -4), 
+                          visualDensity: const VisualDensity(horizontal: 0, vertical: -2), 
                           contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 0),
+                          leading: Icon(
+                            _getStudentMenuIcon(menuItems[i]),
+                            size: menuIconSize,
+                            color: selectedIndex == i ? const Color(0xFF000B6B) : Colors.white70,
+                          ),
                           title: Text(
                             menuItems[i],
                             style: TextStyle(
-                              fontSize: 13, 
+                              fontSize: menuFontSize, 
                               color: selectedIndex == i
                                   ? const Color(0xFF000B6B)
                                   : Colors.white,
                               fontWeight: selectedIndex == i
                                   ? FontWeight.bold
-                                  : FontWeight.normal,
+                                  : FontWeight.w500,
                             ),
                           ),
                           onTap: () {
@@ -235,8 +257,8 @@ class _StudentDashboardState extends State<StudentDashboard> {
           ListTile(
             dense: true,
             visualDensity: const VisualDensity(horizontal: 0, vertical: -4), 
-            leading: const Icon(Icons.logout, color: Colors.white, size: 20), 
-            title: const Text("Logout", style: TextStyle(color: Colors.white, fontSize: 13)), 
+            leading: Icon(Icons.logout, color: Colors.white, size: menuIconSize), 
+            title: Text("Logout", style: TextStyle(color: Colors.white, fontSize: menuFontSize)), 
             onTap: logout,
           ),
           
@@ -345,7 +367,6 @@ class _CandidatePlatformsViewState extends State<CandidatePlatformsView> {
       if (pollResponse.statusCode == 200) {
         final List<dynamic> allPolls = jsonDecode(pollResponse.body);
         
-        // 🛠️ FILTER LOGIC: Find the FIRST published, unarchived, active poll
         var activePolls = allPolls.where((p) {
           final isPublished = p['is_published'] == 1 || p['is_published'] == true;
           final isArchived = p['is_archived'] == 1 || p['is_archived'] == true;
@@ -403,7 +424,6 @@ class _CandidatePlatformsViewState extends State<CandidatePlatformsView> {
         grouped.putIfAbsent(pos, () => []).add(c);
       }
 
-      // Sort positions based on standard hierarchy
       var sortedGrouped = Map.fromEntries(
         grouped.entries.toList()..sort((a, b) {
           int indexA = standardPositions.indexOf(a.key);
@@ -451,7 +471,6 @@ class _CandidatePlatformsViewState extends State<CandidatePlatformsView> {
             constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.8),
             child: Column(
               children: [
-                // Modal Header
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
@@ -487,7 +506,6 @@ class _CandidatePlatformsViewState extends State<CandidatePlatformsView> {
                   ),
                 ),
                 
-                // Scrollable Body
                 Expanded(
                   child: Scrollbar(
                     thumbVisibility: true,
@@ -550,7 +568,7 @@ class _CandidatePlatformsViewState extends State<CandidatePlatformsView> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    "Home", // Changed from Dashboard
+                    "Home",
                     style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white),
                   ),
                   if (_pollTitle.isNotEmpty)
@@ -600,10 +618,9 @@ class _CandidatePlatformsViewState extends State<CandidatePlatformsView> {
                                       style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 0.5),
                                     ),
                                     const SizedBox(height: 15),
-                                    // 🛠️ REPLACED: Horizontal ListView with Wrap Widget
                                     Wrap(
-                                      spacing: 20, // horizontal spacing between cards
-                                      runSpacing: 20, // vertical spacing between rows
+                                      spacing: 20, 
+                                      runSpacing: 20, 
                                       children: candidates.map<Widget>((c) {
                                         String fullName = "${c['first_name']} ${c['last_name']}";
                                         String party = c['party_name'] ?? 'Independent';
@@ -611,7 +628,7 @@ class _CandidatePlatformsViewState extends State<CandidatePlatformsView> {
 
                                         return Container(
                                           width: 180, 
-                                          height: 260, // Added fixed height to ensure uniform sizing inside Wrap
+                                          height: 260,
                                           decoration: BoxDecoration(
                                             color: Colors.white,
                                             borderRadius: BorderRadius.circular(16),
