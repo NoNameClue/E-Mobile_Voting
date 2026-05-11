@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, Enum as SQLEnum, JSON, ForeignKey, Text
+from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -14,7 +15,7 @@ class User(Base):
     password_hash = Column(String(255))
     role = Column(SQLEnum('Admin', 'Student', 'Staff'), default="Student")
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime)
+    created_at = Column(DateTime, server_default=func.now())
     profile_pic_url = Column(String(255), nullable=True)
     permissions = Column(JSON, default=list)
 
