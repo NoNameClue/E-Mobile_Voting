@@ -50,7 +50,11 @@ def edit_question(q_id: int, q: QuestionInput, db: Session = Depends(get_db)):
 @router.delete("/api/questions/{q_id}")
 def delete_question(q_id: int, db: Session = Depends(get_db)):
     db_q = db.query(QuestionBank).filter(QuestionBank.question_id == q_id).first()
-    if db_q:
-        db.delete(db_q)
-        db.commit()
+    
+    # 🛠️ FIX: Add the missing 404 handler
+    if not db_q:
+        raise HTTPException(status_code=404, detail="Question not found.")
+        
+    db.delete(db_q)
+    db.commit()
     return {"message": "Question deleted successfully"}

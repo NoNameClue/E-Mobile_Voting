@@ -20,14 +20,20 @@ jobs:
         python-version: '3.12'
 
     - name: Install dependencies
-      # run these commands inside the backend folder
       working-directory: ./backend
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install pytest pytest-sugar
 
-    - name: Run Pytest
-      # run pytest inside the backend folder
+    - name: Prepare Environment
+      # 🛠️ CREATE UPLOADS FOLDER: Essential for your file upload tests
       working-directory: ./backend
-      run: pytest test_main.py
+      run: mkdir -p uploads
+
+    - name: Run Pytest
+      working-directory: ./backend
+      # 🛠️ ADDED -v: Gives you a detailed list of all 120+ tests in the console
+      run: pytest -v test_main.py
+      env:
+        TESTING: True

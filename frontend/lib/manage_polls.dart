@@ -484,9 +484,12 @@ class _ManagePollsState extends State<ManagePolls> {
                 child: ElevatedButton.icon(
                   icon: const Icon(Icons.add),
                   label: const Text("Create Poll"),
+                  // 🛠️ TICKET 3: Explicitly set disabled color states to increase contrast against the dark background
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: hasActivePoll ? Colors.grey.shade500 : Colors.amber, 
-                    foregroundColor: hasActivePoll ? Colors.grey.shade700 : Colors.white,
+                    backgroundColor: Colors.amber, 
+                    foregroundColor: Colors.white,
+                    disabledBackgroundColor: Colors.grey.shade300,
+                    disabledForegroundColor: Colors.grey.shade600,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   ),
                   onPressed: hasActivePoll ? null : () => _showPollDialog(),

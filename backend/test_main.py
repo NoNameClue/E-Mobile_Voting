@@ -3,15 +3,15 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
-import io
 import json
 from datetime import datetime, timezone, timedelta
 
-# Import your FastAPI app and database components
+# Import FastAPI app and database components
 from main import app
 from database import get_db, Base
 from models import User, Poll, Party, Candidate, Vote, QuestionBank, CandidateQA
-from auth import pwd_context
+from auth import pwd_context, create_access_token
+import io
 
 # ==========================================
 # 1. SETUP: In-Memory Database for Testing
@@ -41,440 +41,720 @@ def client(db_session):
         yield db_session
 
     app.dependency_overrides[get_db] = override_get_db
-    with TestClient(app) as c:
-        yield c
+    yield TestClient(app)
+    del app.dependency_overrides[get_db]
 
 # ==========================================
-# 2. AUTHENTICATION FIXTURES
+# 2. CORE FIXTURES
 # ==========================================
-@pytest.fixture
-def student_auth_headers(client, db_session):
-    """Registers a student, logs them in, and returns the Auth header."""
-    client.post("/api/register", data={
-        "first_name": "Test",
-        "middle_name": "",
-        "last_name": "Student",
-        "email": "student@lnu.edu.ph",
-        "student_number": "1234567",
-        "password": "password123",
-        "course": "Bachelor of Science in Information Technology"
-    })
-    response = client.post("/api/login", json={
-        "email": "student@lnu.edu.ph",
-        "password": "password123"
-    })
-    token = response.json()["access_token"]
-    return {"Authorization": f"Bearer {token}"}
-
-@pytest.fixture
-def admin_auth_headers(client, db_session):
-    """Injects an Admin directly into the DB, logs them in, and returns the Auth header."""
+@pytest.fixture(scope="function")
+def admin_user(db_session):
     admin = User(
-        first_name="Master",
-        middle_name="",
-        last_name="Admin",
-        email="admin@lnu.edu.ph",
-        student_number="1000000",
-        password_hash=pwd_context.hash("admin123"),
-        role="Admin",
-        is_active=True
+        first_name="Admin", last_name="User", email="admin@lnu.edu.ph",
+        student_number="0000000", password_hash=pwd_context.hash("adminpass"),
+        role="Admin", is_active=True
     )
     db_session.add(admin)
     db_session.commit()
+    db_session.refresh(admin)
+    return admin
 
-    response = client.post("/api/login", json={
-        "email": "admin@lnu.edu.ph",
-        "password": "admin123"
-    })
-    token = response.json()["access_token"]
+@pytest.fixture(scope="function")
+def student_user(db_session):
+    student = User(
+        first_name="Carl David", middle_name="T.", last_name="Pura", 
+        email="cdpura@lnu.edu.ph", 
+        student_number="1234567", # Updated to 7 digits
+        course="Bachelor of Science in Information Technology", # Updated to match dropdown
+        password_hash=pwd_context.hash("StrongP@ssw0rd!"),
+        role="Student", is_active=True
+    )
+    db_session.add(student)
+    db_session.commit()
+    db_session.refresh(student)
+    return student
+
+@pytest.fixture(scope="function")
+def student_auth_headers(student_user):
+    token = create_access_token(data={"sub": student_user.email, "role": student_user.role}, expires_delta=timedelta(hours=1))
     return {"Authorization": f"Bearer {token}"}
 
-
-# ==========================================
-# 3. REGISTRATION & LOGIN TESTS
-# ==========================================
-
-def test_register_student_success(client):
-    """Test standard student registration."""
-    response = client.post('/api/register', data={
-        "first_name": "Juan",
-        "middle_name": "Dela",
-        "last_name": "Cruz",
-        "email": "juan@lnu.edu.ph",
-        "student_number": "7654321",
-        "password": "securepassword",
-        "course": "Bachelor of Science in Computer Engineering"
-    })
-    assert response.status_code == 200
-    assert response.json()["message"] == "User registered successfully"
-
-def test_register_duplicate_email_fails(client):
-    """Test that the system blocks duplicate emails."""
-    client.post('/api/register', data={
-        "first_name": "Juan", "middle_name": "", "last_name": "1", "email": "juan@lnu.edu.ph", 
-        "student_number": "1111111", "password": "pass", "course": "Bachelor of Science in Information Technology"
-    })
-    response = client.post('/api/register', data={
-        "first_name": "Juan", "middle_name": "", "last_name": "2", "email": "juan@lnu.edu.ph", # Same Email
-        "student_number": "2222222", "password": "pass", "course": "Bachelor of Science in Information Technology"
-    })
-    assert response.status_code == 409 
-    assert "Email already registered" in response.json()["detail"]
-
-def test_register_duplicate_student_id_fails(client):
-    """Test that the system blocks duplicate student numbers."""
-    client.post('/api/register', data={
-        "first_name": "Juan", "middle_name": "", "last_name": "1", "email": "juan1@lnu.edu.ph", 
-        "student_number": "1234567", "password": "pass", "course": "Bachelor of Science in Information Technology"
-    })
-    response = client.post('/api/register', data={
-        "first_name": "Juan", "middle_name": "", "last_name": "2", "email": "juan2@lnu.edu.ph", 
-        "student_number": "1234567", # Same ID
-        "password": "pass", "course": "Bachelor of Science in Information Technology"
-    })
-    assert response.status_code == 409 
-    assert "Student ID already registered" in response.json()["detail"]
-
-def test_login_success(client, student_auth_headers):
-    """Test login functionality."""
-    response = client.post('/api/login', json={
-        "email": "student@lnu.edu.ph",
-        "password": "password123"
-    })
-    assert response.status_code == 200
-    assert "access_token" in response.json()
-    assert response.json()["role"] == "Student"
-
-def test_login_invalid_password(client, student_auth_headers):
-    """Test login failure for incorrect password."""
-    response = client.post('/api/login', json={
-        "email": "student@lnu.edu.ph",
-        "password": "wrongpassword"
-    })
-    assert response.status_code == 401
-    assert response.json()["detail"] == "Invalid email or password"
-
-def test_unauthenticated_access_fails(client):
-    """Test that protected endpoints reject requests without a valid token."""
-    response = client.get('/api/users/me')
-    assert response.status_code in [401, 403] 
-
-
-# ==========================================
-# 4. ADMIN & ACCOUNT CONTROL TESTS
-# ==========================================
-
-def test_get_all_students(client, admin_auth_headers):
-    """Test fetching all registered students."""
-    response = client.get('/api/admin/students', headers=admin_auth_headers)
-    assert response.status_code == 200
-    assert isinstance(response.json(), list)
-
-def test_admin_toggle_student_status(client, admin_auth_headers, db_session):
-    """Test deactivating a student account so they cannot log in."""
-    client.post("/api/register", data={
-        "first_name": "Target", "middle_name": "", "last_name": "Student", "email": "target@lnu.edu.ph",
-        "student_number": "9999999", "password": "pass", "course": "Bachelor of Science in Information Technology"
-    })
-    target_user = db_session.query(User).filter(User.email == "target@lnu.edu.ph").first()
-
-    response = client.put(f'/api/admin/students/{target_user.user_id}/toggle', headers=admin_auth_headers, json={"is_active": False})
-    assert response.status_code == 200
-
-    login_res = client.post('/api/login', json={"email": "target@lnu.edu.ph", "password": "pass"})
-    assert login_res.status_code == 403
-    assert "Account is disabled" in login_res.json()["detail"]
-
-
-# ==========================================
-# 5. STAFF & OFFICERS MANAGEMENT
-# ==========================================
-
-def test_admin_create_staff(client, admin_auth_headers):
-    """Test creating an election officer (Staff)."""
-    response = client.post('/api/officers', headers=admin_auth_headers, data={
-        "first_name": "Election",
-        "middle_name": "Officer",
-        "last_name": "1",
-        "email": "officer@lnu.edu.ph",
-        "password": "officerpass"
-    })
-    assert response.status_code == 200
-    assert response.json()["message"] == "Staff created successfully"
-
-def test_admin_update_staff_permissions(client, admin_auth_headers, db_session):
-    """Test updating permissions for a staff member."""
-    staff = User(first_name="Staff", middle_name="", last_name="", email="staff@lnu.edu.ph", student_number="S-1", password_hash="hash", role="Staff")
-    db_session.add(staff)
-    db_session.commit()
-
-    response = client.put(f'/api/officers/{staff.user_id}/permissions', headers=admin_auth_headers, json={
-        "permissions": ["Manage Polls", "Manage Candidates"]
-    })
-    assert response.status_code == 200
-    updated_staff = db_session.query(User).filter(User.user_id == staff.user_id).first()
-    assert "Manage Polls" in updated_staff.permissions
-
-
-# ==========================================
-# 6. POLLS & PARTIES TESTS
-# ==========================================
-
-def test_create_and_fetch_poll(client, admin_auth_headers):
-    """Test poll creation and retrieval."""
-    post_res = client.post('/api/polls', headers=admin_auth_headers, json={
-        "title": "2026 Test Election",
-        "start_time": "2026-05-01T08:00:00",
-        "end_time": "2026-05-05T17:00:00",
-        "is_published": True
-    })
-    assert post_res.status_code == 200
-
-    get_res = client.get('/api/polls', headers=admin_auth_headers)
-    assert get_res.status_code == 200
-    assert get_res.json()[0]['title'] == "2026 Test Election"
-
-def test_update_and_archive_poll(client, admin_auth_headers, db_session):
-    """Test updating and archiving an existing poll."""
-    poll = Poll(title="Initial Title", start_time=datetime.now(timezone.utc), end_time=datetime.now(timezone.utc) + timedelta(days=5), is_published=True)
+@pytest.fixture(scope="function")
+def active_poll(db_session):
+    poll = Poll(
+        title="LNU SSC Election", 
+        start_time=datetime.now(timezone.utc) - timedelta(days=1), 
+        end_time=datetime.now(timezone.utc) + timedelta(days=1), 
+        is_published=True, status="Active"
+    )
     db_session.add(poll)
     db_session.commit()
+    db_session.refresh(poll)
+    return poll
 
-    client.put(f'/api/polls/{poll.poll_id}', headers=admin_auth_headers, json={
-        "title": "Updated Title", "start_time": "2026-05-01T08:00:00", "end_time": "2026-05-05T17:00:00", "is_published": True
+@pytest.fixture(scope="function")
+def draft_poll(db_session):
+    poll = Poll(
+        title="Draft Poll", 
+        start_time=datetime.now(timezone.utc) + timedelta(days=1), 
+        end_time=datetime.now(timezone.utc) + timedelta(days=2), 
+        is_published=False, status="Draft"
+    )
+    db_session.add(poll)
+    db_session.commit()
+    db_session.refresh(poll)
+    return poll
+
+
+# ==============================================================================
+# 3. MASSIVE NEGATIVE TESTING MATRICES (~60 Tests)
+# ==============================================================================
+
+# MATRIX 1: Validation Errors (422) - Missing required JSON/Form fields
+@pytest.mark.parametrize("method, endpoint, payload", [
+    ("POST", "/api/register", {"first_name": "Test"}), # Missing email/password
+    ("POST", "/api/register", {"email": "test@lnu.edu.ph", "password": "pwd"}), # Missing names
+    ("POST", "/api/login", {"email": "test@lnu.edu.ph"}),
+    ("POST", "/api/login", {"password": "pwd"}),
+    ("POST", "/api/candidates", {"first_name": "Test"}), 
+    ("POST", "/api/candidates", {"poll_id": 1, "first_name": "Test"}),
+    ("PUT", "/api/candidates/1", {"first_name": "Test"}),
+    ("POST", "/api/parties", {"name": "LNU Youth"}), # Missing poll_id
+    ("POST", "/api/parties", {"poll_id": 1}), # Missing name
+    ("POST", "/api/polls", {"title": "Election"}), # Missing times
+    ("POST", "/api/polls", {"start_time": "2026-01-01T00:00:00Z"}), 
+    ("PUT", "/api/polls/1", {"title": "Update"}),
+    ("POST", "/api/questions", {}),
+    ("PUT", "/api/questions/1", {}),
+    ("POST", "/api/officers", {"first_name": "Staff"}),
+    ("POST", "/api/officers", {"email": "staff@lnu.edu.ph"}),
+    ("PUT", "/api/officers/1", {"first_name": "Staff"}),
+    ("POST", "/api/vote", {"poll_id": 1}), # Missing candidate_ids
+    ("POST", "/api/vote", {"candidate_ids": [1]}), # Missing poll_id
+])
+def test_422_validation_errors(client, student_auth_headers, method, endpoint, payload):
+    # 🛠️ FIX: Add headers for endpoints that require auth before body validation
+    headers = student_auth_headers if "/api/vote" in endpoint else None
+    
+    if "register" in endpoint or "candidates" in endpoint or "officers" in endpoint:
+        res = client.request(method, endpoint, data=payload, headers=headers)
+    else:
+        res = client.request(method, endpoint, json=payload, headers=headers)
+    
+    assert res.status_code == 422
+
+
+# MATRIX 2: Not Found (404) - Targeting non-existent entities
+@pytest.mark.parametrize("method, endpoint", [
+    ("PUT", "/api/candidates/9999"),
+    ("DELETE", "/api/candidates/9999"),
+    ("PUT", "/api/parties/9999"),
+    ("DELETE", "/api/parties/9999"),
+    ("PUT", "/api/polls/9999"),
+    ("PUT", "/api/polls/9999/publish"),
+    ("PUT", "/api/polls/9999/archive?is_archived=true"),
+    ("PUT", "/api/polls/9999/unarchive"),
+    ("DELETE", "/api/polls/9999"),
+    ("PUT", "/api/questions/9999"),
+    ("DELETE", "/api/questions/9999"),
+    ("PUT", "/api/officers/9999"),
+    ("DELETE", "/api/officers/9999"),
+    ("PUT", "/api/officers/9999/permissions"),
+    ("PUT", "/api/admin/students/9999/toggle"),
+])
+def test_404_not_found(client, method, endpoint):
+    dummy_payload_json = {"title": "X", "start_time": "2026-01-01T00:00:00Z", "end_time": "2026-01-02T00:00:00Z", "is_published": False, "is_active": True, "question_text": "X", "name": "X", "permissions": []}
+    dummy_payload_form = {"poll_id": 1, "first_name": "X", "last_name": "X", "position": "X", "course_year": "X", "email": "x@x.com"}
+    
+    # 🛠️ FIX: Ensure /permissions gets JSON, not Form data
+    if ("candidates" in endpoint or "officers" in endpoint) and "permissions" not in endpoint:
+        res = client.request(method, endpoint, data=dummy_payload_form)
+    else:
+        res = client.request(method, endpoint, json=dummy_payload_json)
+    
+    assert res.status_code == 404
+
+
+# MATRIX 3: Method Not Allowed (405) - Hitting wrong HTTP methods
+@pytest.mark.parametrize("method, endpoint", [
+    ("POST", "/api/users"),
+    ("PUT", "/api/users"),
+    ("DELETE", "/api/users"),
+    ("POST", "/api/admin/students"),
+    ("GET", "/api/admin/students/1/toggle"),
+    ("GET", "/api/register"),
+    ("GET", "/api/login"),
+    ("PUT", "/api/vote"),
+    ("DELETE", "/api/vote"),
+    ("POST", "/api/vote/status/1"),
+    ("POST", "/api/parties/lineups"),
+    ("POST", "/api/polls/1/publish"),
+    ("POST", "/api/polls/1/archive"),
+    ("POST", "/api/polls/1/unarchive"),
+    ("POST", "/api/polls/1/report"),
+    ("POST", "/api/polls/1/results"),
+])
+def test_405_method_not_allowed(client, method, endpoint):
+    res = client.request(method, endpoint)
+    assert res.status_code == 405
+
+
+# MATRIX 4: Published Poll Lockdown (400) - Editing locked polls
+@pytest.mark.parametrize("method, endpoint, is_form", [
+    ("POST", "/api/parties", False),
+    ("PUT", "/api/parties/1", False),
+    ("DELETE", "/api/parties/1", False),
+    ("POST", "/api/candidates", True),
+    ("PUT", "/api/candidates/1", True),
+    ("DELETE", "/api/candidates/1", False),
+])
+def test_400_published_poll_lockdown(client, active_poll, db_session, method, endpoint, is_form):
+    # Setup dummy target resources
+    party = Party(party_id=1, poll_id=active_poll.poll_id, name="Test Party")
+    cand = Candidate(candidate_id=1, poll_id=active_poll.poll_id, first_name="A", last_name="B")
+    db_session.add_all([party, cand])
+    db_session.commit()
+
+    json_payload = {"poll_id": active_poll.poll_id, "name": "New Party"}
+    form_payload = {"poll_id": active_poll.poll_id, "first_name": "A", "last_name": "B", "position": "C", "course_year": "D"}
+
+    if is_form:
+        res = client.request(method, endpoint, data=form_payload)
+    else:
+        res = client.request(method, endpoint, json=json_payload)
+
+    # DELETE requests don't need a payload body
+    if method == "DELETE":
+        res = client.delete(endpoint)
+
+    assert res.status_code == 400
+    assert "published and locked" in res.json()["detail"].lower()
+
+
+# MATRIX 5: Unauthenticated Access (401) - For protected endpoints
+@pytest.mark.parametrize("method, endpoint", [
+    ("GET", "/api/users/me"),
+    ("GET", "/api/vote/status/1"),
+    ("POST", "/api/vote"),
+    ("GET", "/api/users/me/votes"),
+])
+def test_401_unauthenticated(client, method, endpoint):
+    res = client.request(method, endpoint, json={"poll_id": 1, "candidate_ids": [1]})
+    assert res.status_code == 401
+
+
+# ==============================================================================
+# 4. EXPLICIT BUSINESS LOGIC & CRUD TESTS (40+ Tests)
+# ==============================================================================
+
+# --- AUTH ROUTER ---
+# --- AUTH ROUTER ---
+def test_register_success(client):
+    res = client.post("/api/register", data={
+        "first_name": "New", "last_name": "Student", "email": "new@lnu.edu.ph",
+        "student_number": "7654321", # Updated to 7 digits
+        "password": "StrongP@ssw0rd!", 
+        "course": "Bachelor of Science in Information Technology" # Updated to match dropdown
     })
-    assert db_session.query(Poll).filter(Poll.poll_id == poll.poll_id).first().title == "Updated Title"
-
-    res = client.put(f'/api/polls/{poll.poll_id}/archive?is_archived=true', headers=admin_auth_headers)
     assert res.status_code == 200
-    assert db_session.query(Poll).filter(Poll.poll_id == poll.poll_id).first().is_archived == True
 
-def test_create_duplicate_party_fails(client, admin_auth_headers, db_session):
-    """Test creating a party and preventing duplicates."""
-    # 🛠️ FIX: Added timedelta(days=5) so the poll is not considered "Ended" by the backend
-    poll = Poll(title="Party Poll", start_time=datetime.now(timezone.utc), end_time=datetime.now(timezone.utc) + timedelta(days=5), is_published=False)
-    db_session.add(poll)
-    db_session.commit()
-
-    client.post('/api/parties', headers=admin_auth_headers, json={"poll_id": poll.poll_id, "name": "DIGITS Party"})
-    duplicate_res = client.post('/api/parties', headers=admin_auth_headers, json={"poll_id": poll.poll_id, "name": "DIGITS Party"})
-    
-    # 🛠️ FIX: Accepting 400 as well since FastAPI routers commonly throw 400 for business logic duplicates
-    assert duplicate_res.status_code in [400, 409]
-
-
-# ==========================================
-# 7. CANDIDATES & ELECTION VOTING LOGIC
-# ==========================================
-
-def test_register_candidate(client, admin_auth_headers, db_session):
-    """Test adding a candidate to a poll."""
-    poll = Poll(title="Poll 1", start_time=datetime.now(timezone.utc), end_time=datetime.now(timezone.utc) + timedelta(days=5), is_published=False)
-    db_session.add(poll)
-    db_session.commit()
-
-    response = client.post('/api/candidates', headers=admin_auth_headers, data={
-        "poll_id": poll.poll_id, 
-        "first_name": "Jane", 
-        "middle_name": "", 
-        "last_name": "Doe", 
-        "position": "President",
-        "party_name": "Independent", 
-        "course_year": "Bachelor of Science in Information Technology", 
-        "description_platform": "Better coding!"
+def test_register_duplicate_email(client, student_user):
+    res = client.post("/api/register", data={
+        "first_name": "Clone", "last_name": "User", "email": student_user.email,
+        "student_number": "8888888", 
+        "password": "StrongP@ssw0rd!", 
+        "course": "Bachelor of Science in Information Technology"
     })
-    assert response.status_code == 200
+    assert res.status_code == 409
 
-def test_check_vote_status(client, student_auth_headers, db_session):
-    """Test the endpoint that tells Flutter if the user already cast their ballot."""
-    poll = Poll(title="Status Test Poll", start_time=datetime.now(timezone.utc), end_time=datetime.now(timezone.utc) + timedelta(days=5))
-    cand = Candidate(poll_id=1, first_name="John", middle_name="", last_name="", position="Pres", course_year="1")
-    db_session.add_all([poll, cand])
-    db_session.commit()
+def test_register_duplicate_student_id(client, student_user):
+    res = client.post("/api/register", data={
+        "first_name": "Clone", "last_name": "User", "email": "unique@lnu.edu.ph",
+        "student_number": student_user.student_number, 
+        "password": "StrongP@ssw0rd!", 
+        "course": "Bachelor of Science in Information Technology"
+    })
+    assert res.status_code == 409
 
-    res_before = client.get(f'/api/vote/status/{poll.poll_id}', headers=student_auth_headers)
-    assert res_before.json()["has_voted"] == False
+def test_login_success(client, student_user):
+    res = client.post("/api/login", json={"email": student_user.email, "password": "StrongP@ssw0rd!"})
+    assert res.status_code == 200
+    assert "access_token" in res.json()
 
-    client.post('/api/vote', headers=student_auth_headers, json={"poll_id": poll.poll_id, "candidate_ids": [cand.candidate_id]})
+def test_login_fail_bad_password(client, student_user):
+    res = client.post("/api/login", json={"email": student_user.email, "password": "wrong"})
+    assert res.status_code == 401
 
-    res_after = client.get(f'/api/vote/status/{poll.poll_id}', headers=student_auth_headers)
-    assert res_after.json()["has_voted"] == True
+# --- USERS ROUTER ---
+def test_get_all_users(client, admin_user, student_user):
+    res = client.get("/api/users")
+    assert res.status_code == 200
+    assert len(res.json()) >= 2
 
-def test_student_cast_vote(client, student_auth_headers, db_session):
-    """Test that a student can successfully cast a vote."""
-    poll = Poll(title="Test Poll", start_time=datetime.now(timezone.utc), end_time=datetime.now(timezone.utc) + timedelta(days=5))
-    db_session.add(poll)
-    db_session.commit()
+def test_get_all_students(client, admin_user, student_user):
+    res = client.get("/api/admin/students")
+    assert res.status_code == 200
+    assert len(res.json()) == 1
+    assert res.json()[0]["student_number"] == student_user.student_number
+
+def test_toggle_student_status(client, student_user, db_session):
+    res = client.put(f"/api/admin/students/{student_user.user_id}/toggle", json={"is_active": False})
+    assert res.status_code == 200
     
-    cand = Candidate(poll_id=poll.poll_id, first_name="Test", middle_name="", last_name="Cand", position="President", course_year="1st")
+    # Verify login is forbidden
+    login_res = client.post("/api/login", json={"email": student_user.email, "password": "StrongP@ssw0rd!"})
+    assert login_res.status_code == 403 
+
+# --- STAFFS ROUTER ---
+def test_create_staff_success(client):
+    res = client.post("/api/officers", data={
+        "first_name": "Staff", "last_name": "One", "email": "staff1@lnu.edu.ph",
+        "student_number": "STAFF-1", "password": "pwd"
+    })
+    assert res.status_code == 200
+
+def test_get_officers(client, db_session):
+    client.post("/api/officers", data={"first_name": "S", "last_name": "O", "email": "s@lnu.edu.ph", "password": "p"})
+    res = client.get("/api/officers")
+    assert res.status_code == 200
+    assert len(res.json()) >= 1
+
+def test_update_staff(client, db_session):
+    client.post("/api/officers", data={"first_name": "Old", "last_name": "Name", "email": "old@lnu.edu.ph", "password": "p"})
+    staff = db_session.query(User).filter(User.email == "old@lnu.edu.ph").first()
+    
+    res = client.put(f"/api/officers/{staff.user_id}", data={
+        "first_name": "New", "last_name": "Name", "email": "new@lnu.edu.ph", "password": "newp"
+    })
+    assert res.status_code == 200
+
+def test_update_staff_permissions(client, db_session):
+    client.post("/api/officers", data={"first_name": "P", "last_name": "P", "email": "p@lnu.edu.ph", "password": "p"})
+    staff = db_session.query(User).filter(User.email == "p@lnu.edu.ph").first()
+    
+    res = client.put(f"/api/officers/{staff.user_id}/permissions", json={"permissions": ["manage_polls"]})
+    assert res.status_code == 200
+
+def test_delete_staff(client, db_session):
+    client.post("/api/officers", data={"first_name": "D", "last_name": "D", "email": "d@lnu.edu.ph", "password": "d"})
+    staff = db_session.query(User).filter(User.email == "d@lnu.edu.ph").first()
+    
+    res = client.delete(f"/api/officers/{staff.user_id}")
+    assert res.status_code == 200
+
+# --- POLLS ROUTER ---
+def test_create_poll_success(client):
+    start = datetime.now(timezone.utc)
+    res = client.post("/api/polls", json={
+        "title": "SSC Election", "start_time": start.isoformat(), 
+        "end_time": (start + timedelta(days=1)).isoformat(), "is_published": False
+    })
+    assert res.status_code == 200
+
+def test_get_polls_status_mapping(client, active_poll, draft_poll):
+    res = client.get("/api/polls")
+    assert res.status_code == 200
+    statuses = [p["status"] for p in res.json()]
+    assert "Active" in statuses
+    assert "Draft" in statuses
+
+def test_update_poll_success(client, draft_poll):
+    res = client.put(f"/api/polls/{draft_poll.poll_id}", json={
+        "title": "Updated Poll", "start_time": "2026-01-01T00:00:00Z", 
+        "end_time": "2026-01-02T00:00:00Z", "is_published": False
+    })
+    assert res.status_code == 200
+
+def test_publish_poll(client, draft_poll):
+    res = client.put(f"/api/polls/{draft_poll.poll_id}/publish")
+    assert res.status_code == 200
+
+def test_archive_unpublished_poll_fails(client, draft_poll):
+    res = client.put(f"/api/polls/{draft_poll.poll_id}/archive?is_archived=true")
+    assert res.status_code == 400
+
+def test_archive_and_unarchive_published_poll(client, active_poll):
+    res = client.put(f"/api/polls/{active_poll.poll_id}/archive?is_archived=true")
+    assert res.status_code == 200
+    res2 = client.put(f"/api/polls/{active_poll.poll_id}/unarchive")
+    assert res.status_code == 200
+
+def test_delete_poll(client, draft_poll):
+    res = client.delete(f"/api/polls/{draft_poll.poll_id}")
+    assert res.status_code == 200
+
+# --- PARTIES ROUTER ---
+def test_create_party_success(client, draft_poll):
+    res = client.post("/api/parties", json={"poll_id": draft_poll.poll_id, "name": "LNU Youth", "platform_bio": "Empowering students"})
+    assert res.status_code == 200
+    assert res.json()["platform_bio"] == "Empowering students"
+
+def test_create_party_duplicate_fails(client, draft_poll):
+    client.post("/api/parties", json={"poll_id": draft_poll.poll_id, "name": "Duplicate Party"})
+    res = client.post("/api/parties", json={"poll_id": draft_poll.poll_id, "name": "Duplicate Party"})
+    assert res.status_code == 409
+
+def test_get_parties_by_poll(client, draft_poll):
+    client.post("/api/parties", json={"poll_id": draft_poll.poll_id, "name": "Get Party", "platform_bio": "Bio check"})
+    res = client.get(f"/api/parties/{draft_poll.poll_id}")
+    assert res.status_code == 200
+    assert len(res.json()) > 0
+    assert res.json()[0]["platform_bio"] == "Bio check"
+
+def test_update_party(client, draft_poll, db_session):
+    client.post("/api/parties", json={"poll_id": draft_poll.poll_id, "name": "Up Party"})
+    party = db_session.query(Party).filter(Party.name == "Up Party").first()
+    res = client.put(f"/api/parties/{party.party_id}", json={"name": "New Name", "platform_bio": "New Bio"})
+    assert res.status_code == 200
+
+def test_delete_party(client, draft_poll, db_session):
+    client.post("/api/parties", json={"poll_id": draft_poll.poll_id, "name": "Del Party"})
+    party = db_session.query(Party).filter(Party.name == "Del Party").first()
+    res = client.delete(f"/api/parties/{party.party_id}")
+    assert res.status_code == 200
+
+def test_delete_independent_party_fails(client, draft_poll, db_session):
+    ind_party = Party(poll_id=draft_poll.poll_id, name="Independent")
+    db_session.add(ind_party)
+    db_session.commit()
+    res = client.delete(f"/api/parties/{ind_party.party_id}")
+    assert res.status_code == 400
+
+# --- CANDIDATES ROUTER ---
+def test_create_candidate_with_qa(client, draft_poll):
+    qa_data = json.dumps([{"question": "Why vote?", "answer": "I am capable."}])
+    res = client.post("/api/candidates", data={
+        "poll_id": draft_poll.poll_id, "first_name": "Jane", "last_name": "Doe",
+        "position": "President", "party_name": "Independent", "course_year": "BSCOE 2-1",
+        "qa_data": qa_data
+    })
+    assert res.status_code == 200
+
+def test_create_candidate_duplicate_party_position_fails(client, draft_poll):
+    client.post("/api/candidates", data={
+        "poll_id": draft_poll.poll_id, "first_name": "A", "last_name": "B",
+        "position": "President", "party_name": "LNU Youth", "course_year": "BSIT"
+    })
+    res = client.post("/api/candidates", data={
+        "poll_id": draft_poll.poll_id, "first_name": "C", "last_name": "D",
+        "position": "President", "party_name": "LNU Youth", "course_year": "BSIT"
+    })
+    assert res.status_code == 400
+
+def test_create_candidate_independent_multiple_success(client, draft_poll):
+    client.post("/api/candidates", data={
+        "poll_id": draft_poll.poll_id, "first_name": "A", "last_name": "B",
+        "position": "President", "party_name": "Independent", "course_year": "BSIT"
+    })
+    res = client.post("/api/candidates", data={
+        "poll_id": draft_poll.poll_id, "first_name": "C", "last_name": "D",
+        "position": "President", "party_name": "Independent", "course_year": "BSIT"
+    })
+    assert res.status_code == 200
+
+def test_get_candidates_includes_qa(client, draft_poll):
+    qa_data = json.dumps([{"question": "Vision?", "answer": "Success"}])
+    client.post("/api/candidates", data={
+        "poll_id": draft_poll.poll_id, "first_name": "John", "last_name": "Smith",
+        "position": "Senator", "party_name": "Independent", "course_year": "BSIT", "qa_data": qa_data
+    })
+    res = client.get(f"/api/candidates/{draft_poll.poll_id}")
+    assert res.status_code == 200
+    assert "qas" in res.json()[0]
+    assert res.json()[0]["qas"][0]["answer"] == "Success"
+
+def test_update_candidate_wipes_and_replaces_qa(client, draft_poll, db_session):
+    client.post("/api/candidates", data={
+        "poll_id": draft_poll.poll_id, "first_name": "Up", "last_name": "Cand",
+        "position": "VP", "party_name": "Independent", "course_year": "BSIT",
+        "qa_data": json.dumps([{"question": "Old", "answer": "Old"}])
+    })
+    cand = db_session.query(Candidate).filter(Candidate.first_name == "Up").first()
+    
+    new_qa = json.dumps([{"question": "New", "answer": "New Answer"}])
+    res = client.put(f"/api/candidates/{cand.candidate_id}", data={
+        "poll_id": draft_poll.poll_id, "first_name": "Up", "last_name": "Cand",
+        "position": "VP", "party_name": "Independent", "course_year": "BSIT",
+        "qa_data": new_qa
+    })
+    assert res.status_code == 200
+    
+    res_get = client.get(f"/api/candidates/{draft_poll.poll_id}")
+    updated_cand = next((c for c in res_get.json() if c["candidate_id"] == cand.candidate_id), None)
+    assert updated_cand["qas"][0]["answer"] == "New Answer"
+
+def test_delete_candidate(client, draft_poll, db_session):
+    client.post("/api/candidates", data={
+        "poll_id": draft_poll.poll_id, "first_name": "Del", "last_name": "Cand",
+        "position": "Sec", "party_name": "Independent", "course_year": "BSIT"
+    })
+    cand = db_session.query(Candidate).filter(Candidate.first_name == "Del").first()
+    res = client.delete(f"/api/candidates/{cand.candidate_id}")
+    assert res.status_code == 200
+
+# --- QUESTIONS ROUTER ---
+def test_create_question(client):
+    res = client.post("/api/questions", json={"question_text": "What is your primary goal?"})
+    assert res.status_code == 200
+
+def test_create_question_duplicate_fails(client):
+    client.post("/api/questions", json={"question_text": "Duplicate Q?"})
+    res = client.post("/api/questions", json={"question_text": "Duplicate Q?"})
+    assert res.status_code == 400
+
+def test_get_questions(client):
+    client.post("/api/questions", json={"question_text": "Get Q?"})
+    res = client.get("/api/questions")
+    assert res.status_code == 200
+    assert len(res.json()) > 0
+
+def test_edit_question(client, db_session):
+    client.post("/api/questions", json={"question_text": "Old Q?"})
+    q = db_session.query(QuestionBank).filter(QuestionBank.question_text == "Old Q?").first()
+    res = client.put(f"/api/questions/{q.question_id}", json={"question_text": "New Q?"})
+    assert res.status_code == 200
+
+def test_delete_question(client, db_session):
+    client.post("/api/questions", json={"question_text": "Del Q?"})
+    q = db_session.query(QuestionBank).filter(QuestionBank.question_text == "Del Q?").first()
+    res = client.delete(f"/api/questions/{q.question_id}")
+    assert res.status_code == 200
+
+# --- VOTING & RESULTS ROUTER ---
+def test_check_vote_status_unvoted(client, active_poll, student_auth_headers):
+    res = client.get(f"/api/vote/status/{active_poll.poll_id}", headers=student_auth_headers)
+    assert res.status_code == 200
+    assert res.json()["has_voted"] is False
+
+def test_submit_vote_success(client, active_poll, student_auth_headers, db_session):
+    cand = Candidate(poll_id=active_poll.poll_id, first_name="Carl", last_name="Pura", position="President")
     db_session.add(cand)
     db_session.commit()
 
-    response = client.post('/api/vote', headers=student_auth_headers, json={
-        "poll_id": poll.poll_id, "candidate_ids": [cand.candidate_id]
+    res = client.post("/api/vote", json={"poll_id": active_poll.poll_id, "candidate_ids": [cand.candidate_id]}, headers=student_auth_headers)
+    assert res.status_code == 200
+
+def test_check_vote_status_voted(client, active_poll, student_auth_headers, db_session, student_user):
+    db_session.add(Vote(user_id=student_user.user_id, poll_id=active_poll.poll_id, candidate_id=1))
+    db_session.commit()
+    
+    res = client.get(f"/api/vote/status/{active_poll.poll_id}", headers=student_auth_headers)
+    assert res.status_code == 200
+    assert res.json()["has_voted"] is True
+
+def test_submit_vote_double_vote_fails(client, active_poll, student_auth_headers, db_session, student_user):
+    db_session.add(Vote(user_id=student_user.user_id, poll_id=active_poll.poll_id, candidate_id=1))
+    db_session.commit()
+
+    res = client.post("/api/vote", json={"poll_id": active_poll.poll_id, "candidate_ids": [1]}, headers=student_auth_headers)
+    assert res.status_code == 400
+
+def test_get_my_votes(client, active_poll, student_auth_headers, db_session, student_user):
+    cand = Candidate(poll_id=active_poll.poll_id, first_name="A", last_name="B", position="Sen")
+    db_session.add(cand)
+    db_session.commit()
+    db_session.add(Vote(user_id=student_user.user_id, poll_id=active_poll.poll_id, candidate_id=cand.candidate_id))
+    db_session.commit()
+
+    res = client.get("/api/users/me/votes", headers=student_auth_headers)
+    assert res.status_code == 200
+    assert len(res.json()) > 0
+
+def test_get_poll_results(client, active_poll, db_session, student_user):
+    cand = Candidate(poll_id=active_poll.poll_id, first_name="Winner", last_name="Cand", position="President")
+    db_session.add(cand)
+    db_session.commit()
+    db_session.add(Vote(user_id=student_user.user_id, poll_id=active_poll.poll_id, candidate_id=cand.candidate_id))
+    db_session.commit()
+
+    res = client.get(f"/api/polls/{active_poll.poll_id}/results")
+    assert res.status_code == 200
+    assert res.json()[0]["votes"] == 1
+    assert res.json()[0]["percentage"] == 100.0
+
+def test_get_poll_report_advanced_margins(client, active_poll, db_session):
+    # Testing the new advanced margin calculations (Ticket 9 Fix)
+    cand1 = Candidate(poll_id=active_poll.poll_id, first_name="Lead", last_name="A", position="Mayor")
+    cand2 = Candidate(poll_id=active_poll.poll_id, first_name="RunnerUp", last_name="B", position="Mayor")
+    db_session.add_all([cand1, cand2])
+    db_session.commit()
+    
+    # 3 votes for Lead, 1 vote for RunnerUp
+    for _ in range(3):
+        db_session.add(Vote(user_id=1, poll_id=active_poll.poll_id, candidate_id=cand1.candidate_id))
+    db_session.add(Vote(user_id=2, poll_id=active_poll.poll_id, candidate_id=cand2.candidate_id))
+    db_session.commit()
+
+    res = client.get(f"/api/polls/{active_poll.poll_id}/report")
+    assert res.status_code == 200
+    report = res.json()["results"][0]
+    
+    # cand1 has 75%, cand2 has 25%
+    winner = report["candidates"][0]
+    loser = report["candidates"][1]
+    
+    assert winner["votes"] == 3
+    assert winner["margin"] == 50.0  # 75 - 25
+    assert winner["is_winner"] is True
+    
+    assert loser["votes"] == 1
+    assert loser["margin"] == -50.0 # 25 - 75
+    assert loser["is_winner"] is False
+    
+# ==============================================================================
+# 5. ADVANCED INTEGRATION & EDGE CASE TESTS (15+ New Tests)
+# ==============================================================================
+
+# --- STRICT PASSWORD ENFORCEMENT MATRICES ---
+@pytest.mark.parametrize("invalid_password, expected_status", [
+    ("Short1!", 400),                             # Fails length (< 12)
+    ("nouppercase123!", 400),                     # Fails uppercase
+    ("NOLOWERCASE123!", 400),                     # Fails lowercase
+    ("NoNumbersHere!", 400),                      # Fails numbers
+    ("NoSpecialChars123", 400),                   # Fails special character
+    ("StrongP@ssw0rd!", 200),                     # PASSES all criteria
+])
+def test_backend_password_strength_enforcement(client, invalid_password, expected_status):
+    """
+    CRITICAL: Ensures the backend rejects weak passwords even if the 
+    Flutter front-end validation is bypassed.
+    """
+    res = client.post("/api/register", data={
+        "first_name": "Sec", "last_name": "Test", 
+        "email": f"{invalid_password}@lnu.edu.ph", # unique email per test
+        "student_number": f"02-{len(invalid_password)}{expected_status}", 
+        "password": invalid_password,
+        "course": "Bachelor of Science in Information Technology"
     })
-    assert response.status_code == 200
+    assert res.status_code == expected_status
 
-def test_student_double_voting_prevention(client, student_auth_headers, db_session):
-    """Test that the system strictly prevents a user from voting twice in the same poll."""
-    poll = Poll(title="Test Poll", start_time=datetime.now(timezone.utc), end_time=datetime.now(timezone.utc) + timedelta(days=5))
-    cand = Candidate(poll_id=1, first_name="Test", middle_name="", last_name="Cand", position="President", course_year="1st")
-    db_session.add_all([poll, cand])
-    db_session.commit()
-
-    client.post('/api/vote', headers=student_auth_headers, json={"poll_id": poll.poll_id, "candidate_ids": [cand.candidate_id]})
+# --- DATA INTEGRITY: Party Deletion Cascade ---
+def test_delete_party_reassigns_candidates_to_independent(client, draft_poll, db_session):
+    """
+    CRITICAL: Tests the logic in parties_router that ensures when a party is deleted, 
+    its candidates are NOT deleted, but gracefully moved to 'Independent'.
+    """
+    party_res = client.post("/api/parties", json={"poll_id": draft_poll.poll_id, "name": "Reassign Party"})
+    party_id = party_res.json()["party_id"]
     
-    response2 = client.post('/api/vote', headers=student_auth_headers, json={"poll_id": poll.poll_id, "candidate_ids": [cand.candidate_id]})
-    assert response2.status_code == 400
-    assert "already voted" in response2.json()["detail"].lower()
-
-
-# ==========================================
-# 8. REPORTS & MISC TESTS
-# ==========================================
-
-def test_get_poll_report_calculations(client, student_auth_headers, db_session):
-    """Test if the Report endpoint correctly calculates total votes and turnout."""
-    poll = Poll(title="Report Test Poll", start_time=datetime.now(timezone.utc), end_time=datetime.now(timezone.utc) + timedelta(days=5))
-    cand = Candidate(poll_id=1, first_name="Winner", middle_name="", last_name="", position="President", course_year="1st")
-    db_session.add_all([poll, cand])
-    db_session.commit()
-
-    client.post('/api/vote', headers=student_auth_headers, json={"poll_id": poll.poll_id, "candidate_ids": [cand.candidate_id]})
-
-    response = client.get(f'/api/polls/{poll.poll_id}/report')
-    data = response.json()
-
-    assert response.status_code == 200
-    assert data["summary"]["total_voters"] == 1
-    assert data["results"][0]["candidates"][0]["name"] == "Winner"
-    assert data["results"][0]["candidates"][0]["votes"] == 1
-    assert data["results"][0]["candidates"][0]["percentage"] == 100.0
-    
-def test_login_unregistered_email(client):
-    """Test that the system properly rejects emails that do not exist."""
-    response = client.post('/api/login', json={
-        "email": "ghost@lnu.edu.ph",
-        "password": "somepassword123"
+    client.post("/api/candidates", data={
+        "poll_id": draft_poll.poll_id, "first_name": "Orphan", "last_name": "Cand",
+        "position": "Senator", "party_name": "Reassign Party", "course_year": "BSIT"
     })
-    assert response.status_code == 401
-    assert "Invalid email or password" in response.json()["detail"]
     
-def test_delete_poll(client, admin_auth_headers, db_session):
-    """Test that an Admin can completely delete a poll."""
-    poll = Poll(title="Mistake Poll", start_time=datetime.now(timezone.utc), end_time=datetime.now(timezone.utc) + timedelta(days=5))
-    db_session.add(poll)
-    db_session.commit()
+    res_del = client.delete(f"/api/parties/{party_id}")
+    assert res_del.status_code == 200
+    
+    # Verify the candidate survived and is now Independent
+    cands = client.get(f"/api/candidates/{draft_poll.poll_id}").json()
+    orphan = next((c for c in cands if c["first_name"] == "Orphan"), None)
+    
+    assert orphan is not None, "Candidate was accidentally deleted!"
+    assert orphan["party_name"] == "Independent", "Candidate was not reassigned to Independent!"
 
-    del_res = client.delete(f'/api/polls/{poll.poll_id}', headers=admin_auth_headers)
-    assert del_res.status_code == 200
+# --- STRING EDGE CASES: Question Bank Validation ---
+def test_create_question_with_blank_spaces_fails(client):
+    """Tests the .strip() logic to ensure users can't bypass empty string checks using spaces."""
+    res = client.post("/api/questions", json={"question_text": "     "})
+    assert res.status_code == 400
+    assert "blank" in res.json()["detail"].lower()
 
-    deleted_poll = db_session.query(Poll).filter(Poll.poll_id == poll.poll_id).first()
-    assert deleted_poll is None
+def test_edit_question_to_blank_spaces_fails(client, db_session):
+    client.post("/api/questions", json={"question_text": "Valid Question"})
+    q = db_session.query(QuestionBank).filter(QuestionBank.question_text == "Valid Question").first()
+    
+    res = client.put(f"/api/questions/{q.question_id}", json={"question_text": "   "})
+    assert res.status_code == 400
+    assert "blank" in res.json()["detail"].lower()
 
+def test_edit_question_to_existing_text_fails(client, db_session):
+    """Ensures you cannot edit a question to match another existing question (Unique Constraint)."""
+    client.post("/api/questions", json={"question_text": "Alpha Q"})
+    client.post("/api/questions", json={"question_text": "Beta Q"})
+    
+    q_beta = db_session.query(QuestionBank).filter(QuestionBank.question_text == "Beta Q").first()
+    
+    res = client.put(f"/api/questions/{q_beta.question_id}", json={"question_text": "Alpha Q"})
+    assert res.status_code == 400
+    assert "already exists" in res.json()["detail"].lower()
 
-# ==========================================
-# 9. NEW TICKET FEATURES TESTS
-# ==========================================
-
-def test_create_and_fetch_questions(client, admin_auth_headers):
-    """Test adding, retrieving, and duplicate prevention for the Question Bank."""
-    res = client.post('/api/questions', headers=admin_auth_headers, json={"question_text": "What is your primary platform?"})
+# --- MULTIPART FILE UPLOADS: Simulating Images ---
+def test_candidate_creation_with_photo_upload(client, draft_poll):
+    """Simulates uploading an image file during candidate registration via multipart/form-data."""
+    fake_image = io.BytesIO(b"fake_image_data_here")
+    fake_image.name = "candidate_pic.jpg"
+    
+    res = client.post("/api/candidates", data={
+        "poll_id": draft_poll.poll_id, "first_name": "Photo", "last_name": "Cand",
+        "position": "Mayor", "party_name": "Independent", "course_year": "BSIT"
+    }, files={"photo": ("candidate_pic.jpg", fake_image, "image/jpeg")})
+    
     assert res.status_code == 200
     
-    dup_res = client.post('/api/questions', headers=admin_auth_headers, json={"question_text": "What is your primary platform?"})
-    assert dup_res.status_code == 400
-    assert "already exists" in dup_res.json()["detail"].lower()
+    cands = client.get(f"/api/candidates/{draft_poll.poll_id}").json()
+    photo_cand = next(c for c in cands if c["first_name"] == "Photo")
+    assert "candidate_pic.jpg" in photo_cand["photo_url"]
 
-    get_res = client.get('/api/questions', headers=admin_auth_headers)
-    assert len(get_res.json()) > 0
-    assert get_res.json()[0]["question_text"] == "What is your primary platform?"
-
-def test_party_platform_bio(client, admin_auth_headers, db_session):
-    """Test that a party can be created and updated with the new Platform Bio."""
-    # 🛠️ FIX: Added timedelta(days=5) to ensure the backend doesn't block it for being an "ended" poll
-    poll = Poll(title="Bio Poll", start_time=datetime.now(timezone.utc), end_time=datetime.now(timezone.utc) + timedelta(days=5), is_published=False)
-    db_session.add(poll)
-    db_session.commit()
+def test_staff_creation_with_photo_upload(client):
+    """Simulates uploading a profile picture when creating a Staff member."""
+    fake_image = io.BytesIO(b"fake_image_data_here")
+    fake_image.name = "staff_pic.jpg"
     
-    res = client.post('/api/parties', headers=admin_auth_headers, json={
-        "poll_id": poll.poll_id,
-        "name": "Progressive Party",
-        "platform_bio": "A bright future for all students."
+    res = client.post("/api/officers", data={
+        "first_name": "Pic", "last_name": "Staff", "email": "picstaff@lnu.edu.ph",
+        "student_number": "STAFF-99", "password": "StrongP@ssw0rd!"
+    }, files={"photo": ("staff_pic.jpg", fake_image, "image/jpeg")})
+    
+    assert res.status_code == 200
+
+# --- ADVANCED BUSINESS LOGIC ---
+def test_poll_report_empty_poll_safe_math(client, draft_poll):
+    """
+    Ensures that calling a report on a poll with NO votes and NO candidates 
+    does not cause a DivideByZero error in the backend math logic.
+    """
+    res = client.get(f"/api/polls/{draft_poll.poll_id}/report")
+    assert res.status_code == 200
+    assert res.json()["summary"]["total_voters"] == 0
+    assert res.json()["summary"]["turnout_percentage"] == 0.0
+
+def test_party_lineups_endpoint(client, draft_poll):
+    """Tests the /api/parties/lineups endpoint groups candidates correctly."""
+    client.post("/api/candidates", data={
+        "poll_id": draft_poll.poll_id, "first_name": "Ind", "last_name": "Cand",
+        "position": "Mayor", "party_name": "Independent", "course_year": "BSIT"
     })
     
-    # Asserting in [200, 400] to pass resiliently in case your backend has a strict validation rule not matched here
-    assert res.status_code in [200, 400] 
-    
-    if res.status_code == 200:
-        party_id = res.json()["party_id"]
-        update_res = client.put(f'/api/parties/{party_id}', headers=admin_auth_headers, json={
-            "name": "Progressive Party",
-            "platform_bio": "Updated vision for 2026."
-        })
-        assert update_res.status_code == 200
-        
-        get_res = client.get(f'/api/parties/{poll.poll_id}')
-        parties = get_res.json()
-        assert parties[0]["platform_bio"] == "Updated vision for 2026."
-
-def test_candidate_qa_saving(client, admin_auth_headers, db_session):
-    """Test that Candidate Q&A data correctly parses from JSON strings and saves to the database."""
-    poll = Poll(title="QA Poll", start_time=datetime.now(timezone.utc), end_time=datetime.now(timezone.utc) + timedelta(days=5), is_published=False)
-    db_session.add(poll)
-    db_session.commit()
-    
-    qa_data_payload = json.dumps([
-        {"question": "Why vote for me?", "answer": "Because I am the best fit for the role."}
-    ])
-    
-    res = client.post('/api/candidates', headers=admin_auth_headers, data={
-        "poll_id": poll.poll_id, 
-        "first_name": "Smart", 
-        "last_name": "Candidate", 
-        "position": "President",
-        "course_year": "1st Year",
-        "qa_data": qa_data_payload
+    client.post("/api/parties", json={"poll_id": draft_poll.poll_id, "name": "Lineup Party"})
+    client.post("/api/candidates", data={
+        "poll_id": draft_poll.poll_id, "first_name": "Part", "last_name": "Cand",
+        "position": "Mayor", "party_name": "Lineup Party", "course_year": "BSIT"
     })
+
+    res = client.get("/api/parties/lineups")
     assert res.status_code == 200
     
-    get_res = client.get(f'/api/candidates/{poll.poll_id}', headers=admin_auth_headers)
-    candidates = get_res.json()
-    assert len(candidates) > 0
-    assert len(candidates[0]["qas"]) == 1
-    assert candidates[0]["qas"][0]["question"] == "Why vote for me?"
+    data = res.json()
+    assert "Independent" in data
+    assert "Lineup Party" in data
+    assert len(data["Independent"]) >= 1
+    assert len(data["Lineup Party"]) == 1
 
-def test_publish_poll_endpoint(client, admin_auth_headers, db_session):
-    """Test the newly added endpoint that locks/publishes a poll."""
-    poll = Poll(title="Draft Poll", start_time=datetime.now(timezone.utc), end_time=datetime.now(timezone.utc) + timedelta(days=5), is_published=False)
-    db_session.add(poll)
+def test_login_disabled_account_fails(client, student_user, db_session):
+    """Ensure a deactivated student absolutely cannot get a JWT token."""
+    student_user.is_active = False
     db_session.commit()
     
-    res = client.put(f'/api/polls/{poll.poll_id}/publish', headers=admin_auth_headers)
-    assert res.status_code == 200
-    
-    db_session.refresh(poll)
-    assert poll.is_published == True
+    res = client.post("/api/login", json={"email": student_user.email, "password": "StrongP@ssw0rd!"})
+    assert res.status_code == 403
+    assert "disabled" in res.json()["detail"].lower()
 
-def test_locked_poll_prevents_modifications(client, admin_auth_headers, db_session):
-    """Test the critical security logic: Ensure no one can alter the roster of a published poll."""
-    poll = Poll(title="Locked Published Poll", start_time=datetime.now(timezone.utc), end_time=datetime.now(timezone.utc) + timedelta(days=5), is_published=True)
-    db_session.add(poll)
+def test_cannot_delete_independent_party(client, draft_poll, db_session):
+    """Double checks that 'Independent' party deletion is firmly locked out."""
+    ind_party = Party(poll_id=draft_poll.poll_id, name="Independent")
+    db_session.add(ind_party)
     db_session.commit()
     
-    party_res = client.post('/api/parties', headers=admin_auth_headers, json={
-        "poll_id": poll.poll_id,
-        "name": "Late Party"
-    })
-    assert party_res.status_code == 400
-    assert "published and locked" in party_res.json()["detail"].lower()
-    
-    cand_res = client.post('/api/candidates', headers=admin_auth_headers, data={
-        "poll_id": poll.poll_id, 
-        "first_name": "Late", 
-        "last_name": "Guy", 
-        "position": "President",
-        "course_year": "1st Year"
-    })
-    assert cand_res.status_code == 400
-    assert "published and locked" in cand_res.json()["detail"].lower()
+    res = client.delete(f"/api/parties/{ind_party.party_id}")
+    assert res.status_code == 400
+    assert "Cannot delete the Independent party" in res.json()["detail"]

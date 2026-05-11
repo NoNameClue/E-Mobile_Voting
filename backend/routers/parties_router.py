@@ -20,19 +20,6 @@ class PartyUpdate(BaseModel):
 
 # --- Endpoints ---
 
-@router.get("/api/parties/{poll_id}")
-def get_parties_by_poll(poll_id: int, db: Session = Depends(get_db)):
-    parties = db.query(Party).filter(Party.poll_id == poll_id).all()
-    # 🛠️ ADDED: Include platform_bio in the response so Flutter can display it
-    return [
-        {
-            "party_id": p.party_id, 
-            "name": p.name, 
-            "platform_bio": p.platform_bio
-        } 
-        for p in parties
-    ]
-
 @router.get("/api/parties/lineups")
 def get_party_lineups(db: Session = Depends(get_db)):
     candidates = db.query(Candidate).all()
@@ -51,6 +38,18 @@ def get_party_lineups(db: Session = Depends(get_db)):
             "photo_url": c.photo_url
         })
     return lineups
+
+@router.get("/api/parties/{poll_id}")
+def get_parties_by_poll(poll_id: int, db: Session = Depends(get_db)):
+    parties = db.query(Party).filter(Party.poll_id == poll_id).all()
+    return [
+        {
+            "party_id": p.party_id, 
+            "name": p.name, 
+            "platform_bio": p.platform_bio
+        } 
+        for p in parties
+    ]
 
 @router.post("/api/parties")
 def create_party(party: PartyCreate, db: Session = Depends(get_db)):

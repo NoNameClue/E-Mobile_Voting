@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:math' as math; 
 import 'api_config.dart';
 
 class ManageUsers extends StatefulWidget {
@@ -17,6 +18,9 @@ class _ManageUsersState extends State<ManageUsers> {
   
   final TextEditingController _searchController = TextEditingController();
   String _searchCriteria = 'None'; 
+
+  String _sortBy = 'Date Created'; 
+  bool _isAscending = false;       
   
   bool _isLoading = true;
 
@@ -73,7 +77,7 @@ class _ManageUsersState extends State<ManageUsers> {
       if (response.statusCode == 200) {
         setState(() {
           _allStudents = jsonDecode(response.body);
-          _filteredStudents = _allStudents; 
+          _applyFilters(); 
           _isLoading = false;
         });
       }
@@ -123,11 +127,31 @@ class _ManageUsersState extends State<ManageUsers> {
   String _formatDate(String? isoDate) {
     if (isoDate == null) return "N/A";
     try {
-      final d = DateTime.parse(isoDate);
+      final d = DateTime.parse(isoDate).toLocal();
       return "${d.month}/${d.day}/${d.year}";
     } catch (e) {
       return isoDate;
     }
+  }
+
+  void _sortData() {
+    _filteredStudents.sort((a, b) {
+      int cmp = 0;
+      if (_sortBy == 'Name') {
+        String nameA = (a['full_name'] ?? '').toString().toLowerCase();
+        String nameB = (b['full_name'] ?? '').toString().toLowerCase();
+        cmp = nameA.compareTo(nameB);
+      } else if (_sortBy == 'Student ID') {
+        String idA = (a['student_number'] ?? '').toString().toLowerCase();
+        String idB = (b['student_number'] ?? '').toString().toLowerCase();
+        cmp = idA.compareTo(idB);
+      } else if (_sortBy == 'Date Created') {
+        DateTime dateA = a['created_at'] != null ? DateTime.tryParse(a['created_at']) ?? DateTime(2000) : DateTime(2000);
+        DateTime dateB = b['created_at'] != null ? DateTime.tryParse(b['created_at']) ?? DateTime(2000) : DateTime(2000);
+        cmp = dateA.compareTo(dateB);
+      }
+      return _isAscending ? cmp : -cmp;
+    });
   }
 
   void _applyFilters() {
@@ -173,7 +197,77 @@ class _ManageUsersState extends State<ManageUsers> {
 
         return matchesSearch && matchesStatus;
       }).toList();
+      
+      _sortData();
     });
+  }
+
+  Widget _buildSearchCriteriaDropdown() {
+    return Container(
+      height: 45,
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))]),
+      child: DropdownMenu<String>(
+        initialSelection: _searchCriteria,
+        requestFocusOnTap: false,
+        onSelected: (String? newValue) {
+          if (newValue != null) {
+            setState(() => _searchCriteria = newValue);
+            _applyFilters();
+          }
+        },
+        dropdownMenuEntries: ['None', 'First Name', 'Last Name', 'Student ID'].map((String value) {
+          return DropdownMenuEntry<String>(value: value, label: value == 'None' ? 'Global Search' : value);
+        }).toList(),
+        textStyle: const TextStyle(color: Colors.black87, fontSize: 14, fontWeight: FontWeight.w500),
+        inputDecorationTheme: const InputDecorationTheme(contentPadding: EdgeInsets.symmetric(horizontal: 15), border: InputBorder.none),
+      ),
+    );
+  }
+
+  Widget _buildSortDropdown() {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          height: 45,
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))]),
+          child: DropdownMenu<String>(
+            initialSelection: _sortBy,
+            requestFocusOnTap: false,
+            onSelected: (String? newValue) {
+              if (newValue != null) {
+                setState(() {
+                  if (_sortBy == newValue) {
+                    _isAscending = !_isAscending; 
+                  } else {
+                    _sortBy = newValue;
+                    _isAscending = newValue == 'Date Created' ? false : true; 
+                  }
+                });
+                _applyFilters();
+              }
+            },
+            dropdownMenuEntries: ['Date Created', 'Name', 'Student ID'].map((String value) {
+              return DropdownMenuEntry<String>(value: value, label: value);
+            }).toList(),
+            textStyle: const TextStyle(color: Colors.black87, fontSize: 14, fontWeight: FontWeight.w500),
+            inputDecorationTheme: const InputDecorationTheme(contentPadding: EdgeInsets.symmetric(horizontal: 15), border: InputBorder.none),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Container(
+          height: 45, width: 45,
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))]),
+          child: IconButton(
+            icon: Icon(_isAscending ? Icons.arrow_upward : Icons.arrow_downward, color: const Color(0xFF000B6B), size: 20),
+            onPressed: () {
+              setState(() => _isAscending = !_isAscending);
+              _applyFilters();
+            },
+          ),
+        ),
+      ],
+    );
   }
 
   @override
@@ -181,13 +275,89 @@ class _ManageUsersState extends State<ManageUsers> {
     int total = _allStudents.length;
     int active = _allStudents.where((s) => s['is_active'] == true).length;
     int deactivated = total - active;
-    bool isMobile = MediaQuery.of(context).size.width < 700;
+    bool isMobile = MediaQuery.of(context).size.width < 900;
 
     final paginatedStudents = _getPaginatedStudents();
     
     int totalFiltered = _filteredStudents.length;
     int currentStart = totalFiltered == 0 ? 0 : (_currentPage * _rowsPerPage) + 1;
     int currentEnd = currentStart + paginatedStudents.length - (totalFiltered == 0 ? 0 : 1);
+
+    // 🛠️ Calculate Total Pages
+    int totalPages = (totalFiltered / _rowsPerPage).ceil();
+    if (totalPages == 0) totalPages = 1;
+
+    // 🛠️ Generate Page Buttons with Ellipsis Logic
+    List<Widget> pageButtons = [];
+    
+    Widget buildPageButton(int pageIndex, bool isActive) {
+      return InkWell(
+        onTap: () => setState(() => _currentPage = pageIndex),
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 4),
+          width: 35,
+          height: 35,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: isActive ? Colors.blue : Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: isActive ? Colors.blue : Colors.grey.shade300),
+          ),
+          child: Text(
+            "${pageIndex + 1}",
+            style: TextStyle(
+              color: isActive ? Colors.white : Colors.black87,
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+            ),
+          ),
+        ),
+      );
+    }
+
+    Widget buildEllipsis() {
+      return Container(
+        margin: const EdgeInsets.symmetric(horizontal: 4),
+        width: 35,
+        height: 35,
+        alignment: Alignment.center,
+        child: const Text("...", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+      );
+    }
+
+    if (totalPages <= 5) {
+      // Show all pages if 5 or less
+      for (int i = 0; i < totalPages; i++) {
+        pageButtons.add(buildPageButton(i, i == _currentPage));
+      }
+    } else {
+      // Logic for ellipsis when many pages exist
+      if (_currentPage < 3) {
+        // Show first 4 pages, then ellipsis, then last page
+        for (int i = 0; i < 4; i++) {
+          pageButtons.add(buildPageButton(i, i == _currentPage));
+        }
+        pageButtons.add(buildEllipsis());
+        pageButtons.add(buildPageButton(totalPages - 1, false));
+      } else if (_currentPage > totalPages - 4) {
+        // Show first page, ellipsis, then last 4 pages
+        pageButtons.add(buildPageButton(0, false));
+        pageButtons.add(buildEllipsis());
+        for (int i = totalPages - 4; i < totalPages; i++) {
+          pageButtons.add(buildPageButton(i, i == _currentPage));
+        }
+      } else {
+        // Show first page, ellipsis, current-1, current, current+1, ellipsis, last page
+        pageButtons.add(buildPageButton(0, false));
+        pageButtons.add(buildEllipsis());
+        pageButtons.add(buildPageButton(_currentPage - 1, false));
+        pageButtons.add(buildPageButton(_currentPage, true));
+        pageButtons.add(buildPageButton(_currentPage + 1, false));
+        pageButtons.add(buildEllipsis());
+        pageButtons.add(buildPageButton(totalPages - 1, false));
+      }
+    }
 
     return SingleChildScrollView(
       child: Padding(
@@ -211,58 +381,41 @@ class _ManageUsersState extends State<ManageUsers> {
           ),
           const SizedBox(height: 25),
 
-          Row(
-            children: [
-              // 🛠️ CHANGED: Material 3 DropdownMenu replacing the old DropdownButton
-              Container(
-                height: 45,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4)
-                    )
+          if (isMobile)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    _buildSearchCriteriaDropdown(),
+                    const SizedBox(width: 10),
+                    Expanded(child: _buildSearchField(controller: _searchController, hint: _searchCriteria == 'None' ? "Search..." : "Search by $_searchCriteria...", icon: Icons.search)),
                   ],
                 ),
-                child: DropdownMenu<String>(
-                  initialSelection: _searchCriteria,
-                  requestFocusOnTap: false, // Prevents keyboard/typing
-                  onSelected: (String? newValue) {
-                    if (newValue != null) {
-                      setState(() {
-                        _searchCriteria = newValue;
-                      });
-                      _applyFilters();
-                    }
-                  },
-                  dropdownMenuEntries: ['None', 'First Name', 'Last Name', 'Student ID'].map((String value) {
-                    return DropdownMenuEntry<String>(
-                      value: value,
-                      label: value == 'None' ? 'Global Search' : value,
-                    );
-                  }).toList(),
-                  textStyle: const TextStyle(color: Colors.black87, fontSize: 14, fontWeight: FontWeight.w500),
-                  inputDecorationTheme: const InputDecorationTheme(
-                    contentPadding: EdgeInsets.symmetric(horizontal: 15),
-                    border: InputBorder.none, // Removes borders to match the container
-                  ),
-                ),
-              ),
-              const SizedBox(width: 15),
-              Expanded(
-                child: _buildSearchField(
-                  controller: _searchController,
-                  hint: _searchCriteria == 'None' 
-                      ? "Search by Name or ID..." 
-                      : "Search by $_searchCriteria...",
-                  icon: Icons.search,
-                ),
-              ),
-            ],
-          ),
+                const SizedBox(height: 15),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    const Text("Sort By: ", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                    const SizedBox(width: 8),
+                    _buildSortDropdown(),
+                  ],
+                )
+              ],
+            )
+          else
+            Row(
+              children: [
+                _buildSearchCriteriaDropdown(),
+                const SizedBox(width: 15),
+                Expanded(child: _buildSearchField(controller: _searchController, hint: _searchCriteria == 'None' ? "Search by Name or ID..." : "Search by $_searchCriteria...", icon: Icons.search)),
+                const SizedBox(width: 30),
+                const Text("Sort By: ", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                const SizedBox(width: 10),
+                _buildSortDropdown(),
+              ],
+            ),
+            
           const SizedBox(height: 20),
 
           _isLoading
@@ -304,7 +457,7 @@ class _ManageUsersState extends State<ManageUsers> {
                                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, decoration: isActive ? TextDecoration.none : TextDecoration.lineThrough),
                               ),
                               subtitle: Text(
-                                'ID: ${student['student_number']} • ${student['course'] ?? 'N/A'} • ${_formatDate(student['created_at'])}',
+                                'ID: ${student['student_number']} • ${student['course'] ?? 'N/A'} • Since: ${_formatDate(student['created_at'])}',
                                 style: const TextStyle(fontSize: 12),
                               ),
                               trailing: Row(
@@ -358,7 +511,6 @@ class _ManageUsersState extends State<ManageUsers> {
                     children: [
                       const Text("Rows per page:", style: TextStyle(color: Colors.black54, fontSize: 13, fontWeight: FontWeight.w500)),
                       const SizedBox(width: 10),
-                      // 🛠️ CHANGED: RequestFocusOnTap added to Rows Per Page
                       DropdownMenu<int>(
                         initialSelection: _rowsPerPage,
                         requestFocusOnTap: false, 
@@ -379,37 +531,50 @@ class _ManageUsersState extends State<ManageUsers> {
                     ],
                   ),
 
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
+                  // 🛠️ Full Numeric Pagination Layout
+                  Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       Text(
                         "Showing $currentStart-$currentEnd of $totalFiltered",
-                        style: const TextStyle(color: Colors.black87, fontSize: 14, fontWeight: FontWeight.w500),
+                        style: const TextStyle(color: Colors.black87, fontSize: 13, fontWeight: FontWeight.w500),
                       ),
                       const SizedBox(width: 15),
+                      
+                      // First Page (<<)
+                      IconButton(
+                        constraints: const BoxConstraints(),
+                        padding: const EdgeInsets.all(6),
+                        icon: Icon(Icons.keyboard_double_arrow_left, color: _currentPage > 0 ? Colors.black87 : Colors.grey.shade300),
+                        onPressed: _currentPage > 0 ? () => setState(() => _currentPage = 0) : null,
+                      ),
+                      
+                      // Previous Page (<)
                       IconButton(
                         constraints: const BoxConstraints(),
                         padding: const EdgeInsets.all(6),
                         icon: Icon(Icons.chevron_left, color: _currentPage > 0 ? Colors.black87 : Colors.grey.shade300),
-                        onPressed: _currentPage > 0
-                            ? () => setState(() => _currentPage--)
-                            : null,
+                        onPressed: _currentPage > 0 ? () => setState(() => _currentPage--) : null,
                       ),
+                      
                       const SizedBox(width: 4),
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade100, 
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: Colors.grey.shade300)
-                        ),
-                        child: IconButton(
-                          constraints: const BoxConstraints(),
-                          padding: const EdgeInsets.all(6),
-                          icon: Icon(Icons.chevron_right, color: currentEnd < totalFiltered ? Colors.black87 : Colors.grey.shade300),
-                          onPressed: currentEnd < totalFiltered
-                              ? () => setState(() => _currentPage++)
-                              : null,
-                        ),
+                      ...pageButtons,
+                      const SizedBox(width: 4),
+                      
+                      // Next Page (>)
+                      IconButton(
+                        constraints: const BoxConstraints(),
+                        padding: const EdgeInsets.all(6),
+                        icon: Icon(Icons.chevron_right, color: _currentPage < totalPages - 1 ? Colors.black87 : Colors.grey.shade300),
+                        onPressed: _currentPage < totalPages - 1 ? () => setState(() => _currentPage++) : null,
+                      ),
+                      
+                      // Last Page (>>)
+                      IconButton(
+                        constraints: const BoxConstraints(),
+                        padding: const EdgeInsets.all(6),
+                        icon: Icon(Icons.keyboard_double_arrow_right, color: _currentPage < totalPages - 1 ? Colors.black87 : Colors.grey.shade300),
+                        onPressed: _currentPage < totalPages - 1 ? () => setState(() => _currentPage = totalPages - 1) : null,
                       ),
                     ],
                   ),
@@ -448,7 +613,6 @@ class _ManageUsersState extends State<ManageUsers> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // 🛠️ CHANGED: RequestFocusOnTap added to Course
                       DropdownMenu<String>(
                         expandedInsets: EdgeInsets.zero,
                         initialSelection: selectedCourse,

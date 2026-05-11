@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, File, UploadFile, Form
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta, timezone 
-import os, shutil
+import os, shutil, re
 from database import get_db
 from models import User
 from schemas import UserLogin
@@ -25,6 +25,16 @@ def register_user(
         raise HTTPException(status_code=409, detail="Email already registered")
     if db.query(User).filter(User.student_number == student_number).first():
         raise HTTPException(status_code=409, detail="Student ID already registered")
+    
+    if (len(password) < 12 or 
+        not re.search(r'[A-Z]', password) or 
+        not re.search(r'[a-z]', password) or 
+        not re.search(r'[0-9]', password) or 
+        not re.search(r'[.,?!@#$%]', password)):
+        raise HTTPException(
+            status_code=400, 
+            detail="Password must be at least 12 characters and include an uppercase letter, lowercase letter, number, and special character."
+        )
 
     file_path = None
     if photo and photo.filename:
