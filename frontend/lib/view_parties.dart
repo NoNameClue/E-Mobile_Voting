@@ -191,11 +191,21 @@ class _ViewPartiesState extends State<ViewParties> {
           actions: [
             TextButton(
               style: TextButton.styleFrom(
+                backgroundColor: Colors.red,
                 padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
               ),
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text("Close Window", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 16)),
+              child: Text(
+                "Close Window",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
             ),
           ],
           actionsAlignment: MainAxisAlignment.center, 
