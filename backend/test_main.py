@@ -293,9 +293,18 @@ def test_get_all_users(client, admin_user, student_user):
 
 def test_get_all_students(client, admin_user, student_user):
     res = client.get("/api/admin/students")
+    
+    # 1. Check if the request was successful
     assert res.status_code == 200
-    assert len(res.json()) == 1
-    assert res.json()[0]["student_number"] == student_user.student_number
+    
+    # 2. Extract the JSON response
+    data = res.json()
+    
+    # 3. Look inside the 'items' array to count the actual student records
+    assert len(data["items"]) == 1 
+    
+    # 4. Verify the backend's 'total' count matches
+    assert data["total"] == 1
 
 def test_toggle_student_status(client, student_user, db_session):
     res = client.put(f"/api/admin/students/{student_user.user_id}/toggle", json={"is_active": False})

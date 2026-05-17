@@ -7,6 +7,138 @@ class AuthLayout extends StatelessWidget {
 
   const AuthLayout({super.key, required this.formContent});
 
+  void _showAboutUs(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.info_outline, color: Color(0xFF000B6B)),
+            SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                "About Us", 
+                style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF000B6B)),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+        content: SizedBox(
+          width: 500,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  "The Leyte Normal University (LNU) eMobile Voting System is a modern, secure, and accessible platform designed to streamline student elections. It ensures election integrity, eliminates manual tallying errors, and provides a seamless voting experience.",
+                  style: TextStyle(fontSize: 14, height: 1.5),
+                ),
+                const SizedBox(height: 20),
+                const Text("Meet the Team", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF000B6B))),
+                const Divider(),
+                _buildTeamMember("Dorothy A. Magdaraog", "Project Manager / UI & UX Designer / Full-Stack Developer"),
+                _buildTeamMember("Carl David T. Pura", "Lead Developer / Full-Stack Developer / QA Tester"),
+                _buildTeamMember("Jasmine T. Villaruel", "Full-Stack Developer / Database Administrator"),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Close", style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showFAQs(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.help_outline, color: Color(0xFF000B6B)),
+            SizedBox(width: 10),
+            Expanded( 
+              child: Text(
+                "Frequently Asked Questions", 
+                style: TextStyle(
+                  color: Color(0xFF000B6B), 
+                  fontWeight: FontWeight.bold,
+                ),
+                maxLines: 2, 
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+        content: SizedBox(
+          width: 500,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildFAQItem("How do I register to vote?", "Click on 'Sign Up' and use your official LNU Email and Student ID. Once your details are verified by the system, you can log in."),
+                _buildFAQItem("Is my vote strictly confidential?", "Yes. The system encrypts all ballot submissions. Administrators can see THAT you voted, but never WHO you voted for."),
+                _buildFAQItem("Can I change my vote after submitting?", "No. To maintain election integrity, all submitted ballots are final and cannot be modified or retracted."),
+                _buildFAQItem("What if I forgot my password?", "Please contact the M.I.S or system administrators to request a secure password reset."),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Close", style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTeamMember(String name, String role) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.person, size: 20, color: Colors.amber),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                Text(role, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFAQItem(String question, String answer) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 15.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text("Q: $question", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black87)),
+          const SizedBox(height: 4),
+          Text("A: $answer", style: TextStyle(fontSize: 13, color: Colors.grey.shade700, height: 1.4)),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final bool isMobile = MediaQuery.of(context).size.width < 800;
@@ -15,7 +147,7 @@ class AuthLayout extends StatelessWidget {
       backgroundColor: Colors.transparent, 
       body: SystemBackground(
         child: SafeArea(
-          child: isMobile ? _buildMobileLayout() : _buildWebLayout(context),
+          child: isMobile ? _buildMobileLayout(context) : _buildWebLayout(context),
         ),
       ),
     );
@@ -24,7 +156,7 @@ class AuthLayout extends StatelessWidget {
   // ==========================================
   // MOBILE / ANDROID LAYOUT
   // ==========================================
-  Widget _buildMobileLayout() {
+  Widget _buildMobileLayout(BuildContext context) {
     return SingleChildScrollView(
       child: Column(
         children: [
@@ -33,7 +165,6 @@ class AuthLayout extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
             child: Row(
               children: [
-                // 🛠️ FORCED LARGER LOGO FOR MOBILE
                 Container(
                   width: 60,
                   height: 60,
@@ -41,29 +172,32 @@ class AuthLayout extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8),
                     image: const DecorationImage(
                       image: AssetImage('assets/images/lnu_logo.png'),
-                      fit: BoxFit.cover, // Forces it to fill the box
+                      fit: BoxFit.cover, 
                     ),
                   ),
                 ),
                 const SizedBox(width: 15),
                 const Expanded(
-                  child: Text('Leyte Normal University\n(System Name)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                  child: Text('Leyte Normal University\n(eMobile Voting)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
                 ),
                 const RealtimeClock(textColor: Colors.white, isCenterAligned: false),
               ],
             ),
           ),
           const SizedBox(height: 30),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(width: 60, height: 60, decoration: const BoxDecoration(color: Colors.grey, shape: BoxShape.circle)),
-              const SizedBox(width: 10),
-              Container(width: 60, height: 60, decoration: const BoxDecoration(color: Colors.grey, shape: BoxShape.circle)),
-            ],
+          
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: Image.asset(
+                'assets/images/slogan_image_mobile.png', 
+                fit: BoxFit.contain, 
+                width: double.infinity, 
+              ),
+            ),
           ),
-          const SizedBox(height: 15),
-          const Text('SLOGAN/WELCOME WORDS\nPUT A PICTURE HERE AS WELL', textAlign: TextAlign.center, style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
+          
           const SizedBox(height: 20),
           
           Container(
@@ -75,9 +209,29 @@ class AuthLayout extends StatelessWidget {
             ),
             child: formContent,
           ),
-          const Padding(
-            padding: EdgeInsets.all(20.0),
-            child: Text('V1.2026.03126 | LNUVotingSystem', style: TextStyle(color: Colors.grey, fontSize: 12)),
+          
+          // Mobile Footer Links
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20.0),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    TextButton(
+                      onPressed: () => _showAboutUs(context),
+                      child: const Text("About Us", style: TextStyle(color: Colors.white70, decoration: TextDecoration.underline)),
+                    ),
+                    const Text("|", style: TextStyle(color: Colors.white54)),
+                    TextButton(
+                      onPressed: () => _showFAQs(context),
+                      child: const Text("FAQs", style: TextStyle(color: Colors.white70, decoration: TextDecoration.underline)),
+                    ),
+                  ],
+                ),
+                const Text('V1.0.1 | LNUVotingSystem', style: TextStyle(color: Colors.grey, fontSize: 12)),
+              ],
+            ),
           )
         ],
       ),
@@ -103,7 +257,6 @@ class AuthLayout extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      // 🛠️ FORCED MASSIVE LOGO FOR WEB
                       Container(
                         width: 85,
                         height: 85,
@@ -111,7 +264,7 @@ class AuthLayout extends StatelessWidget {
                           borderRadius: BorderRadius.circular(8),
                           image: const DecorationImage(
                             image: AssetImage('assets/images/lnu_logo.png'),
-                            fit: BoxFit.cover, // Forces it to fill the box
+                            fit: BoxFit.cover, 
                           ),
                         ),
                       ),
@@ -120,7 +273,7 @@ class AuthLayout extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text('Leyte Normal University', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
-                          Text('(System Name)', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                          Text('(eMobile Voting)', style: TextStyle(color: Colors.white70, fontSize: 14)),
                         ],
                       )
                     ],
@@ -129,9 +282,9 @@ class AuthLayout extends StatelessWidget {
                     children: [
                       const RealtimeClock(textColor: Colors.white, isCenterAligned: false),
                       const SizedBox(width: 40), 
-                      InteractiveNavText(text: 'ABOUT US', onTap: () {}),
+                      InteractiveNavText(text: 'ABOUT US', onTap: () => _showAboutUs(context)),
                       const SizedBox(width: 30),
-                      InteractiveNavText(text: 'FAQs', onTap: () {}),
+                      InteractiveNavText(text: 'FAQs', onTap: () => _showFAQs(context)),
                     ],
                   )
                 ],
@@ -142,16 +295,26 @@ class AuthLayout extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 40),
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Expanded(
                     child: Container(
-                      height: 500, 
                       margin: const EdgeInsets.only(right: 40),
-                      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.8), borderRadius: BorderRadius.circular(12)),
-                      child: const Center(child: Text('SLOGAN/WELCOME WORDS\nPUT A PICTURE HERE AS WELL', textAlign: TextAlign.center, style: TextStyle(fontSize: 18, color: Colors.black54, fontWeight: FontWeight.bold))),
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxHeight: 450), 
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(24),
+                            child: Image.asset(
+                              'assets/images/slogan_image.png', 
+                              fit: BoxFit.contain, 
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
                   ),
+                  
                   Expanded(
                     child: Center(
                       child: Container(
@@ -160,7 +323,7 @@ class AuthLayout extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: const Color(0xFF000B6B),
                           borderRadius: BorderRadius.circular(24),
-                          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.25), blurRadius: 20, offset: const Offset(0, 10))],
+                          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.25), blurRadius: 20, offset: const Offset(0, 10))],
                         ),
                         child: formContent, 
                       ),
@@ -173,7 +336,7 @@ class AuthLayout extends StatelessWidget {
             // Footer
             const Padding(
               padding: EdgeInsets.all(15.0),
-              child: Text('V1.2026.03126 | LNUVotingSystem', style: TextStyle(color: Colors.white, fontSize: 14)),
+              child: Text('V1.0.1 | LNUVotingSystem', style: TextStyle(color: Colors.white, fontSize: 14)),
             )
           ],
         ),

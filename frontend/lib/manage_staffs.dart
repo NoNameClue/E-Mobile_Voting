@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // 🛠️ Added for input limits
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'dart:convert';
@@ -94,6 +95,12 @@ class _ManageStaffsState extends State<ManageStaffs> {
     bool obscureConfirm = true;
     bool isSaving = false;
 
+    // 🛠️ State variables for password strength inside the dialog
+    int passwordStrength = 0;
+    List<String> missingRequirements = [
+      "12+ characters", "uppercase", "lowercase", "number", "special character (.,?!@#\$%)"
+    ];
+
     XFile? selectedImage;
     Uint8List? imageBytes;
 
@@ -114,6 +121,67 @@ class _ManageStaffsState extends State<ManageStaffs> {
       barrierDismissible: false,
       builder: (context) => StatefulBuilder(
         builder: (context, setModalState) {
+
+          // 🛠️ Function to evaluate strength real-time
+          void evaluatePasswordStrength(String password) {
+            List<String> missing = [];
+            int metConditions = 0;
+
+            if (password.length >= 12) metConditions++; else missing.add("12+ characters");
+            if (RegExp(r'[A-Z]').hasMatch(password)) metConditions++; else missing.add("uppercase letter");
+            if (RegExp(r'[a-z]').hasMatch(password)) metConditions++; else missing.add("lowercase letter");
+            if (RegExp(r'[0-9]').hasMatch(password)) metConditions++; else missing.add("number");
+            if (RegExp(r'[.,?!@#\$%]').hasMatch(password)) metConditions++; else missing.add("special character (.,?!@#\$%)");
+
+            int strength = 0;
+            if (password.isEmpty) strength = 0;
+            else if (metConditions <= 2) strength = 1;
+            else if (metConditions <= 4) strength = 2;
+            else if (metConditions == 5) strength = 3;
+
+            setModalState(() {
+              passwordStrength = strength;
+              missingRequirements = missing;
+            });
+          }
+
+          // 🛠️ Widget to display the strength bars and missing requirements
+          Widget buildPasswordIndicator() {
+            if (passCtrl.text.isEmpty) return const SizedBox.shrink();
+
+            Color strengthColor = Colors.grey;
+            String strengthLabel = "";
+
+            if (passwordStrength == 1) { strengthColor = Colors.redAccent; strengthLabel = "Weak"; }
+            else if (passwordStrength == 2) { strengthColor = Colors.orangeAccent; strengthLabel = "Fair"; }
+            else if (passwordStrength == 3) { strengthColor = Colors.greenAccent; strengthLabel = "Strong"; }
+
+            return Padding(
+              padding: const EdgeInsets.only(top: 5.0, bottom: 10.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(child: Container(height: 6, decoration: BoxDecoration(color: passwordStrength >= 1 ? strengthColor : Colors.grey.shade300, borderRadius: BorderRadius.circular(10)))),
+                      const SizedBox(width: 5),
+                      Expanded(child: Container(height: 6, decoration: BoxDecoration(color: passwordStrength >= 2 ? strengthColor : Colors.grey.shade300, borderRadius: BorderRadius.circular(10)))),
+                      const SizedBox(width: 5),
+                      Expanded(child: Container(height: 6, decoration: BoxDecoration(color: passwordStrength >= 3 ? strengthColor : Colors.grey.shade300, borderRadius: BorderRadius.circular(10)))),
+                      const SizedBox(width: 10),
+                      Text(strengthLabel, style: TextStyle(color: strengthColor, fontWeight: FontWeight.bold, fontSize: 12)),
+                    ],
+                  ),
+                  if (missingRequirements.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6.0),
+                      child: Text("Missing: ${missingRequirements.join(', ')}", style: TextStyle(color: Colors.orange.shade800, fontSize: 11, height: 1.3)),
+                    ),
+                ],
+              ),
+            );
+          }
+
           return AlertDialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             title: Text(isEditing ? "Edit Officer" : "Create Staff"),
@@ -142,18 +210,40 @@ class _ManageStaffsState extends State<ManageStaffs> {
                     const Text("Tap to upload photo", style: TextStyle(fontSize: 12, color: Colors.grey)),
                     const SizedBox(height: 20),
 
+                    // 🛠️ Applied input limiters to Name fields
                     Row(
                       children: [
-                        Expanded(child: TextFormField(controller: firstNameCtrl, decoration: InputDecoration(labelText: "First Name", border: OutlineInputBorder(borderRadius: BorderRadius.circular(16))))),
+                        Expanded(
+                          child: TextFormField(
+                            controller: firstNameCtrl, 
+                            inputFormatters: [LengthLimitingTextInputFormatter(50)],
+                            decoration: InputDecoration(labelText: "First Name", border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)))
+                          )
+                        ),
                         const SizedBox(width: 10),
-                        Expanded(child: TextFormField(controller: middleNameCtrl, decoration: InputDecoration(labelText: "M.I. (Opt)", border: OutlineInputBorder(borderRadius: BorderRadius.circular(16))))),
+                        Expanded(
+                          child: TextFormField(
+                            controller: middleNameCtrl, 
+                            inputFormatters: [LengthLimitingTextInputFormatter(50)],
+                            decoration: InputDecoration(labelText: "M.I. (Opt)", border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)))
+                          )
+                        ),
                       ],
                     ),
                     const SizedBox(height: 10),
-                    TextFormField(controller: lastNameCtrl, decoration: InputDecoration(labelText: "Last Name", border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)))),
+                    TextFormField(
+                      controller: lastNameCtrl, 
+                      inputFormatters: [LengthLimitingTextInputFormatter(50)],
+                      decoration: InputDecoration(labelText: "Last Name", border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)))
+                    ),
                     const SizedBox(height: 10),
                     
-                    TextFormField(controller: emailCtrl, decoration: InputDecoration(labelText: "Email", border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)))),
+                    // 🛠️ Applied input limiter to Email field
+                    TextFormField(
+                      controller: emailCtrl, 
+                      inputFormatters: [LengthLimitingTextInputFormatter(100)],
+                      decoration: InputDecoration(labelText: "Email", border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)))
+                    ),
                     const SizedBox(height: 10),
                     
                     if (isEditing) 
@@ -165,6 +255,7 @@ class _ManageStaffsState extends State<ManageStaffs> {
                     TextFormField(
                       controller: passCtrl,
                       obscureText: obscurePassword,
+                      onChanged: (val) => evaluatePasswordStrength(val), // 🛠️ Trigger strength evaluation
                       decoration: InputDecoration(
                         labelText: isEditing ? "New Password (Optional)" : "Password",
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
@@ -174,7 +265,11 @@ class _ManageStaffsState extends State<ManageStaffs> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    
+                    buildPasswordIndicator(), // 🛠️ Show indicator below password
+
+                    const SizedBox(height: 5),
+
                     TextFormField(
                       controller: confirmCtrl,
                       obscureText: obscureConfirm,
@@ -200,13 +295,22 @@ class _ManageStaffsState extends State<ManageStaffs> {
                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("First Name, Last Name, and Email are required!")));
                     return;
                   }
+                  
+                  // 🛠️ Validating password rules
                   if (!isEditing && passCtrl.text.isEmpty) {
                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Password is required for new staff!")));
                     return;
                   }
-                  if (passCtrl.text != confirmCtrl.text) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Passwords don't match!"), backgroundColor: Colors.red));
-                    return;
+                  
+                  if (passCtrl.text.isNotEmpty) {
+                    if (passwordStrength < 3) {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please meet all password requirements"), backgroundColor: Colors.red));
+                      return;
+                    }
+                    if (passCtrl.text != confirmCtrl.text) {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Passwords don't match!"), backgroundColor: Colors.red));
+                      return;
+                    }
                   }
 
                   setModalState(() => isSaving = true);

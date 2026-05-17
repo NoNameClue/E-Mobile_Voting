@@ -116,7 +116,6 @@ class _StudentDashboardState extends State<StudentDashboard> {
   }
 
   Widget buildSidebar(bool isDesktop) {
-    // 🛠️ Dynamic Sizing
     double sidebarWidth = isDesktop ? 280.0 : 250.0;
     double menuFontSize = isDesktop ? 15.0 : 13.0;
     double menuIconSize = isDesktop ? 22.0 : 20.0;
@@ -130,14 +129,14 @@ class _StudentDashboardState extends State<StudentDashboard> {
             child: SingleChildScrollView(
               child: Column(
                 children: [
-                  const SizedBox(height: 20), // 🛠️ Reduced Whitespace
+                  const SizedBox(height: 20), 
                   
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 5.0),
                     child: Row(
                       children: [
                         Container(
-                          width: 70, // 🛠️ Increased Logo size
+                          width: 70, 
                           height: 70,
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(16),
@@ -161,7 +160,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
                                 ),
                               ),
                               Text(
-                                '(System Name)',
+                                '(eMobile Voting)',
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontSize: isDesktop ? 11 : 10, 
@@ -173,7 +172,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 20), // 🛠️ Reduced Whitespace
+                  const SizedBox(height: 20), 
 
                   CircleAvatar(
                     radius: isDesktop ? 45 : 40,
@@ -197,7 +196,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
                       letterSpacing: 1.1,
                     ),
                   ),
-                  const SizedBox(height: 15), // 🛠️ Reduced Whitespace
+                  const SizedBox(height: 15), 
 
                   Transform.scale(
                     scale: isDesktop ? 0.90 : 0.80, 
@@ -210,7 +209,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
                     Padding(
                       padding: const EdgeInsets.symmetric(
                         vertical: 4, 
-                        horizontal: 15, // 🛠️ Added Horizontal Margin to un-stick from edges
+                        horizontal: 15, 
                       ),
                       child: Container(
                         decoration: BoxDecoration(
@@ -265,7 +264,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
           const Padding(
             padding: EdgeInsets.all(15.0),
             child: Text(
-              'V1.2026.03126 | LNUVotingSystem',
+              'V1.0.1 | LNUVotingSystem',
               style: TextStyle(color: Colors.grey, fontSize: 10),
             ),
           ),
@@ -287,16 +286,9 @@ class _StudentDashboardState extends State<StudentDashboard> {
         );
       case 2: return const ViewParties();
       case 3: return const MyVotesView();
-      case 4:
-        return const Center(
-          child: Text("FAQs", style: TextStyle(fontSize: 24, color: Colors.white)),
-        );
-      case 5:
-        return const Center(
-          child: Text("About Us", style: TextStyle(fontSize: 24, color: Colors.white)),
-        );
-      default:
-        return const CandidatePlatformsView();
+      case 4: return const FAQsView();
+      case 5: return const AboutUsView();
+      default: return const CandidatePlatformsView();
     }
   }
 
@@ -697,6 +689,179 @@ class _CandidatePlatformsViewState extends State<CandidatePlatformsView> {
                             },
                           ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+// ========================================================================
+// 3. ABOUT US VIEW
+// ========================================================================
+class AboutUsView extends StatelessWidget {
+  const AboutUsView({super.key});
+
+  Widget _buildProfileCard(String name, String role, IconData icon) {
+    return Container(
+      width: 250,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, 5))],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CircleAvatar(
+            radius: 35,
+            backgroundColor: Colors.blue.shade50,
+            child: Icon(icon, size: 35, color: const Color(0xFF000B6B)),
+          ),
+          const SizedBox(height: 15),
+          Text(name, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF000B6B))),
+          const SizedBox(height: 5),
+          Text(role, textAlign: TextAlign.center, style: TextStyle(color: Colors.grey.shade700, fontSize: 13)),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    bool isMobile = MediaQuery.of(context).size.width < 900;
+
+    return Padding(
+      padding: EdgeInsets.all(isMobile ? 15.0 : 30.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text("About Us", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white)),
+          const SizedBox(height: 10),
+          const Text("Learn more about the team behind the LNU eMobile Voting System.", style: TextStyle(color: Colors.white70, fontSize: 16)),
+          const SizedBox(height: 30),
+          Expanded(
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(25),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF000B6B).withOpacity(0.8),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.amber.withOpacity(0.5)),
+                    ),
+                    child: const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text("The eMobile Voting System", style: TextStyle(color: Colors.amber, fontSize: 20, fontWeight: FontWeight.bold)),
+                        SizedBox(height: 10),
+                        Text(
+                          "The Leyte Normal University (LNU) eMobile Voting System is a modern, secure, and accessible platform designed to streamline student elections. It ensures election integrity, eliminates manual tallying errors, and provides a seamless voting experience tailored for the university body.",
+                          style: TextStyle(color: Colors.white, fontSize: 15, height: 1.5),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 30),
+                  const Text("Meet the Team", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
+                  const SizedBox(height: 20),
+                  Wrap(
+                    spacing: 20,
+                    runSpacing: 20,
+                    children: [                     
+                      _buildProfileCard("Dorothy A. Magdaraog", "Project Manager\nUI & UX Designer\nFull Stack Developer", Icons.design_services),
+                      _buildProfileCard("Carl David T. Pura", "Lead Developer\nFull-Stack\nQA Tester ", Icons.code),
+                      _buildProfileCard("Jasmine T. Villaruel", "Full-Stack Developer\nDatabase Administrator", Icons.analytics),
+                    ],
+                  )
+                ],
+              ),
+            ),
+          )
+        ],
+      ),
+    );
+  }
+}
+
+// ========================================================================
+// 4. FAQS VIEW
+// ========================================================================
+class FAQsView extends StatelessWidget {
+  const FAQsView({super.key});
+
+  Widget _buildFaqCard(String question, String answer) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 15),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 5)],
+      ),
+      child: Theme(
+        data: ThemeData(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          iconColor: const Color(0xFF000B6B),
+          collapsedIconColor: Colors.grey,
+          title: Text(question, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF000B6B), fontSize: 15)),
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(left: 20, right: 20, bottom: 20),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(answer, style: TextStyle(color: Colors.grey.shade800, fontSize: 14, height: 1.5)),
+              ),
+            )
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    bool isMobile = MediaQuery.of(context).size.width < 900;
+
+    return Padding(
+      padding: EdgeInsets.all(isMobile ? 15.0 : 30.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text("Frequently Asked Questions", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white)),
+          const SizedBox(height: 10),
+          const Text("Find answers to common questions about using the voting system.", style: TextStyle(color: Colors.white70, fontSize: 16)),
+          const SizedBox(height: 30),
+          Expanded(
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  _buildFaqCard(
+                    "How do I register to vote?", 
+                    "You must use your official LNU Email and Student ID to create an account on the login page. Once registered, your information is securely verified against the university database."
+                  ),
+                  _buildFaqCard(
+                    "Is my vote strictly confidential?", 
+                    "Yes! The system encrypts all ballot submissions. Election administrators can see that you have submitted a vote, but they can never see who you voted for."
+                  ),
+                  _buildFaqCard(
+                    "Can I change my vote after submitting?", 
+                    "No. To maintain the highest level of election integrity, all submitted ballots are locked and final. Please review your choices carefully before confirming."
+                  ),
+                  _buildFaqCard(
+                    "What happens if I forget my password?", 
+                    "For security reasons, password resets are handled manually. You must contact the M.I.S or your campus IT admin to request a secure password reset."
+                  ),
+                  _buildFaqCard(
+                    "Can I vote from off-campus?", 
+                    "Absolutely. As long as you have an active internet connection and are logging in during the designated voting period, you can access the eMobile Voting system from anywhere."
+                  ),
+                ],
+              ),
+            ),
+          )
         ],
       ),
     );

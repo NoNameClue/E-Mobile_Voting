@@ -5,7 +5,6 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:image_picker/image_picker.dart';
 import 'auth_layout.dart'; 
-import 'widgets/modern_text_field.dart';
 import 'api_config.dart'; 
 
 class SignupPage extends StatefulWidget {
@@ -35,11 +34,12 @@ class _SignupPageState extends State<SignupPage> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   
+  bool _agreedToTerms = false;
+
   XFile? _profileImage;
   Uint8List? _profileImageBytes;
   final ImagePicker _picker = ImagePicker();
 
-  // 🛠️ ADDED: Password Strength State Variables
   int _passwordStrength = 0; 
   List<String> _missingRequirements = [
     "12+ characters", 
@@ -80,57 +80,21 @@ class _SignupPageState extends State<SignupPage> {
     }
   }
 
-  // 🛠️ ADDED: Real-time Password Strength Evaluation Logic
   void _evaluatePasswordStrength(String password) {
     List<String> missing = [];
     int metConditions = 0;
 
-    // 1. Length >= 12
-    if (password.length >= 12) {
-      metConditions++;
-    } else {
-      missing.add("12+ characters");
-    }
+    if (password.length >= 12) metConditions++; else missing.add("12+ characters");
+    if (RegExp(r'[A-Z]').hasMatch(password)) metConditions++; else missing.add("uppercase letter");
+    if (RegExp(r'[a-z]').hasMatch(password)) metConditions++; else missing.add("lowercase letter");
+    if (RegExp(r'[0-9]').hasMatch(password)) metConditions++; else missing.add("number");
+    if (RegExp(r'[.,?!@#\$%]').hasMatch(password)) metConditions++; else missing.add("special character (.,?!@#\$%)");
 
-    // 2. Uppercase Letter
-    if (RegExp(r'[A-Z]').hasMatch(password)) {
-      metConditions++;
-    } else {
-      missing.add("uppercase letter");
-    }
-
-    // 3. Lowercase Letter
-    if (RegExp(r'[a-z]').hasMatch(password)) {
-      metConditions++;
-    } else {
-      missing.add("lowercase letter");
-    }
-
-    // 4. Number
-    if (RegExp(r'[0-9]').hasMatch(password)) {
-      metConditions++;
-    } else {
-      missing.add("number");
-    }
-
-    // 5. Special Character
-    if (RegExp(r'[.,?!@#\$%]').hasMatch(password)) {
-      metConditions++;
-    } else {
-      missing.add("special character (.,?!@#\$%)");
-    }
-
-    // Determine Strength Level (0 = None, 1 = Weak, 2 = Fair, 3 = Strong)
     int strength = 0;
-    if (password.isEmpty) {
-      strength = 0;
-    } else if (metConditions <= 2) {
-      strength = 1; // Weak
-    } else if (metConditions <= 4) {
-      strength = 2; // Fair
-    } else if (metConditions == 5) {
-      strength = 3; // Strong
-    }
+    if (password.isEmpty) strength = 0;
+    else if (metConditions <= 2) strength = 1; 
+    else if (metConditions <= 4) strength = 2; 
+    else if (metConditions == 5) strength = 3; 
 
     setState(() {
       _passwordStrength = strength;
@@ -138,23 +102,15 @@ class _SignupPageState extends State<SignupPage> {
     });
   }
 
-  // 🛠️ ADDED: Password Strength UI Indicator
   Widget _buildPasswordStrengthIndicator() {
     if (_passwordController.text.isEmpty) return const SizedBox.shrink();
 
     Color strengthColor = Colors.grey;
     String strengthLabel = "";
 
-    if (_passwordStrength == 1) {
-      strengthColor = Colors.redAccent;
-      strengthLabel = "Weak";
-    } else if (_passwordStrength == 2) {
-      strengthColor = Colors.orangeAccent;
-      strengthLabel = "Fair";
-    } else if (_passwordStrength == 3) {
-      strengthColor = Colors.greenAccent;
-      strengthLabel = "Strong";
-    }
+    if (_passwordStrength == 1) { strengthColor = Colors.redAccent; strengthLabel = "Weak"; } 
+    else if (_passwordStrength == 2) { strengthColor = Colors.orangeAccent; strengthLabel = "Fair"; } 
+    else if (_passwordStrength == 3) { strengthColor = Colors.greenAccent; strengthLabel = "Strong"; }
 
     return Padding(
       padding: const EdgeInsets.only(top: 5.0, bottom: 10.0),
@@ -163,59 +119,144 @@ class _SignupPageState extends State<SignupPage> {
         children: [
           Row(
             children: [
-              Expanded(
-                child: Container(
-                  height: 6,
-                  decoration: BoxDecoration(
-                    color: _passwordStrength >= 1 ? strengthColor : Colors.white24,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-              ),
+              Expanded(child: Container(height: 6, decoration: BoxDecoration(color: _passwordStrength >= 1 ? strengthColor : Colors.white24, borderRadius: BorderRadius.circular(10)))),
               const SizedBox(width: 5),
-              Expanded(
-                child: Container(
-                  height: 6,
-                  decoration: BoxDecoration(
-                    color: _passwordStrength >= 2 ? strengthColor : Colors.white24,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-              ),
+              Expanded(child: Container(height: 6, decoration: BoxDecoration(color: _passwordStrength >= 2 ? strengthColor : Colors.white24, borderRadius: BorderRadius.circular(10)))),
               const SizedBox(width: 5),
-              Expanded(
-                child: Container(
-                  height: 6,
-                  decoration: BoxDecoration(
-                    color: _passwordStrength >= 3 ? strengthColor : Colors.white24,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-              ),
+              Expanded(child: Container(height: 6, decoration: BoxDecoration(color: _passwordStrength >= 3 ? strengthColor : Colors.white24, borderRadius: BorderRadius.circular(10)))),
               const SizedBox(width: 10),
-              Text(
-                strengthLabel,
-                style: TextStyle(color: strengthColor, fontWeight: FontWeight.bold, fontSize: 12),
-              ),
+              Text(strengthLabel, style: TextStyle(color: strengthColor, fontWeight: FontWeight.bold, fontSize: 12)),
             ],
           ),
           if (_missingRequirements.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 6.0),
-              child: Text(
-                "Missing: ${_missingRequirements.join(', ')}",
-                style: const TextStyle(color: Colors.orangeAccent, fontSize: 11, height: 1.3),
-              ),
+              child: Text("Missing: ${_missingRequirements.join(', ')}", style: const TextStyle(color: Colors.orangeAccent, fontSize: 11, height: 1.3)),
             ),
         ],
       ),
     );
   }
 
+  void _showTermsDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false, 
+      builder: (BuildContext dialogContext) {
+        bool hasScrolledToBottom = false;
+        final ScrollController scrollController = ScrollController();
+
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            scrollController.addListener(() {
+              if (scrollController.position.pixels >= scrollController.position.maxScrollExtent - 20) {
+                if (!hasScrolledToBottom) {
+                  setModalState(() => hasScrolledToBottom = true);
+                }
+              }
+            });
+
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: const Row(
+                children: [
+                  Icon(Icons.gavel, color: Color(0xFF000B6B)),
+                  SizedBox(width: 10),
+                  Text("Terms & Conditions", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: Color(0xFF000B6B))),
+                ],
+              ),
+              content: SizedBox(
+                width: 500, 
+                height: 400, 
+                child: Column(
+                  children: [
+                    if (!hasScrolledToBottom)
+                      Container(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: const Text("Please read to the bottom to agree.", style: TextStyle(color: Colors.redAccent, fontSize: 12, fontWeight: FontWeight.bold)),
+                      ),
+                    Expanded(
+                      child: Scrollbar(
+                        controller: scrollController,
+                        thumbVisibility: true,
+                        child: SingleChildScrollView(
+                          controller: scrollController,
+                          padding: const EdgeInsets.only(right: 15.0),
+                          child: const Text(
+                            """TERMS AND CONDITIONS (T&C)
+
+These Terms and Conditions constitute a legally binding contract between the Leyte Normal University (LNU) eMobile Voting System ("Service Provider", "We", "Us") and you, the user ("User", "Student"). By registering an account, you agree to be bound by these Terms.
+
+1. ACCEPTABLE USE & RULES
+You agree to use this system solely for the purpose of participating in official student elections. You are strictly prohibited from:
+- Attempting to bypass security measures, hack, or exploit the system.
+- Registering multiple accounts or using another student's identity.
+- Spamming, harassing, or interfering with the voting process of others.
+- Using any automated scripts, bots, or data scraping tools.
+Violations of these rules may result in immediate academic disciplinary action.
+
+2. INTELLECTUAL PROPERTY
+All content within the LNU eMobile Voting app, including but not limited to the source code, design, logos, text, graphics, and databases, is the exclusive intellectual property of the developers and Leyte Normal University. You may not copy, distribute, or modify any part of this system.
+
+3. LIMITATION OF LIABILITY
+The Service Provider limits its legal responsibility for any damages, errors, or service interruptions. While we strive to maintain 100% uptime, we are not liable for technical glitches, network failures, or temporary outages that may prevent a vote from being cast at a specific time.
+
+4. ACCOUNT TERMINATION
+The University Electoral Board reserves the right to suspend, deactivate, or permanently delete user accounts without prior notice if a violation of these Terms is detected. Account termination includes the nullification of any fraudulent votes cast.
+
+5. DATA PRIVACY & CONSENT
+By registering, you consent to the collection and processing of your personal data (Name, Student ID, Course, Photo) strictly for voter verification and election integrity. Your data will be handled in compliance with the Data Privacy Act. Your actual ballot selections remain completely anonymous and encrypted.
+
+6. GOVERNING LAW
+These Terms shall be governed by and construed in accordance with the laws of the Republic of the Philippines and the institutional policies of Leyte Normal University. Any disputes arising from this agreement shall be subject to the exclusive jurisdiction of the university tribunal or relevant local courts.
+
+7. DISCLAIMERS
+This system is provided on an "AS IS" and "AS AVAILABLE" basis. We disclaim all warranties, whether express or implied, regarding the accuracy of third-party content and the absolute reliability of the service under extreme unforeseen circumstances.
+
+By scrolling to the bottom and clicking "I Agree", you acknowledge that you have read, understood, and agreed to be legally bound by these Terms and Conditions.""",
+                            style: TextStyle(fontSize: 13, height: 1.5, color: Colors.black87),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actionsPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    setState(() => _agreedToTerms = false);
+                    Navigator.pop(context);
+                  },
+                  child: const Text("Cancel", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: hasScrolledToBottom ? const Color(0xFF000B6B) : Colors.grey.shade300,
+                    foregroundColor: hasScrolledToBottom ? Colors.white : Colors.grey.shade500,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  onPressed: hasScrolledToBottom
+                      ? () {
+                          setState(() => _agreedToTerms = true);
+                          Navigator.pop(context);
+                        }
+                      : null,
+                  child: const Text("I Agree"),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   Future<void> _handleRegister() async {
     if (!_formKey.currentState!.validate()) return;
     
-    // 🛠️ ADDED: Prevent submission if password is not strictly strong
     if (_passwordStrength < 3) {
       setState(() => _errorMessage = "Please meet all password requirements before registering.");
       return;
@@ -223,6 +264,11 @@ class _SignupPageState extends State<SignupPage> {
 
     if (_passwordController.text != _confirmPasswordController.text) {
       setState(() => _errorMessage = "Passwords do not match!");
+      return;
+    }
+
+    if (!_agreedToTerms) {
+      setState(() => _errorMessage = "You must read and agree to the Terms and Conditions.");
       return;
     }
 
@@ -266,8 +312,8 @@ class _SignupPageState extends State<SignupPage> {
           
           _profileImage = null; 
           _profileImageBytes = null; 
+          _agreedToTerms = false;
           
-          // Reset password strength UI
           _passwordStrength = 0;
           _missingRequirements = ["12+ characters", "uppercase", "lowercase", "number", "special character (.,?!@#\$%)"];
         });
@@ -326,36 +372,71 @@ class _SignupPageState extends State<SignupPage> {
             ),
             const SizedBox(height: 20),
 
+            // 🛠️ REPLACED: Now using native TextFormField with inputFormatters
             Row(
               children: [
                 Expanded(
                   flex: 3,
-                  child: ModernTextField(
+                  child: TextFormField(
                     controller: _firstNameController,
-                    hintText: 'First Name',
+                    inputFormatters: [LengthLimitingTextInputFormatter(50)],
+                    style: const TextStyle(color: Colors.black87),
+                    decoration: InputDecoration(
+                      hintText: 'First Name',
+                      hintStyle: const TextStyle(color: Colors.black54),
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                    ),
                     validator: (value) => value == null || value.isEmpty ? 'Required' : null,
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   flex: 2,
-                  child: ModernTextField(
+                  child: TextFormField(
                     controller: _middleNameController,
-                    hintText: 'M.I.',
+                    inputFormatters: [LengthLimitingTextInputFormatter(50)],
+                    style: const TextStyle(color: Colors.black87),
+                    decoration: InputDecoration(
+                      hintText: 'M.I.',
+                      hintStyle: const TextStyle(color: Colors.black54),
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                    ),
                   ),
                 ),
               ],
             ),
+            const SizedBox(height: 15),
             
-            ModernTextField(
+            TextFormField(
               controller: _lastNameController,
-              hintText: 'Last Name',
+              inputFormatters: [LengthLimitingTextInputFormatter(50)],
+              style: const TextStyle(color: Colors.black87),
+              decoration: InputDecoration(
+                hintText: 'Last Name',
+                hintStyle: const TextStyle(color: Colors.black54),
+                filled: true,
+                fillColor: Colors.white,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+              ),
               validator: (value) => value == null || value.isEmpty ? 'Required' : null,
             ),
+            const SizedBox(height: 15),
             
-            ModernTextField(
+            TextFormField(
               controller: _emailController,
-              hintText: 'LNU Email',
+              inputFormatters: [LengthLimitingTextInputFormatter(100)],
+              style: const TextStyle(color: Colors.black87),
+              decoration: InputDecoration(
+                hintText: 'LNU Email',
+                hintStyle: const TextStyle(color: Colors.black54),
+                filled: true,
+                fillColor: Colors.white,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+              ),
               validator: (value) {
                 if (value == null || value.isEmpty) return 'Email is required';
                 if (!value.trim().toLowerCase().endsWith('@lnu.edu.ph')) {
@@ -364,6 +445,7 @@ class _SignupPageState extends State<SignupPage> {
                 return null;
               },
             ),
+            const SizedBox(height: 15),
             
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -436,7 +518,7 @@ class _SignupPageState extends State<SignupPage> {
               controller: _passwordController,
               obscureText: _obscurePassword,
               style: const TextStyle(color: Colors.black87),
-              onChanged: _evaluatePasswordStrength, // 🛠️ ADDED: Real-time listener
+              onChanged: _evaluatePasswordStrength, 
               decoration: InputDecoration(
                 hintText: 'Password',
                 hintStyle: const TextStyle(color: Colors.black54),
@@ -456,7 +538,6 @@ class _SignupPageState extends State<SignupPage> {
               },
             ),
             
-            // 🛠️ ADDED: The visual indicator below the password field
             _buildPasswordStrengthIndicator(),
 
             const SizedBox(height: 5), 
@@ -483,6 +564,61 @@ class _SignupPageState extends State<SignupPage> {
               },
             ),
             const SizedBox(height: 15),
+
+            FormField<bool>(
+              validator: (value) => _agreedToTerms ? null : 'You must agree to the Terms and Conditions',
+              builder: (FormFieldState<bool> state) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Checkbox(
+                          value: _agreedToTerms,
+                          onChanged: (value) {
+                            if (value == true) {
+                              _showTermsDialog();
+                            } else {
+                              setState(() => _agreedToTerms = false);
+                            }
+                          },
+                          fillColor: WidgetStateProperty.resolveWith((states) {
+                            if (states.contains(WidgetState.selected)) {
+                              return Colors.amber; 
+                            }
+                            return Colors.white;
+                          }),
+                          checkColor: const Color(0xFF000B6B), 
+                        ),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => _showTermsDialog(),
+                            child: const Text(
+                              "I have read and agree to the Terms and Conditions",
+                              style: TextStyle(
+                                color: Colors.white, 
+                                fontSize: 13,
+                                decoration: TextDecoration.underline,
+                                decorationColor: Colors.white
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (state.hasError)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 12.0, bottom: 10.0),
+                        child: Text(
+                          state.errorText!,
+                          style: TextStyle(color: Colors.red.shade300, fontSize: 12, fontWeight: FontWeight.bold),
+                        ),
+                      )
+                  ],
+                );
+              },
+            ),
+            const SizedBox(height: 10),
             
             SizedBox(
               width: double.infinity,

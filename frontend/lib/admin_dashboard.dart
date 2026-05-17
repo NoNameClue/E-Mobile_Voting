@@ -486,7 +486,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text('Leyte Normal University', style: TextStyle(color: Colors.white, fontSize: isDesktop ? 14 : 12, fontWeight: FontWeight.bold)),
-                      Text('(System Name)', style: TextStyle(color: Colors.white, fontSize: isDesktop ? 11 : 10)),
+                      Text('(eMobile Voting)', style: TextStyle(color: Colors.white, fontSize: isDesktop ? 11 : 10)),
                     ],
                   ),
                 ),

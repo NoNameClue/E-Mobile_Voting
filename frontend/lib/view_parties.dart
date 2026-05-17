@@ -33,9 +33,9 @@ class _ViewPartiesState extends State<ViewParties> {
         if (pollResponse.statusCode == 200) {
           final List<dynamic> allPolls = jsonDecode(pollResponse.body);
           
+          // 🛠️ CHANGED: Removed the is_archived condition so archived polls ALSO show up!
           _polls = allPolls.where((p) => 
-            (p['is_published'] == 1 || p['is_published'] == true) && 
-            (p['is_archived'] == 0 || p['is_archived'] == false)
+            (p['is_published'] == 1 || p['is_published'] == true) 
           ).toList();
 
           if (_polls.isNotEmpty && _selectedPoll == null) {
@@ -198,7 +198,7 @@ class _ViewPartiesState extends State<ViewParties> {
                 ),
               ),
               onPressed: () => Navigator.of(context).pop(),
-              child: Text(
+              child: const Text(
                 "Close Window",
                 style: TextStyle(
                   color: Colors.white,
@@ -237,16 +237,21 @@ class _ViewPartiesState extends State<ViewParties> {
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 4))],
                   ),
-                  // 🛠️ CHANGED: Used DropdownMenu natively handling the popover
                   child: DropdownMenu<Map<String, dynamic>>(
                     expandedInsets: EdgeInsets.zero,
                     initialSelection: _selectedPoll,
-                    requestFocusOnTap: false, // Prevents keyboard/typing
+                    requestFocusOnTap: false, 
                     onSelected: _onPollChanged,
                     dropdownMenuEntries: _polls.map((poll) {
+                      
+                      // 🛠️ ADDED: Visual indicator for Archived polls
+                      final bool isArchived = poll['is_archived'] == 1 || poll['is_archived'] == true;
+                      final String rawTitle = poll["title"] ?? "Election";
+                      final String displayTitle = isArchived ? "$rawTitle (Archived)" : rawTitle;
+
                       return DropdownMenuEntry<Map<String, dynamic>>(
                         value: poll as Map<String, dynamic>,
-                        label: poll["title"] ?? "Election",
+                        label: displayTitle,
                       );
                     }).toList(),
                     textStyle: const TextStyle(color: Color(0xFF000B6B), fontWeight: FontWeight.w800, fontSize: 16),
@@ -284,7 +289,7 @@ class _ViewPartiesState extends State<ViewParties> {
                     : GridView.builder(
                         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: isMobile ? 1 : 3, 
-                          childAspectRatio: isMobile ? 1.4 : 1.6, // Taller cards for modern look
+                          childAspectRatio: isMobile ? 1.4 : 1.6, 
                           crossAxisSpacing: 20,
                           mainAxisSpacing: 20,
                         ),

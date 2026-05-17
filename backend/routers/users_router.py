@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 from database import get_db
 from models import User
 
@@ -11,16 +12,40 @@ def get_all_users(db: Session = Depends(get_db)):
     return [{**u.__dict__, "full_name": f"{u.first_name} {u.middle_name} {u.last_name}".replace("  ", " ").strip()} for u in users]
 
 @router.get("/api/admin/students")
-def get_all_students(db: Session = Depends(get_db)):
-    students = db.query(User).filter(User.role == "Student").all()
-    return [
+def get_paginated_students(
+    skip: int = Query(0, description="How many records to skip"),
+    limit: int = Query(20, description="How many records to return"),
+    search: str = Query(None, description="Search by name or ID"),
+    db: Session = Depends(get_db)
+):
+    # Start the query
+    query = db.query(User).filter(User.role == "Student")
+    
+    # OPTIMIZATION: Perform search on the server using indexes
+    if search:
+        search_term = f"%{search}%"
+        query = query.filter(
+            or_(
+                User.student_number.like(search_term),
+                User.first_name.like(search_term),
+                User.last_name.like(search_term)
+            )
+        )
+    
+    # Sort by newest first
+    query = query.order_by(User.created_at.desc())
+    
+    # Get total count for frontend pagination math
+    total_count = query.count()
+    
+    # Apply Limit and Offset (Chunking)
+    students = query.offset(skip).limit(limit).all()
+    
+    # Return lightweight payload
+    results = [
         {
             "user_id": s.user_id,
-            "first_name": s.first_name,
-            "middle_name": s.middle_name,
-            "last_name": s.last_name,
             "full_name": f"{s.first_name} {s.middle_name} {s.last_name}".replace("  ", " ").strip(),
-            "email": s.email,
             "student_number": s.student_number,
             "course": s.course,
             "is_active": s.is_active,
@@ -28,6 +53,11 @@ def get_all_students(db: Session = Depends(get_db)):
             "profile_pic_url": s.profile_pic_url
         } for s in students
     ]
+    
+    return {
+        "total": total_count,
+        "items": results
+    }
 
 @router.put("/api/admin/students/{user_id}/toggle")
 async def toggle_student_status(user_id: int, request: Request, db: Session = Depends(get_db)):

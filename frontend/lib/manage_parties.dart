@@ -206,7 +206,7 @@ class _ManagePartiesState extends State<ManageParties> {
     );
   }
 
-void _showPartyDialog({Map<String, dynamic>? party}) {
+  void _showPartyDialog({Map<String, dynamic>? party}) {
     final bool isEdit = party != null;
     final TextEditingController nameController = TextEditingController(text: isEdit ? party['name'] : '');
     final TextEditingController bioController = TextEditingController(text: isEdit ? (party['platform_bio'] ?? '') : '');
@@ -287,7 +287,53 @@ void _showPartyDialog({Map<String, dynamic>? party}) {
     );
   }
 
-  // 🛠️ M3 Upgrade: DropdownMenu for modern rendering
+  // 🛠️ ADDED: Popup Dialog for full Platform Bio
+  void _showBioDialog(String partyName, String bio) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          titlePadding: const EdgeInsets.all(0),
+          title: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    "$partyName Bio",
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF000B6B)),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close, color: Colors.grey),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  onPressed: () => Navigator.pop(context), // 🛠️ Closes the dialog
+                ),
+              ],
+            ),
+          ),
+          content: SizedBox(
+            width: 450,
+            child: SingleChildScrollView(
+              child: Text(
+                bio,
+                style: const TextStyle(fontSize: 15, height: 1.5, color: Colors.black87),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildPollDropdown() {
     if (_polls.isEmpty) return const SizedBox.shrink();
     return SizedBox(
@@ -295,7 +341,7 @@ void _showPartyDialog({Map<String, dynamic>? party}) {
       child: DropdownMenu<int>(
         expandedInsets: EdgeInsets.zero,
         initialSelection: _selectedPollId,
-        requestFocusOnTap: false, // Prevents typing/keyboard
+        requestFocusOnTap: false, 
         onSelected: (newPollId) {
           if (newPollId != null && newPollId != _selectedPollId) {
             setState(() { _selectedPollId = newPollId; });
@@ -396,7 +442,7 @@ void _showPartyDialog({Map<String, dynamic>? party}) {
                           crossAxisCount: isMobile ? 1 : 3,
                           crossAxisSpacing: 25,
                           mainAxisSpacing: 25,
-                          childAspectRatio: isMobile ? 0.9 : 0.70, // Allowed more height for the bigger bio boxes
+                          childAspectRatio: isMobile ? 0.9 : 0.70,
                         ),
                         itemCount: _parties.length,
                         itemBuilder: (context, index) {
@@ -470,16 +516,38 @@ void _showPartyDialog({Map<String, dynamic>? party}) {
                                         borderRadius: BorderRadius.circular(16),
                                         border: Border.all(color: Colors.blue.shade100)
                                       ),
-                                      child: Text(
-                                        platformBio,
-                                        style: const TextStyle(
-                                          fontSize: 14, 
-                                          color: Colors.black87, 
-                                          fontWeight: FontWeight.w500,
-                                          height: 1.4 
-                                        ),
-                                        maxLines: 3,
-                                        overflow: TextOverflow.ellipsis,
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            platformBio,
+                                            style: const TextStyle(
+                                              fontSize: 14, 
+                                              color: Colors.black87, 
+                                              fontWeight: FontWeight.w500,
+                                              height: 1.4 
+                                            ),
+                                            maxLines: 3,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          // 🛠️ ADDED: "See more..." logic if bio exceeds threshold
+                                          if (platformBio.length > 80)
+                                            InkWell(
+                                              onTap: () => _showBioDialog(party['name'], platformBio),
+                                              child: const Padding(
+                                                padding: EdgeInsets.only(top: 6.0),
+                                                child: Text(
+                                                  "See more...",
+                                                  style: TextStyle(
+                                                    color: Color(0xFF000B6B), 
+                                                    fontWeight: FontWeight.bold, 
+                                                    fontSize: 13, 
+                                                    decoration: TextDecoration.underline
+                                                  ),
+                                                ),
+                                              ),
+                                            )
+                                        ],
                                       ),
                                     ),
                                   ],
