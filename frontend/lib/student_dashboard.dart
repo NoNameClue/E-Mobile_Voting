@@ -33,6 +33,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
     "Vote",
     "View Parties",
     "My Votes",
+    "Apply for Staff Role",
     "FAQs",
     "About Us",
   ];
@@ -109,6 +110,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
       case "Vote": return Icons.how_to_vote_rounded;
       case "View Parties": return Icons.flag_rounded;
       case "My Votes": return Icons.fact_check_rounded;
+      case "Apply for Staff Role": return Icons.badge_rounded;
       case "FAQs": return Icons.help_outline_rounded;
       case "About Us": return Icons.info_outline_rounded;
       default: return Icons.circle;
@@ -286,8 +288,9 @@ class _StudentDashboardState extends State<StudentDashboard> {
         );
       case 2: return const ViewParties();
       case 3: return const MyVotesView();
-      case 4: return const FAQsView();
-      case 5: return const AboutUsView();
+      case 4: return const StaffApplicationView();
+      case 5: return const FAQsView();
+      case 6: return const AboutUsView();
       default: return const CandidatePlatformsView();
     }
   }
@@ -690,6 +693,328 @@ class _CandidatePlatformsViewState extends State<CandidatePlatformsView> {
                           ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class StaffApplicationView extends StatefulWidget {
+  const StaffApplicationView({super.key});
+
+  @override
+  State<StaffApplicationView> createState() =>
+      _StaffApplicationViewState();
+}
+
+class _StaffApplicationViewState
+    extends State<StaffApplicationView> {
+
+  final _formKey = GlobalKey<FormState>();
+
+  final TextEditingController _intentController =
+      TextEditingController();
+
+  final TextEditingController _qualificationController =
+      TextEditingController();
+
+  bool _isSubmitting = false;
+  bool _alreadyApplied = false;
+  String _applicationStatus = "";
+  bool _isCheckingApplication = true;
+
+  bool _hasApplied = false;
+
+
+  @override
+  void initState() {
+    super.initState();
+    _checkExistingApplication();
+  }
+
+  Future<void> _submitApplication() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isSubmitting = true);
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('jwt_token') ?? '';
+
+      final response = await http.post(
+        Uri.parse(
+          '${ApiConfig.baseUrl}/api/staff-applications',
+        ),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'intent': _intentController.text.trim(),
+          'qualifications':
+              _qualificationController.text.trim(),
+        }),
+      );
+
+      if (response.statusCode == 200 ||
+          response.statusCode == 201) {
+
+        if (!mounted) return;
+
+        setState(() {
+          _hasApplied = true;
+          _applicationStatus = "Pending";
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              "Application submitted successfully",
+            ),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      } else {
+        throw Exception();
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            "Failed to submit application",
+          ),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
+    }
+  }
+
+  Future<void> _checkExistingApplication() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('jwt_token') ?? '';
+
+      final response = await http.get(
+        Uri.parse(
+          '${ApiConfig.baseUrl}/api/staff-applications/my-application',
+        ),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
+        if (mounted) {
+          setState(() {
+            _alreadyApplied = true;
+            _applicationStatus = data['status'];
+          });
+        }
+      }
+    } catch (e) {}
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    bool isMobile =
+        MediaQuery.of(context).size.width < 900;
+
+    return Padding(
+      padding:
+          EdgeInsets.all(isMobile ? 15.0 : 30.0),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment:
+              CrossAxisAlignment.start,
+          children: [
+
+            const Text(
+              "Apply for Staff Role",
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+
+            const SizedBox(height: 10),
+
+            const Text(
+              "Submit your application to become an election staff member.",
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: 16,
+              ),
+            ),
+
+            const SizedBox(height: 30),
+
+            if (_isCheckingApplication)
+              const Center(
+                child: CircularProgressIndicator(),
+              )
+
+            else if (_hasApplied)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(30),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius:
+                      BorderRadius.circular(16),
+                ),
+                child: Column(
+                  children: [
+
+                    Icon(
+                      Icons.check_circle,
+                      color: Colors.green,
+                      size: 70,
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    const Text(
+                      "You have applied already",
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    Text(
+                      "Application Status: $_applicationStatus",
+                      style: const TextStyle(
+                        fontSize: 16,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+
+            else
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(25),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius:
+                      BorderRadius.circular(16),
+                ),
+
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment:
+                        CrossAxisAlignment.start,
+                    children: [
+
+                      const Text(
+                        "Why do you want to become a staff member?",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+
+                      const SizedBox(height: 10),
+
+                      TextFormField(
+                        controller:
+                            _intentController,
+                        maxLines: 4,
+                        decoration:
+                            const InputDecoration(
+                          border:
+                              OutlineInputBorder(),
+                          hintText:
+                              "Enter your intent here...",
+                        ),
+                        validator: (value) {
+                          if (value == null ||
+                              value.isEmpty) {
+                            return "Required";
+                          }
+                          return null;
+                        },
+                      ),
+
+                      const SizedBox(height: 25),
+
+                      const Text(
+                        "Qualifications / Experience",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+
+                      const SizedBox(height: 10),
+
+                      TextFormField(
+                        controller:
+                            _qualificationController,
+                        maxLines: 4,
+                        decoration:
+                            const InputDecoration(
+                          border:
+                              OutlineInputBorder(),
+                          hintText:
+                              "Enter qualifications here...",
+                        ),
+                        validator: (value) {
+                          if (value == null ||
+                              value.isEmpty) {
+                            return "Required";
+                          }
+                          return null;
+                        },
+                      ),
+
+                      const SizedBox(height: 30),
+
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          style:
+                              ElevatedButton.styleFrom(
+                            backgroundColor:
+                                const Color(
+                                    0xFF000B6B),
+                            foregroundColor:
+                                Colors.white,
+                            padding:
+                                const EdgeInsets.symmetric(
+                              vertical: 16,
+                            ),
+                          ),
+                          onPressed: _isSubmitting
+                              ? null
+                              : _submitApplication,
+                          child: _isSubmitting
+                              ? const CircularProgressIndicator(
+                                  color:
+                                      Colors.white,
+                                )
+                              : const Text(
+                                  "Submit Application",
+                                ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

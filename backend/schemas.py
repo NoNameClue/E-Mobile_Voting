@@ -54,3 +54,18 @@ class CandidateUpdate(BaseModel):
 
 class StatusUpdate(BaseModel):
     is_active: bool
+
+class StaffApplicationCreate(BaseModel):
+    intent: str
+    qualifications: Optional[str] = None
+
+
+class StaffApplicationResponse(BaseModel):
+    application_id: int
+    user_id: int
+    intent: str
+    qualifications: Optional[str]
+    status: str
+
+    class Config:
+        from_attributes = True

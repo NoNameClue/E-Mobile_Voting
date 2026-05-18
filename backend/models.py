@@ -2,6 +2,7 @@ from sqlalchemy import Column, Integer, String, Boolean, DateTime, Enum as SQLEn
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from database import Base
+from datetime import datetime
 
 class User(Base):
     __tablename__ = "users"
@@ -18,6 +19,7 @@ class User(Base):
     created_at = Column(DateTime, server_default=func.now(), index=True)
     profile_pic_url = Column(String(255), nullable=True)
     permissions = Column(JSON, default=list)
+    staff_applications = relationship("StaffApplication", back_populates="user")
 
 class Poll(Base):
     __tablename__ = "polls"
@@ -71,3 +73,16 @@ class Vote(Base):
     user_id = Column(Integer, ForeignKey("users.user_id"))
     poll_id = Column(Integer, ForeignKey("polls.poll_id"))
     candidate_id = Column(Integer, ForeignKey("candidates.candidate_id"))
+
+class StaffApplication(Base):
+    __tablename__ = "staff_applications"
+
+    application_id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.user_id"))
+    intent = Column(Text, nullable=False)
+    qualifications = Column(Text, nullable=False)
+    status = Column(String(50), default="Pending")
+
+    submitted_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", back_populates="staff_applications")

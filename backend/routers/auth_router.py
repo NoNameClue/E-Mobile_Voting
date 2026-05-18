@@ -64,20 +64,80 @@ def register_user(
 @router.post("/api/login")
 def login(user: UserLogin, db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.email == user.email).first()
+
     if not db_user or not pwd_context.verify(user.password, db_user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid email or password")
-    
+
     if not db_user.is_active:
         raise HTTPException(status_code=403, detail="Account is disabled")
 
+    # Example:
+    # roles stored as:
+    # "Student,Staff"
+    # or JSON array
+
+    roles = []
+
+    if isinstance(db_user.role, str):
+        roles = [r.strip() for r in db_user.role.split(",")]
+    else:
+        roles = db_user.role
+
+    # MULTI ROLE USER
+    if len(roles) > 1:
+        return {
+            "multi_role": True,
+            "roles": roles,
+            "email": db_user.email
+        }
+
+    # SINGLE ROLE USER
+    selected_role = roles[0]
+
     access_token = create_access_token(
-        data={"sub": db_user.email, "role": db_user.role},
+        data={
+            "sub": db_user.email,
+            "role": selected_role
+        },
         expires_delta=timedelta(hours=24)
     )
+
     return {
-        "access_token": access_token, 
-        "token_type": "bearer", 
-        "role": db_user.role,
+        "multi_role": False,
+        "access_token": access_token,
+        "token_type": "bearer",
+        "role": selected_role,
+        "permissions": db_user.permissions
+    }
+
+@router.post("/api/select-role")
+def select_role(data: dict, db: Session = Depends(get_db)):
+
+    email = data.get("email")
+    selected_role = data.get("role")
+
+    db_user = db.query(User).filter(User.email == email).first()
+
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    roles = [r.strip() for r in db_user.role.split(",")]
+
+    if selected_role not in roles:
+        raise HTTPException(status_code=403, detail="Invalid role")
+
+    access_token = create_access_token(
+        data={
+            "sub": db_user.email,
+            "role": selected_role
+        },
+        expires_delta=timedelta(hours=24)
+    )
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "role": selected_role,
         "permissions": db_user.permissions
     }
 

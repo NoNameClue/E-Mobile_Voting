@@ -24,10 +24,10 @@ class _LoginPageState extends State<LoginPage> {
 
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
-    
-    setState(() { 
-      _isLoading = true; 
-      _errorMessage = ''; 
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = '';
     });
 
     try {
@@ -43,61 +43,107 @@ class _LoginPageState extends State<LoginPage> {
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200) {
+
+        // =========================
+        // MULTI ROLE USER
+        // =========================
+        if (data['multi_role'] == true) {
+
+          if (!mounted) return;
+
+          Navigator.pushNamed(
+            context,
+            '/role_selection',
+            arguments: {
+              'email': data['email'],
+              'roles': data['roles'],
+            },
+          );
+
+          return;
+        }
+
+        // =========================
+        // SINGLE ROLE USER
+        // =========================
+
         final prefs = await SharedPreferences.getInstance();
+
         final token = data['access_token'];
-        
+
         await prefs.setString('jwt_token', token);
 
-        String userRole = 'Student'; 
-        final tokenParts = token.split('.');
-        
-        if (tokenParts.length == 3) {
-          final payload = jsonDecode(
-              utf8.decode(base64Url.decode(base64Url.normalize(tokenParts[1]))));
-              
-          userRole = payload['role'] ?? 'Student';
-          
-          await prefs.setString('role', userRole);
-          
-          List<dynamic> rawPermissions = [];
-          if (payload['permissions'] != null) {
-            if (payload['permissions'] is String) {
-               rawPermissions = jsonDecode(payload['permissions']);
-            } else if (payload['permissions'] is List) {
-               rawPermissions = payload['permissions'];
-            }
+        String userRole = data['role'] ?? 'Student';
+
+        await prefs.setString('role', userRole);
+
+        List<dynamic> rawPermissions = [];
+
+        if (data['permissions'] != null) {
+
+          if (data['permissions'] is String) {
+            rawPermissions = jsonDecode(data['permissions']);
+          } else if (data['permissions'] is List) {
+            rawPermissions = data['permissions'];
           }
-          
-          await prefs.setString('permissions', jsonEncode(rawPermissions)); 
-          
-        } else {
-          userRole = data['role'] ?? 'Student';
-          await prefs.setString('role', userRole);
         }
 
+        await prefs.setString(
+          'permissions',
+          jsonEncode(rawPermissions),
+        );
+
         if (!mounted) return;
-        
-        if (userRole == 'Admin' || userRole == 'Staff') {
-          Navigator.pushReplacementNamed(
-            context,
-            '/admin_dashboard',
-            arguments: {'loginSuccess': true},
-          );
-        } else {
-          Navigator.pushReplacementNamed(
-            context,
-            '/student_home',
-            arguments: {'loginSuccess': true},
-          );
-        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text("Login Successful"),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+
+        Future.delayed(const Duration(milliseconds: 500), () {
+
+          if (!mounted) return;
+
+          if (userRole == 'Admin' || userRole == 'Staff') {
+
+            Navigator.pushReplacementNamed(
+              context,
+              '/admin_dashboard',
+            );
+
+          } else {
+
+            Navigator.pushReplacementNamed(
+              context,
+              '/student_home',
+            );
+          }
+        });
+
       } else {
-        setState(() => _errorMessage = data['detail'] ?? 'Login failed');
+
+        setState(() {
+          _errorMessage = data['detail'] ?? 'Login failed';
+        });
       }
+
     } catch (e) {
-      setState(() => _errorMessage = 'Cannot connect to server. Is your Python backend running?');
+
+      setState(() {
+        _errorMessage =
+            'Cannot connect to server. Is your Python backend running?';
+      });
+
     } finally {
+
       if (mounted) {
-        setState(() => _isLoading = false);
+        setState(() {
+          _isLoading = false;
+        });
       }
     }
   }

@@ -13,6 +13,7 @@ import 'manage_candidates.dart';
 import 'election_result.dart';
 import 'admin_live_scoreboard.dart';
 import 'manage_parties.dart';
+import 'staff_applications_page.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -49,6 +50,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     "Manage Parties",
     "Live Scoreboard",
     "Election Result",
+    "Staff Applications"
   ];
 
   List<String> displayMenuItems = [];
@@ -453,6 +455,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       case "Manage Parties": return Icons.flag;
       case "Live Scoreboard": return Icons.bar_chart;
       case "Election Result": return Icons.assignment_turned_in;
+      case "Staff Applications": return Icons.how_to_reg;
       default: return Icons.circle;
     }
   }
@@ -763,6 +766,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       case "Manage Parties": return const ManageParties();
       case "Live Scoreboard": return const AdminLiveScoreboard();
       case "Election Result": return const ElectionResultPage();
+      case "Staff Applications": return const StaffApplicationsPage();
       default: return buildDashboardHome();
     }
   }
