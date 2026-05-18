@@ -15,16 +15,11 @@ class _MyVotesViewState extends State<MyVotesView> {
   final Color primaryColor = const Color(0xFF000B6B);
 
   List<dynamic> _polls = [];
-  Map<String, dynamic>? _selectedPoll;
   bool _isLoading = true;
 
-  // States for the side panel
-  dynamic _displayingCandidate;
-  Map<String, dynamic> _candidateStats = {};
-  
-  // Track the user's specific vote status for the current poll
-  bool _hasVotedInSelectedPoll = false;
-  List<dynamic> _userVotedCandidates = [];
+  Map<int, Map<String, dynamic>> _pollStats = {};
+  Map<int, List<dynamic>> _pollVotes = {};
+  Set<int> _votedPollIds = {};
 
   @override
   void initState() {
@@ -34,492 +29,210 @@ class _MyVotesViewState extends State<MyVotesView> {
 
   Future<void> _fetchInitialData() async {
     try {
-      // 1. Fetch All Polls
-      final pollResponse = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/polls'));
+      final pollResponse =
+          await http.get(Uri.parse('${ApiConfig.baseUrl}/api/polls'));
+
       if (pollResponse.statusCode == 200) {
         final List<dynamic> allPolls = jsonDecode(pollResponse.body);
-        
-        _polls = allPolls.where((p) => 
-          (p['is_published'] == 1 || p['is_published'] == true)
-        ).toList();
 
-        if (_polls.isNotEmpty) {
-          _selectedPoll = _polls.firstWhere((p) => p['status'] != 'Ended' && p['is_archived'] != 1, orElse: () => _polls.first);
-        }
+        _polls = allPolls
+            .where((p) =>
+                (p['is_published'] == 1 || p['is_published'] == true))
+            .toList();
+
+        // ✅ DESCENDING ORDER (NEWEST FIRST)
+        _polls.sort((a, b) => (b['poll_id']).compareTo(a['poll_id']));
       }
 
-      if (_selectedPoll != null) {
-        await _loadPollDetails(_selectedPoll!);
-      } else {
-        setState(() => _isLoading = false);
-      }
+      await _loadUserVotes();
+      await _loadAllStats();
 
+      setState(() => _isLoading = false);
     } catch (e) {
       setState(() => _isLoading = false);
     }
   }
 
-  Future<void> _loadPollDetails(Map<String, dynamic> poll) async {
-    setState(() => _isLoading = true);
-    try {
-      int pollId = poll['poll_id'];
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('jwt_token') ?? '';
+  Future<void> _loadUserVotes() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('jwt_token') ?? '';
 
-      // 1. Fetch the user's personal vote history
-      final votesResponse = await http.get(
-        Uri.parse("${ApiConfig.baseUrl}/api/users/me/votes"),
-        headers: {"Authorization": "Bearer $token", "Content-Type": "application/json"},
+    final res = await http.get(
+      Uri.parse("${ApiConfig.baseUrl}/api/users/me/votes"),
+      headers: {
+        "Authorization": "Bearer $token",
+        "Content-Type": "application/json"
+      },
+    );
+
+    if (res.statusCode == 200) {
+      final List data = jsonDecode(res.body);
+
+      for (var vote in data) {
+        _votedPollIds.add(vote['poll_id']);
+        _pollVotes[vote['poll_id']] = vote['candidates'];
+      }
+    }
+  }
+
+  Future<void> _loadAllStats() async {
+    for (var poll in _polls) {
+      int pollId = poll['poll_id'];
+
+      final res = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/api/polls/$pollId/results'),
       );
 
-      bool foundVote = false;
-      List<dynamic> candidatesVotedFor = [];
+      if (res.statusCode == 200) {
+        final List results = jsonDecode(res.body);
 
-      if (votesResponse.statusCode == 200) {
-        List<dynamic> userVoteHistory = jsonDecode(votesResponse.body);
-        for (var history in userVoteHistory) {
-          if (history['poll_id'] == pollId) {
-            foundVote = true;
-            candidatesVotedFor = history['candidates'];
-            break;
-          }
-        }
-      }
+        Map<String, dynamic> stats = {};
 
-      // 2. Fetch the live/final stats for the poll
-      final statsResponse = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/polls/$pollId/results'));
-      Map<String, dynamic> stats = {};
-      
-      if (statsResponse.statusCode == 200) {
-        final List<dynamic> results = jsonDecode(statsResponse.body);
         for (var c in results) {
           stats[c['name']] = {
             'votes': c['votes'],
             'percentage': c['percentage'],
           };
         }
+
+        _pollStats[pollId] = stats;
       }
-
-      setState(() {
-        _hasVotedInSelectedPoll = foundVote;
-        _userVotedCandidates = candidatesVotedFor;
-        _candidateStats = stats;
-        
-        if (foundVote && candidatesVotedFor.isNotEmpty) {
-          _displayingCandidate = candidatesVotedFor[0];
-        } else {
-          _displayingCandidate = null;
-        }
-        
-        _isLoading = false;
-      });
-
-    } catch (e) {
-      setState(() => _isLoading = false);
     }
   }
 
-  void _onPollChanged(Map<String, dynamic>? newPoll) {
-    if (newPoll != null && newPoll['poll_id'] != _selectedPoll?['poll_id']) {
-      setState(() {
-        _selectedPoll = newPoll;
-      });
-      _loadPollDetails(newPoll);
+  bool _isPollEnded(Map poll) {
+    if (poll['status'] == 'Ended') return true;
+
+    if (poll['end_time'] != null) {
+      DateTime end = DateTime.parse(poll['end_time']);
+      return end.isBefore(DateTime.now());
     }
+
+    return false;
   }
 
-  // Mobile inline expansion metrics widget
-  Widget _buildMobileExpandedMetrics(dynamic candidate) {
-    final candidateName = candidate['name'] ?? '';
-    final stats = _candidateStats[candidateName] ?? {'votes': 0, 'percentage': 0.0};
-    final int totalVotes = stats['votes'];
-    final double percentage = (stats['percentage'] as num).toDouble();
+  Widget _buildElectionCard(Map poll) {
+    int pollId = poll['poll_id'];
+    bool isEnded = _isPollEnded(poll);
+    bool hasVoted = _votedPollIds.contains(pollId);
 
-    bool isPollEnded = _selectedPoll!['status'] == 'Ended';
-    if (_selectedPoll!['end_time'] != null) {
-      DateTime endTime = DateTime.parse(_selectedPoll!['end_time']);
-      if (endTime.isBefore(DateTime.now())) {
-        isPollEnded = true;
-      }
-    }
+    final List<dynamic> votes =
+      List<dynamic>.from(_pollVotes[pollId] ?? []);
+    final stats = _pollStats[pollId] ?? {};
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const SizedBox(height: 15),
-        const Divider(),
-        const SizedBox(height: 15),
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: ExpansionTile(
+        tilePadding: const EdgeInsets.all(16),
+        childrenPadding: const EdgeInsets.all(16),
 
-        if (isPollEnded) ...[
-          const Text("Final Election Results", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-          const SizedBox(height: 15),
-          Row(
-            children: [
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.all(15),
-                  decoration: BoxDecoration(color: const Color(0xFFF5F5F5), borderRadius: BorderRadius.circular(16)),
-                  child: Column(
-                    children: [
-                      Icon(Icons.how_to_vote, color: primaryColor, size: 24),
-                      const SizedBox(height: 10),
-                      Text(totalVotes.toString(), style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: primaryColor)),
-                      const Text("Total Votes", style: TextStyle(fontSize: 11, color: Colors.grey)),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 15),
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.all(15),
-                  decoration: BoxDecoration(color: const Color(0xFFF5F5F5), borderRadius: BorderRadius.circular(16)),
-                  child: Column(
-                    children: [
-                      Icon(Icons.pie_chart, color: primaryColor, size: 24),
-                      const SizedBox(height: 10),
-                      Text("${percentage.toStringAsFixed(1)}%", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: primaryColor)),
-                      const Text("Vote Share", style: TextStyle(fontSize: 11, color: Colors.grey)),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+        // =========================
+        // HEADER (COLLAPSED VIEW)
+        // =========================
+        title: Text(
+          poll['title'] ?? 'Election',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: primaryColor,
           ),
-        ] else ...[
-          Container(
-            padding: const EdgeInsets.all(15),
-            decoration: BoxDecoration(
-              color: Colors.blue.shade50,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.blue.shade100)
+        ),
+        subtitle: Text(
+          isEnded
+              ? "Ended • ${hasVoted ? "You voted" : "You did not vote"}"
+              : "Ongoing Election",
+          style: const TextStyle(fontSize: 12),
+        ),
+
+        // =========================
+        // EXPANDED CONTENT (TOP = SUMMARY)
+        // =========================
+        children: [
+          const SizedBox(height: 8),
+
+          // ✅ SUMMARY AT TOP (as requested)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              hasVoted
+                  ? "Your vote details for this election:"
+                  : "No vote recorded for this election.",
+              style: const TextStyle(
+                color: Colors.grey,
+                fontSize: 13,
+              ),
             ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(Icons.lock_clock, color: primaryColor, size: 20),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Text(
-                    "Results are hidden while the election is active to ensure a fair voting environment.", 
-                    style: TextStyle(color: Colors.black87, fontSize: 12, height: 1.4)
-                  )
-                ),
-              ],
-            ),
-          )
-        ]
-      ],
+          ),
+
+          const SizedBox(height: 12),
+          const Divider(),
+
+          const SizedBox(height: 12),
+
+          // =========================
+          // DETAILS LIST
+          // =========================
+          if (!hasVoted)
+            const Text(
+              "You did not participate in this election.",
+              style: TextStyle(color: Colors.grey),
+            )
+          else
+            Column(
+              children: votes.map<Widget>((dynamic candidate) {
+                final Map<String, dynamic> c =
+                    Map<String, dynamic>.from(candidate);
+
+                final String name = c['name'] ?? '';
+                final stats = _pollStats[pollId] ?? {};
+                final s = stats[name] ?? {'votes': 0, 'percentage': 0};
+
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey.shade200),
+                  ),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        backgroundImage: c['photo'] != null
+                            ? NetworkImage(
+                                '${ApiConfig.baseUrl}/${c["photo"]}')
+                            : null,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(child: Text(name)),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text("${s['votes']} votes"),
+                          Text("${s['percentage']}%"),
+                        ],
+                      )
+                    ],
+                  ),
+                );
+              }).toList(),
+            )
+        ],
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator(color: Colors.white));
+      return const Center(child: CircularProgressIndicator());
     }
 
-    bool isMobile = MediaQuery.of(context).size.width < 800;
-
-    // --- MAIN CONTENT AREA (Left Side / Mobile Full) ---
-    Widget mainContent;
-
-    if (_polls.isEmpty) {
-      mainContent = const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.how_to_vote_outlined, size: 90, color: Colors.white54),
-            SizedBox(height: 20),
-            Text("No Elections Found", style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600, color: Colors.white)),
-            SizedBox(height: 10),
-            Text("There are no published elections available right now.", style: TextStyle(fontSize: 14, color: Colors.white70)),
-          ],
-        ),
-      );
-    } else if (!_hasVotedInSelectedPoll) {
-      bool isEnded = _selectedPoll!['status'] == 'Ended' || _selectedPoll!['is_archived'] == 1 || _selectedPoll!['is_archived'] == true;
-      mainContent = Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(isEnded ? Icons.timer_off : Icons.pending_actions, size: 90, color: isEnded ? Colors.redAccent : Colors.white54),
-            const SizedBox(height: 20),
-            Text(
-              isEnded ? "Election Concluded" : "No Ballot Cast",
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: isEnded ? Colors.redAccent : Colors.white),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              isEnded 
-                  ? "This election has ended. You did not participate in this poll." 
-                  : "You have not voted in this election yet. Go to the Vote tab to cast your ballot!",
-              style: const TextStyle(fontSize: 14, color: Colors.white70),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      );
-    } else {
-      mainContent = ListView.separated(
-        itemCount: _userVotedCandidates.length,
-        separatorBuilder: (context, index) => const SizedBox(height: 15),
-        itemBuilder: (context, index) {
-          var candidate = _userVotedCandidates[index];
-          final isDisplaying = _displayingCandidate?['name'] == candidate['name'];
-
-          return InkWell(
-            onTap: () {
-              setState(() {
-                // If on mobile and clicking the currently expanded card, collapse it
-                if (isMobile && isDisplaying) {
-                  _displayingCandidate = null;
-                } else {
-                  _displayingCandidate = candidate;
-                }
-              });
-            },
-            borderRadius: BorderRadius.circular(16),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeInOut,
-              padding: const EdgeInsets.all(15),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: isDisplaying
-                    ? Border.all(color: primaryColor, width: 2)
-                    : Border.all(color: Colors.grey.shade200),
-                boxShadow: [
-                  if (isDisplaying)
-                    BoxShadow(color: primaryColor.withOpacity(0.1), blurRadius: 8, offset: const Offset(0, 4)),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 25,
-                        backgroundColor: Colors.grey[300],
-                        backgroundImage: candidate["photo"] != null ? NetworkImage('${ApiConfig.baseUrl}/${candidate["photo"]}') : null,
-                        child: candidate["photo"] == null ? const Icon(Icons.person, color: Colors.white) : null,
-                      ),
-                      const SizedBox(width: 15),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(candidate["position"] ?? "Position", style: TextStyle(fontWeight: FontWeight.bold, color: primaryColor, fontSize: 12)),
-                            const SizedBox(height: 2),
-                            Text(candidate["name"] ?? "Unknown", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                            Text(candidate["party"] ?? "Independent", style: const TextStyle(color: Colors.grey, fontSize: 13)),
-                          ],
-                        ),
-                      ),
-                      // Dropdown indicator for mobile
-                      if (isMobile)
-                        Icon(
-                          isDisplaying ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-                          color: isDisplaying ? primaryColor : Colors.grey,
-                        )
-                    ],
-                  ),
-                  // Inline Mobile Metrics Expansion
-                  if (isMobile && isDisplaying)
-                    _buildMobileExpandedMetrics(candidate)
-                ],
-              ),
-            ),
-          );
-        },
-      );
-    }
-
-    // --- FULL PAGE LAYOUT ---
     return Padding(
-      padding: EdgeInsets.all(isMobile ? 15.0 : 30.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text("My Votes", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white)),
-              // 🛠️ CHANGED: Material 3 DropdownMenu replacing old DropdownButton
-              if (_polls.isNotEmpty)
-                SizedBox(
-                  width: 250,
-                  child: DropdownMenu<Map<String, dynamic>>(
-                    expandedInsets: EdgeInsets.zero,
-                    initialSelection: _selectedPoll,
-                    requestFocusOnTap: false, // Prevents typing/keyboard
-                    onSelected: _onPollChanged,
-                    dropdownMenuEntries: _polls.map((poll) {
-                      String displayTitle = poll["title"] ?? "Election";
-                      if (poll['is_archived'] == 1 || poll['is_archived'] == true) {
-                        displayTitle = "$displayTitle (Archived)";
-                      } else if (poll['status'] == 'Ended') {
-                        displayTitle = "$displayTitle (Ended)";
-                      }
-                      return DropdownMenuEntry<Map<String, dynamic>>(
-                        value: poll as Map<String, dynamic>,
-                        label: displayTitle,
-                      );
-                    }).toList(),
-                    textStyle: TextStyle(color: primaryColor, fontWeight: FontWeight.bold),
-                    inputDecorationTheme: InputDecorationTheme(
-                      filled: true,
-                      fillColor: Colors.white,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 15),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16), 
-                        borderSide: BorderSide(color: Colors.grey.shade300)
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 20),
-
-          Expanded(
-            child: isMobile
-                ? mainContent 
-                : Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Expanded(flex: 2, child: mainContent),
-                      if (_hasVotedInSelectedPoll)
-                        Container(width: 350, margin: const EdgeInsets.only(left: 30), child: _buildDetailPanel()),
-                    ],
-                  ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // --- RIGHT SIDE DETAIL & STATS PANEL (Desktop Only) ---
-  Widget _buildDetailPanel() {
-    if (_displayingCandidate == null) {
-      return Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.grey.shade200)),
-        child: const Center(child: Text("Select a candidate to view stats.", style: TextStyle(color: Colors.grey))),
-      );
-    }
-
-    final candidate = _displayingCandidate;
-    final candidateName = candidate['name'] ?? '';
-
-    final stats = _candidateStats[candidateName] ?? {'votes': 0, 'percentage': 0.0};
-    final int totalVotes = stats['votes'];
-    final double percentage = (stats['percentage'] as num).toDouble();
-
-    bool isPollEnded = _selectedPoll!['status'] == 'Ended';
-    if (_selectedPoll!['end_time'] != null) {
-      DateTime endTime = DateTime.parse(_selectedPoll!['end_time']);
-      if (endTime.isBefore(DateTime.now())) {
-        isPollEnded = true;
-      }
-    }
-
-    return Container(
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            CircleAvatar(
-              radius: 50,
-              backgroundColor: Colors.grey[300],
-              backgroundImage: candidate["photo"] != null ? NetworkImage('${ApiConfig.baseUrl}/${candidate["photo"]}') : null,
-              child: candidate["photo"] == null ? const Icon(Icons.person, size: 50, color: Colors.white) : null,
-            ),
-            const SizedBox(height: 20),
-
-            Text(
-              candidate['name'] ?? 'Unknown Name',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22, color: primaryColor),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 5),
-            Text((candidate['position'] ?? 'POSITION').toUpperCase(), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey)),
-            Text(candidate['party'] ?? 'Independent', style: const TextStyle(fontSize: 14, color: Colors.grey)),
-
-            const SizedBox(height: 30),
-            const Divider(),
-            const SizedBox(height: 20),
-
-            if (isPollEnded) ...[
-              const Align(alignment: Alignment.centerLeft, child: Text("Final Election Results", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16))),
-              const SizedBox(height: 15),
-
-              Row(
-                children: [
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.all(15),
-                      decoration: BoxDecoration(color: const Color(0xFFF5F5F5), borderRadius: BorderRadius.circular(16)),
-                      child: Column(
-                        children: [
-                          Icon(Icons.how_to_vote, color: primaryColor, size: 28),
-                          const SizedBox(height: 10),
-                          Text(totalVotes.toString(), style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: primaryColor)),
-                          const Text("Total Votes", style: TextStyle(fontSize: 12, color: Colors.grey)),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 15),
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.all(15),
-                      decoration: BoxDecoration(color: const Color(0xFFF5F5F5), borderRadius: BorderRadius.circular(16)),
-                      child: Column(
-                        children: [
-                          Icon(Icons.pie_chart, color: primaryColor, size: 28),
-                          const SizedBox(height: 10),
-                          Text("${percentage.toStringAsFixed(1)}%", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: primaryColor)),
-                          const Text("Vote Share", style: TextStyle(fontSize: 12, color: Colors.grey)),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ] else ...[
-              Container(
-                padding: const EdgeInsets.all(15),
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.blue.shade100)
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(Icons.lock_clock, color: primaryColor, size: 24),
-                    const SizedBox(width: 12),
-                    const Expanded(
-                      child: Text(
-                        "Results are hidden while the election is active to ensure a fair voting environment. Check back when the poll ends!", 
-                        style: TextStyle(color: Colors.black87, fontSize: 13, height: 1.4)
-                      )
-                    ),
-                  ],
-                ),
-              )
-            ]
-          ],
-        ),
+      child: ListView(
+        children: _polls.map<Widget>((poll) => _buildElectionCard(poll)).toList(),
       ),
     );
   }

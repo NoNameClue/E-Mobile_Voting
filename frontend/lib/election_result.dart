@@ -330,89 +330,89 @@ Future<void> _generatePdfAndPrint() async {
 
                     SizedBox(height: isMobile ? 20 : 30),
 
-                    ...(_reportData!['results'] as List).map((positionData) {
+                    ...(_reportData!['results'] as List)
+                        .map<Widget>((dynamic positionData) {
+                      final List candidates =
+                          List<dynamic>.from(positionData['candidates']);
+
                       return Card(
                         margin: const EdgeInsets.only(bottom: 30),
                         elevation: 3,
                         color: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        child: Padding(
-                          padding: EdgeInsets.all(isMobile ? 15 : 20),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Text("Position: ${positionData['position'].toUpperCase()}", style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF000B6B))),
-                              const Divider(),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: ExpansionTile(
+                          initiallyExpanded: false,
+                          tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          childrenPadding: const EdgeInsets.all(16),
 
-                              LayoutBuilder(
-                                builder: (context, constraints) {
-                                  return SingleChildScrollView(
-                                    scrollDirection: Axis.horizontal,
-                                    child: ConstrainedBox(
-                                      constraints: BoxConstraints(minWidth: isMobile ? 0 : constraints.maxWidth),
-                                      child: DataTable(
-                                        headingRowColor: WidgetStateProperty.all(Colors.grey[200]),
-                                        columnSpacing: isMobile ? 20 : 50,
-                                        columns: const [
-                                          DataColumn(label: Text('Rank', style: TextStyle(fontWeight: FontWeight.bold))),
-                                          DataColumn(label: Text('Candidate Name', style: TextStyle(fontWeight: FontWeight.bold))),
-                                          DataColumn(label: Text('Party', style: TextStyle(fontWeight: FontWeight.bold))),
-                                          DataColumn(label: Text('Votes', style: TextStyle(fontWeight: FontWeight.bold))),
-                                          DataColumn(label: Text('Percentage', style: TextStyle(fontWeight: FontWeight.bold))),
-                                          DataColumn(label: Text('Margin', style: TextStyle(fontWeight: FontWeight.bold))),
-                                        ],
-                                        rows: (positionData['candidates'] as List).map((candidate) {
-                                          final bool isWinner = candidate['is_winner'];
-                                          final textStyle = TextStyle(fontWeight: isWinner ? FontWeight.bold : FontWeight.normal, color: isWinner ? Colors.green[800] : Colors.black87);
-
-                                          return DataRow(
-                                            color: isWinner ? WidgetStateProperty.all(Colors.green.withOpacity(0.05)) : null,
-                                            cells: [
-                                              DataCell(Text('#${candidate['rank']}', style: textStyle)),
-                                              DataCell(Row(children: [if (isWinner) const Icon(Icons.emoji_events, color: Colors.amber, size: 20), if (isWinner) const SizedBox(width: 5), Text(candidate['name'], style: textStyle)])),
-                                              DataCell(Text(candidate['party_name'], style: textStyle)),
-                                              DataCell(Text(candidate['votes'].toString(), style: textStyle)),
-                                              DataCell(SizedBox(width: 120, child: Row(children: [Expanded(child: Stack(children: [Container(height: 8, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(16))), FractionallySizedBox(widthFactor: (candidate['percentage'] ?? 0) / 100, child: Container(height: 8, decoration: BoxDecoration(color: Colors.blue, borderRadius: BorderRadius.circular(16))))])), const SizedBox(width: 6), Text('${candidate['percentage']}%', style: textStyle.copyWith(fontSize: 12))]))),
-                                              DataCell(Builder(builder: (_) {
-                                                final margin = candidate['margin'];
-                                                final isTie = margin == 0;
-                                                String displayText; Color displayColor;
-                                                if (margin == null) { displayText = '-'; displayColor = Colors.grey; } else if (isTie) { displayText = 'Tie'; displayColor = Colors.orange; } else { displayText = '+${margin}%'; displayColor = Colors.blue.shade700; }
-                                                return Text(displayText, style: TextStyle(color: displayColor, fontWeight: FontWeight.bold));
-                                              })),
-                                            ],
-                                          );
-                                        }).toList(),
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-
-                              const SizedBox(height: 15),
-
-                              if (isMobile)
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text("Total Valid Votes: ${positionData['total_votes']}", style: const TextStyle(color: Colors.grey, fontStyle: FontStyle.italic, fontWeight: FontWeight.bold)),
-                                    const SizedBox(height: 5),
-                                    Text("Total Candidates: ${(positionData['candidates'] as List).length}", style: const TextStyle(color: Colors.grey, fontStyle: FontStyle.italic, fontWeight: FontWeight.bold)),
-                                  ],
-                                )
-                              else
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text("Total Valid Votes: ${positionData['total_votes']}", style: const TextStyle(color: Colors.grey, fontStyle: FontStyle.italic, fontWeight: FontWeight.bold)),
-                                    Text("Total Candidates: ${(positionData['candidates'] as List).length}", style: const TextStyle(color: Colors.grey, fontStyle: FontStyle.italic, fontWeight: FontWeight.bold)),
-                                  ],
-                                ),
-                            ],
+                          title: Text(
+                            "Position: ${positionData['position'].toUpperCase()}",
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF000B6B),
+                            ),
                           ),
+
+                          subtitle: Text(
+                            "${candidates.length} Candidates • Tap to expand",
+                            style: const TextStyle(fontSize: 12, color: Colors.grey),
+                          ),
+
+                          children: [
+                            const Divider(),
+
+                            SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: DataTable(
+                                headingRowColor:
+                                    WidgetStateProperty.all(Colors.grey[200]),
+                                columnSpacing: isMobile ? 20 : 50,
+                                columns: const [
+                                  DataColumn(label: Text('Rank')),
+                                  DataColumn(label: Text('Candidate Name')),
+                                  DataColumn(label: Text('Party')),
+                                  DataColumn(label: Text('Votes')),
+                                  DataColumn(label: Text('Percentage')),
+                                  DataColumn(label: Text('Margin')),
+                                ],
+                                rows: candidates.map<DataRow>((dynamic candidate) {
+                                  final bool isWinner = candidate['is_winner'];
+
+                                  return DataRow(
+                                    color: isWinner
+                                        ? WidgetStateProperty.all(
+                                            Colors.green.withOpacity(0.05))
+                                        : null,
+                                    cells: [
+                                      DataCell(Text('#${candidate['rank']}')),
+                                      DataCell(Text(candidate['name'])),
+                                      DataCell(Text(candidate['party_name'])),
+                                      DataCell(Text(candidate['votes'].toString())),
+                                      DataCell(Text('${candidate['percentage']}%')),
+                                      DataCell(Text(
+                                        candidate['margin'] == null
+                                            ? '-'
+                                            : '+${candidate['margin']}%',
+                                      )),
+                                    ],
+                                  );
+                                }).toList(),
+                              ),
+                            ),
+
+                            const SizedBox(height: 10),
+
+                            Text(
+                              "Total Votes: ${positionData['total_votes']}",
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ],
                         ),
                       );
-                    }),
+                    }).toList(),
                   ],
                 ),
               ),
