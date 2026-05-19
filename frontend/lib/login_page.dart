@@ -4,7 +4,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'auth_layout.dart'; 
 import 'api_config.dart'; 
-import 'widgets/realtime_clock.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -30,8 +29,10 @@ class _LoginPageState extends State<LoginPage> {
       _errorMessage = ''; 
     });
 
+    http.Response response;
+    
     try {
-      final response = await http.post(
+      response = await http.post(
         Uri.parse('${ApiConfig.baseUrl}/api/login'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
@@ -39,66 +40,129 @@ class _LoginPageState extends State<LoginPage> {
           'password': _passwordController.text.trim(),
         }),
       ).timeout(const Duration(seconds: 10));
-
-      final data = jsonDecode(response.body);
-
-      if (response.statusCode == 200) {
-        final prefs = await SharedPreferences.getInstance();
-        final token = data['access_token'];
-        
-        await prefs.setString('jwt_token', token);
-
-        String userRole = 'Student'; 
-        final tokenParts = token.split('.');
-        
-        if (tokenParts.length == 3) {
-          final payload = jsonDecode(
-              utf8.decode(base64Url.decode(base64Url.normalize(tokenParts[1]))));
-              
-          userRole = payload['role'] ?? 'Student';
-          
-          await prefs.setString('role', userRole);
-          
-          List<dynamic> rawPermissions = [];
-          if (payload['permissions'] != null) {
-            if (payload['permissions'] is String) {
-               rawPermissions = jsonDecode(payload['permissions']);
-            } else if (payload['permissions'] is List) {
-               rawPermissions = payload['permissions'];
-            }
-          }
-          
-          await prefs.setString('permissions', jsonEncode(rawPermissions)); 
-          
-        } else {
-          userRole = data['role'] ?? 'Student';
-          await prefs.setString('role', userRole);
-        }
-
-        if (!mounted) return;
-        
-        if (userRole == 'Admin' || userRole == 'Staff') {
-          Navigator.pushReplacementNamed(
-            context,
-            '/admin_dashboard',
-            arguments: {'loginSuccess': true},
-          );
-        } else {
-          Navigator.pushReplacementNamed(
-            context,
-            '/student_home',
-            arguments: {'loginSuccess': true},
-          );
-        }
-      } else {
-        setState(() => _errorMessage = data['detail'] ?? 'Login failed');
-      }
     } catch (e) {
-      setState(() => _errorMessage = 'Cannot connect to server. Is your Python backend running?');
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'Network error. Cannot connect to server.';
+      });
+      return;
+    }
+
+    setState(() => _isLoading = false);
+
+    if (response.statusCode == 200) {
+      try {
+        final data = jsonDecode(response.body);
+        final prefs = await SharedPreferences.getInstance();
+        
+        await prefs.setString('jwt_token', data['access_token']);
+        
+        bool isStudentOfficer = false;
+        String role = 'Student';
+        List<String> perms = [];
+
+        // 🛠️ FIX: Bulletproof parsing that targets exactly the right map, whether nested or flat.
+        var userData = data.containsKey('user') && data['user'] != null ? data['user'] : data;
+
+        isStudentOfficer = userData['is_student_officer'] == 1 || userData['is_student_officer'] == true;
+        role = userData['role'] ?? 'Student';
+        
+        // 🛠️ FIX: Bulletproof list casting. Converts List<dynamic> to strictly List<String>
+        var rawPerms = userData['permissions'];
+        if (rawPerms != null) {
+          if (rawPerms is String) {
+            try {
+              var decoded = jsonDecode(rawPerms);
+              if (decoded is List) {
+                perms = decoded.map((e) => e.toString()).toList();
+              }
+            } catch (_) {}
+          } else if (rawPerms is List) {
+            perms = rawPerms.map((e) => e.toString()).toList();
+          }
+        }
+        
+        // Proceed with Navigation
+        if (role == 'Student' && isStudentOfficer) {
+          if (!mounted) return;
+          _showRoleSelectionDialog(data, prefs, perms);
+        } else {
+          await prefs.setString('role', role);
+          await prefs.setString('permissions', jsonEncode(perms));
+          _navigateBasedOnRole(role);
+        }
+      } catch (e) {
+        setState(() => _errorMessage = 'Data Parsing Error: $e');
       }
+    } else {
+      try {
+        final errorData = jsonDecode(response.body);
+        setState(() => _errorMessage = errorData['detail'] ?? 'Login failed. Please check your credentials.');
+      } catch (e) {
+        setState(() => _errorMessage = 'Login failed with status ${response.statusCode}');
+      }
+    }
+  }
+
+  void _showRoleSelectionDialog(Map<String, dynamic> data, SharedPreferences prefs, List<String> perms) {
+    showDialog(
+      context: context,
+      barrierDismissible: false, 
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Row(
+            children: [
+              Icon(Icons.switch_account, color: Color(0xFF000B6B)),
+              SizedBox(width: 10),
+              Text("Select Workspace", style: TextStyle(color: Color(0xFF000B6B), fontWeight: FontWeight.bold)),
+            ],
+          ),
+          content: const Text("Your account has multiple roles. Where would you like to go?"),
+          actions: [
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.amber, 
+                foregroundColor: const Color(0xFF000B6B),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                elevation: 0, 
+              ),
+              onPressed: () async {
+                await prefs.setString('role', 'Student');
+                if (!mounted) return;
+                Navigator.pop(context);
+                _navigateBasedOnRole('Student');
+              },
+              child: const Text("Continue as Student", style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+            const SizedBox(height: 10), 
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF000B6B),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              onPressed: () async {
+                await prefs.setString('role', 'Staff');
+                await prefs.setString('permissions', jsonEncode(perms));
+                if (!mounted) return;
+                Navigator.pop(context);
+                _navigateBasedOnRole('Staff');
+              },
+              child: const Text("Enter Staff Panel"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _navigateBasedOnRole(String role) {
+    if (role == 'Admin' || role == 'Staff') {
+      Navigator.pushReplacementNamed(context, '/admin_dashboard', arguments: {'loginSuccess': true});
+    } else {
+      Navigator.pushReplacementNamed(context, '/student_dashboard', arguments: {'loginSuccess': true});
     }
   }
 
@@ -109,75 +173,121 @@ class _LoginPageState extends State<LoginPage> {
         key: _formKey,
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
+            const Icon(Icons.how_to_vote, size: 60, color: Colors.white),
+            const SizedBox(height: 10),
             
             const Text(
-              'Welcome Back',
-              textAlign: TextAlign.center,
+              'LNU eMobile Voting',
               style: TextStyle(
-                color: Colors.white,
-                fontSize: 32,
+                fontSize: 24,
                 fontWeight: FontWeight.bold,
+                color: Colors.amber, 
+                letterSpacing: 1.2,
               ),
             ),
-            const SizedBox(height: 8),
-            const Text('Please enter your university details to sign in and vote.', style: TextStyle(color: Colors.white70, fontSize: 14)),
-            const SizedBox(height: 30),
+            const Text(
+              'Secure Student Election System',
+              style: TextStyle(color: Colors.white70, fontSize: 14),
+            ),
             
+            const SizedBox(height: 30),
+
             if (_errorMessage.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 15), 
-                child: Text(_errorMessage, style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold))
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(10),
+                margin: const EdgeInsets.only(bottom: 15),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.red.shade300),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.error_outline, color: Colors.red),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(_errorMessage, style: const TextStyle(color: Colors.red, fontSize: 13)),
+                    ),
+                  ],
+                ),
               ),
 
+            // -----------------------------------------------------
+            // UPDATED: WHITE EMAIL TEXT FIELD
+            // -----------------------------------------------------
             TextFormField(
               controller: _emailController,
-              style: const TextStyle(color: Colors.black87), 
+              keyboardType: TextInputType.emailAddress,
+              style: const TextStyle(color: Colors.black87), // Dark text
               decoration: InputDecoration(
-                hintText: 'University Email',
-                hintStyle: const TextStyle(color: Colors.black54), 
+                labelText: 'Student / Admin Email',
+                labelStyle: const TextStyle(color: Colors.grey), // Darker label
+                prefixIcon: const Icon(Icons.email, color: Colors.amber),
                 filled: true,
-                fillColor: Colors.white, 
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                fillColor: Colors.white, // Solid white background
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
               ),
-              validator: (value) => value == null || value.isEmpty ? 'Email is required' : null,
+              validator: (value) {
+                if (value == null || value.isEmpty) return 'Please enter your email';
+                if (!value.contains('@')) return 'Enter a valid email address';
+                return null;
+              },
             ),
+            
             const SizedBox(height: 15),
 
+            // -----------------------------------------------------
+            // UPDATED: WHITE PASSWORD TEXT FIELD
+            // -----------------------------------------------------
             TextFormField(
               controller: _passwordController,
               obscureText: _obscurePassword,
-              style: const TextStyle(color: Colors.black87), 
+              style: const TextStyle(color: Colors.black87), // Dark text
               decoration: InputDecoration(
-                hintText: 'Password',
-                hintStyle: const TextStyle(color: Colors.black54), 
-                filled: true,
-                fillColor: Colors.white, 
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                labelText: 'Password',
+                labelStyle: const TextStyle(color: Colors.grey), // Darker label
+                prefixIcon: const Icon(Icons.lock, color: Colors.amber),
                 suffixIcon: IconButton(
-                  icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility, color: Colors.black54),
+                  icon: Icon(
+                    _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                    color: Colors.grey, // Darker eye icon
+                  ),
                   onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                 ),
+                filled: true,
+                fillColor: Colors.white, // Solid white background
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
               ),
-              validator: (value) => value == null || value.isEmpty ? 'Password is required' : null,
+              validator: (value) {
+                if (value == null || value.isEmpty) return 'Please enter your password';
+                return null;
+              },
             ),
-            const SizedBox(height: 25),
             
+            const SizedBox(height: 30),
+
             SizedBox(
               width: double.infinity,
+              height: 50,
               child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.amber,
-                  disabledBackgroundColor: Colors.amber.withOpacity(0.7), 
-                  foregroundColor: const Color(0xFF000B6B),
-                  padding: const EdgeInsets.symmetric(vertical: 18),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
                 onPressed: _isLoading ? null : _handleLogin,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.amber, 
+                  foregroundColor: const Color(0xFF000B6B), 
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  elevation: 5,
+                ),
                 child: _isLoading 
-                    ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Color(0xFF000B6B), strokeWidth: 2))
-                    : const Text('SIGN IN', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Color(0xFF000B6B), strokeWidth: 2))
+                  : const Text('SIGN IN', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
               ),
             ),
             
@@ -195,28 +305,30 @@ class _LoginPageState extends State<LoginPage> {
                 ),
               ],
             ),
+            const SizedBox(height: 25),
+            
+            InkWell(
+              onTap: () => Navigator.pushNamed(context, '/file_party'),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.white24)
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.assignment_ind, color: Colors.amber, size: 18),
+                    SizedBox(width: 10),
+                    Text('File for Party Candidacy', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
       ),
     );
   }
-  // @override
-  // void didChangeDependencies() {
-  //   super.didChangeDependencies();
-
-  //   final args = ModalRoute.of(context)?.settings.arguments as Map?;
-
-  //   if (args != null && args['loginSuccess'] == true) {
-  //     WidgetsBinding.instance.addPostFrameCallback((_) {
-  //       ScaffoldMessenger.of(context).showSnackBar(
-  //         SnackBar(
-  //           content: const Text("Login Successful"),
-  //           backgroundColor: Colors.green,
-  //           behavior: SnackBarBehavior.floating,
-  //           duration: const Duration(seconds: 2),
-  //         ),
-  //       );
-  //     });
-  //   }
-  // }
 }

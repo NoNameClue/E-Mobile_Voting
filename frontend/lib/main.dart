@@ -3,6 +3,7 @@ import 'login_page.dart';
 import 'signup_page.dart';
 import 'student_dashboard.dart';
 import 'admin_dashboard.dart';
+import 'party_application_form.dart'; // 🛠️ ADDED: Import the new application form
 
 void main() {
   runApp(const LnuVotingApp());
@@ -16,18 +17,14 @@ class LnuVotingApp extends StatelessWidget {
     return MaterialApp(
       title: 'LNU Voting System',
       theme: ThemeData(
-        // 🛠️ TICKET 1: Enforces modern Material 3 UI globally
         useMaterial3: true, 
-        
-        // 🛠️ TICKET 1: Strict 5-Color LNU Palette
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFF000B6B),
-          primary: const Color(0xFF000B6B), // LNU Blue
-          secondary: Colors.amber,          // LNU Gold
-          surface: Colors.white,            // Clean white for cards/modals
-          background: const Color(0xFFE5E5E5), // Frosted/System background base
+          primary: const Color(0xFF000B6B), 
+          secondary: Colors.amber,          
+          surface: Colors.white,            
+          background: const Color(0xFFE5E5E5), 
         ),
-        
         primaryColor: const Color(0xFF000B6B),
         scaffoldBackgroundColor: const Color(0xFFE5E5E5), 
         fontFamily: 'Roboto',
@@ -36,8 +33,11 @@ class LnuVotingApp extends StatelessWidget {
       routes: {
         '/login': (context) => const LoginPage(),
         '/signup': (context) => const SignupPage(),
-        '/student_home': (context) => const StudentDashboard(),     
+        '/student_dashboard': (context) => const StudentDashboard(),     
         '/admin_dashboard': (context) => const AdminDashboard(), 
+        
+        // 🛠️ ADDED: Registered the new route for the candidacy form
+        '/file_party': (context) => const PartyApplicationForm(), 
       },
       debugShowCheckedModeBanner: false,
     );

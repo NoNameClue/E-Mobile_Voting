@@ -18,6 +18,8 @@ class User(Base):
     created_at = Column(DateTime, server_default=func.now(), index=True)
     profile_pic_url = Column(String(255), nullable=True)
     permissions = Column(JSON, default=list)
+    is_student_officer = Column(Boolean, default=False)
+    permissions = Column(JSON, nullable=True)
 
 class Poll(Base):
     __tablename__ = "polls"
@@ -51,6 +53,7 @@ class Candidate(Base):
     photo_url = Column(String(255))
     poll = relationship("Poll", back_populates="candidates")
     qas = relationship("CandidateQA", back_populates="candidate", cascade="all, delete-orphan")
+    is_withdrawn = Column(Boolean, default=False)
     
 class CandidateQA(Base):
     __tablename__ = "candidate_qa"
@@ -71,3 +74,13 @@ class Vote(Base):
     user_id = Column(Integer, ForeignKey("users.user_id"))
     poll_id = Column(Integer, ForeignKey("polls.poll_id"))
     candidate_id = Column(Integer, ForeignKey("candidates.candidate_id"))
+    
+class PartyApplication(Base):
+    __tablename__ = "party_applications"
+    application_id = Column(Integer, primary_key=True, index=True)
+    poll_id = Column(Integer, ForeignKey("polls.poll_id"))
+    party_name = Column(String(100))
+    platform_bio = Column(Text, nullable=True)
+    candidates_payload = Column(JSON) # Stores the locked Q&A and info
+    status = Column(String(50), default="Pending") # Pending, Approved, Rejected
+    submitted_at = Column(String(100))

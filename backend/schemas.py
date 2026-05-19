@@ -54,3 +54,21 @@ class CandidateUpdate(BaseModel):
 
 class StatusUpdate(BaseModel):
     is_active: bool
+
+# ADDED AS REQUESTED
+class UserResponse(BaseModel):
+    user_id: int
+    email: str
+    full_name: str
+    role: str
+    is_student_officer: bool = False  
+    permissions: list[str] = []       
+    
+    class Config:
+        from_attributes = True
+        
+class UserAdminUpdate(BaseModel):
+    course: Optional[str] = None
+    password: Optional[str] = None
+    is_student_officer: Optional[bool] = None
+    permissions: Optional[List[str]] = None

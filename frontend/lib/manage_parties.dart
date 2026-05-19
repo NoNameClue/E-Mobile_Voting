@@ -92,6 +92,152 @@ class _ManagePartiesState extends State<ManageParties> {
     }
   }
 
+  // 🛠️ ADDED: Fetches pending applications and opens review modal
+  Future<void> _openApplicationsReview() async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final res = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/parties/applications/pending'));
+      Navigator.pop(context); // close loader
+      
+      if (res.statusCode == 200) {
+        List<dynamic> apps = jsonDecode(res.body);
+        if (apps.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("No pending applications.")));
+          return;
+        }
+        _showReviewDialog(apps.first); // Show the first pending app
+      }
+    } catch (e) {
+      Navigator.pop(context); // close loader
+    }
+  }
+
+  // 🛠️ ADDED: Application Review Modal
+  void _showReviewDialog(Map<String, dynamic> app) {
+    List<dynamic> candidates = app['candidates_payload'];
+    
+    // Create controllers for admins to fix typos
+    Map<String, Map<String, TextEditingController>> controllers = {};
+    for (var cand in candidates) {
+      controllers[cand['position']] = {
+        'first_name': TextEditingController(text: cand['first_name']),
+        'last_name': TextEditingController(text: cand['last_name']),
+        'course_year': TextEditingController(text: cand['course_year']),
+      };
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text("Review Application: ${app['party_name']}", style: const TextStyle(color: Color(0xFF000B6B), fontWeight: FontWeight.bold)),
+        content: SizedBox(
+          width: 600,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text("You may correct spelling errors in names and courses. Q&A and Platforms are strictly locked.", style: TextStyle(color: Colors.orange)),
+                const SizedBox(height: 15),
+                ...candidates.map((c) {
+                  var ctrls = controllers[c['position']]!;
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 15),
+                    child: Padding(
+                      padding: const EdgeInsets.all(15),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(c['position'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              Expanded(child: TextField(controller: ctrls['first_name'], decoration: const InputDecoration(labelText: "First Name", isDense: true))),
+                              const SizedBox(width: 10),
+                              Expanded(child: TextField(controller: ctrls['last_name'], decoration: const InputDecoration(labelText: "Last Name", isDense: true))),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          TextField(controller: ctrls['course_year'], decoration: const InputDecoration(labelText: "Course & Year", isDense: true)),
+                          const SizedBox(height: 10),
+                          // Locked Data Display
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(color: Colors.grey.shade100, border: Border.all(color: Colors.grey.shade300)),
+                            child: const Row(
+                              children: [
+                                Icon(Icons.lock, size: 16, color: Colors.grey),
+                                SizedBox(width: 10),
+                                Text("Platform & Q&A Attached (Locked)", style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic)),
+                              ],
+                            ),
+                          )
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList()
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              await http.delete(Uri.parse('${ApiConfig.baseUrl}/api/parties/applications/${app['application_id']}/reject'));
+              if (mounted) {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Application Rejected."), backgroundColor: Colors.red));
+              }
+            }, 
+            child: const Text("Reject", style: TextStyle(color: Colors.red))
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.green, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
+            onPressed: () async {
+              // Pack the corrected data
+              List<Map<String, dynamic>> correctedCands = [];
+              for (var c in candidates) {
+                var ctrls = controllers[c['position']]!;
+                correctedCands.add({
+                  'position': c['position'],
+                  'first_name': ctrls['first_name']!.text,
+                  'last_name': ctrls['last_name']!.text,
+                  'course_year': ctrls['course_year']!.text,
+                });
+              }
+
+              final res = await http.post(
+                Uri.parse('${ApiConfig.baseUrl}/api/parties/applications/${app['application_id']}/approve'),
+                headers: {"Content-Type": "application/json"},
+                body: jsonEncode({
+                  "party_name": app['party_name'],
+                  "candidates": correctedCands
+                })
+              );
+
+              if (mounted) {
+                Navigator.pop(context);
+                if (res.statusCode == 200) {
+                  _fetchData();
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Approved! Party officially registered."), backgroundColor: Colors.green));
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Error processing approval."), backgroundColor: Colors.red));
+                }
+              }
+            },
+            child: const Text("Approve & Register", style: TextStyle(color: Colors.white)),
+          )
+        ],
+      ),
+    );
+  }
+
   Future<void> _createParty(String partyName, String platformBio) async {
     if (_selectedPollId == null) return;
     try {
@@ -287,7 +433,6 @@ class _ManagePartiesState extends State<ManageParties> {
     );
   }
 
-  // 🛠️ ADDED: Popup Dialog for full Platform Bio
   void _showBioDialog(String partyName, String bio) {
     showDialog(
       context: context,
@@ -315,7 +460,7 @@ class _ManagePartiesState extends State<ManageParties> {
                   icon: const Icon(Icons.close, color: Colors.grey),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
-                  onPressed: () => Navigator.pop(context), // 🛠️ Closes the dialog
+                  onPressed: () => Navigator.pop(context),
                 ),
               ],
             ),
@@ -416,6 +561,18 @@ class _ManagePartiesState extends State<ManageParties> {
                       ),
                       onPressed: isLocked ? null : () => _showPartyDialog(), 
                     ),
+                  ),
+                  
+                  // 🛠️ COMBINED: Review Applications Button
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.fact_check, color: Color(0xFF000B6B), size: 22),
+                    label: const Text("Review Apps", style: TextStyle(color: Color(0xFF000B6B), fontWeight: FontWeight.bold)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.amber, 
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18), 
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))
+                    ),
+                    onPressed: _openApplicationsReview, 
                   ),
                 ],
               ),
@@ -530,7 +687,6 @@ class _ManagePartiesState extends State<ManageParties> {
                                             maxLines: 3,
                                             overflow: TextOverflow.ellipsis,
                                           ),
-                                          // 🛠️ ADDED: "See more..." logic if bio exceeds threshold
                                           if (platformBio.length > 80)
                                             InkWell(
                                               onTap: () => _showBioDialog(party['name'], platformBio),

@@ -4,12 +4,26 @@ from sqlalchemy import or_
 from database import get_db
 from models import User
 
+# 🛠️ ADDED IMPORTS for the new update endpoint
+from pydantic import BaseModel
+from typing import Optional, List
+from auth import pwd_context 
+
 router = APIRouter(tags=["Users"])
+
+# 🛠️ ADDED SCHEMA: Defined here so you don't have to touch schemas.py
+class UserAdminUpdate(BaseModel):
+    course: Optional[str] = None
+    password: Optional[str] = None
+    is_student_officer: Optional[bool] = None
+    permissions: Optional[List[str]] = None
+
 
 @router.get("/api/users")
 def get_all_users(db: Session = Depends(get_db)):
     users = db.query(User).all()
     return [{**u.__dict__, "full_name": f"{u.first_name} {u.middle_name} {u.last_name}".replace("  ", " ").strip()} for u in users]
+
 
 @router.get("/api/admin/students")
 def get_paginated_students(
@@ -50,7 +64,9 @@ def get_paginated_students(
             "course": s.course,
             "is_active": s.is_active,
             "created_at": s.created_at.isoformat() if s.created_at else None,
-            "profile_pic_url": s.profile_pic_url
+            "profile_pic_url": s.profile_pic_url,
+            "is_student_officer": getattr(s, 'is_student_officer', False), # 🛠️ Ensured frontend knows if they are an officer
+            "permissions": getattr(s, 'permissions', [])
         } for s in students
     ]
     
@@ -58,6 +74,7 @@ def get_paginated_students(
         "total": total_count,
         "items": results
     }
+
 
 @router.put("/api/admin/students/{user_id}/toggle")
 async def toggle_student_status(user_id: int, request: Request, db: Session = Depends(get_db)):
@@ -78,3 +95,28 @@ async def toggle_student_status(user_id: int, request: Request, db: Session = De
 
     db.commit()
     return {"message": f"Status updated successfully to {student.is_active}"}
+
+
+# 🛠️ NEW ENDPOINT: This fixes your 404 error when saving from the Edit Modal
+@router.put("/api/admin/users/{user_id}")
+def update_user_admin(user_id: int, update_data: UserAdminUpdate, db: Session = Depends(get_db)):
+    db_user = db.query(User).filter(User.user_id == user_id).first()
+    
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Update only the fields that were provided by the frontend
+    if update_data.course is not None:
+        db_user.course = update_data.course
+        
+    if update_data.password: 
+        db_user.password_hash = pwd_context.hash(update_data.password)
+        
+    if update_data.is_student_officer is not None:
+        db_user.is_student_officer = update_data.is_student_officer
+        
+    if update_data.permissions is not None:
+        db_user.permissions = update_data.permissions
+        
+    db.commit()
+    return {"message": "User updated successfully"}

@@ -32,6 +32,17 @@ class _ManageUsersState extends State<ManageUsers> {
   int _rowsPerPage = 20; 
   int _currentPage = 0;
 
+  // 🛠️ ADDED: Accessible tabs available for Student Officers
+  final List<String> availablePanels = [
+    "Dashboard", 
+    "Users / Account Control", 
+    "Manage Polls", 
+    "Manage Candidates", 
+    "Manage Parties", 
+    "Live Scoreboard", 
+    "Election Result"
+  ];
+
   List<dynamic> _getPaginatedStudents() {
     int start = _currentPage * _rowsPerPage;
     int end = start + _rowsPerPage;
@@ -79,7 +90,6 @@ class _ManageUsersState extends State<ManageUsers> {
   Future<void> _fetchStudents() async {
     setState(() => _isLoading = true);
     try {
-      // 🛠️ FIX: Added ?limit=100000 to fetch all 8000+ students for local counting/sorting
       final response = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/admin/students?limit=100000'));
       if (response.statusCode == 200) {
         final parsedData = await compute(jsonDecode, response.body);
@@ -536,11 +546,29 @@ class _ManageUsersState extends State<ManageUsers> {
                             ),
                             title: Text(
                               student['full_name'] ?? 'Unknown',
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, decoration: isActive ? TextDecoration.none : TextDecoration.lineThrough),
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold, 
+                                fontSize: 15, 
+                                decoration: isActive ? TextDecoration.none : TextDecoration.lineThrough
+                              ),
                             ),
-                            subtitle: Text(
-                              'ID: ${student['student_number']} • ${student['course'] ?? 'N/A'} • Since: ${_formatDate(student['created_at'])}',
-                              style: const TextStyle(fontSize: 12),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const SizedBox(height: 4),
+                                if (student['is_student_officer'] == 1 || student['is_student_officer'] == true)
+                                  Padding(
+                                    padding: const EdgeInsets.only(bottom: 4.0),
+                                    child: Text(
+                                      "Student Officer", 
+                                      style: TextStyle(color: Colors.orange.shade800, fontWeight: FontWeight.bold, fontSize: 12)
+                                    ),
+                                  ),
+                                Text(
+                                  'ID: ${student['student_number']} • ${student['course'] ?? 'N/A'} • Since: ${_formatDate(student['created_at'])}',
+                                  style: const TextStyle(fontSize: 12),
+                                ),
+                              ],
                             ),
                             trailing: Row(
                               mainAxisSize: MainAxisSize.min,
@@ -675,6 +703,18 @@ class _ManageUsersState extends State<ManageUsers> {
       "12+ characters", "uppercase", "lowercase", "number", "special character (.,?!@#\$%)"
     ];
 
+    // 🛠️ ADDED: Initialize Student Officer toggles and permissions list
+    bool isStudentOfficer = student['is_student_officer'] == 1 || student['is_student_officer'] == true;
+    List<String> selectedPermissions = [];
+    if (student['permissions'] != null) {
+      var perms = student['permissions'];
+      if (perms is String) {
+        selectedPermissions = List<String>.from(jsonDecode(perms));
+      } else if (perms is List) {
+        selectedPermissions = List<String>.from(perms);
+      }
+    }
+
     showDialog(
       context: context,
       builder: (context) {
@@ -802,6 +842,55 @@ class _ManageUsersState extends State<ManageUsers> {
                           ),
                         ),
                       ),
+
+                      // 🛠️ ADDED: Student Officer Toggle Switch and Permissions List
+                      const SizedBox(height: 20),
+                      const Divider(),
+                      SwitchListTile(
+                        title: const Text("Enable Student Officer Role", style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF000B6B))),
+                        subtitle: const Text("Grants this student access to the Staff Panel."),
+                        activeColor: Colors.amber,
+                        value: isStudentOfficer,
+                        onChanged: (bool value) {
+                          setModalState(() {
+                            isStudentOfficer = value;
+                            if (!isStudentOfficer) selectedPermissions.clear(); 
+                          });
+                        },
+                      ),
+                      if (isStudentOfficer)
+                        Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade300),
+                            borderRadius: BorderRadius.circular(8)
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text("Select Accessible Tabs:", style: TextStyle(fontWeight: FontWeight.bold)),
+                              const SizedBox(height: 10),
+                              ...availablePanels.map((panel) {
+                                return CheckboxListTile(
+                                  dense: true,
+                                  title: Text(panel, style: const TextStyle(fontSize: 14)),
+                                  value: selectedPermissions.contains(panel),
+                                  activeColor: const Color(0xFF000B6B),
+                                  onChanged: (bool? checked) {
+                                    setModalState(() {
+                                      if (checked == true) {
+                                        selectedPermissions.add(panel);
+                                      } else {
+                                        selectedPermissions.remove(panel);
+                                      }
+                                    });
+                                  },
+                                );
+                              }),
+                            ],
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -846,6 +935,8 @@ class _ManageUsersState extends State<ManageUsers> {
                           "password": passwordController.text.isNotEmpty
                               ? passwordController.text
                               : null,
+                          "is_student_officer": isStudentOfficer,
+                          "permissions": selectedPermissions
                         }),
                       );
 

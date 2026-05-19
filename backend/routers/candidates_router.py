@@ -18,16 +18,16 @@ def add_candidate(
     party_name: str = Form("Independent"),
     course_year: str = Form(...),
     description_platform: str = Form(""),
-    qa_data: str = Form(None), # 🛠️ Receives Q&A JSON string
+    qa_data: str = Form(None), 
     photo: UploadFile = File(None),
     db: Session = Depends(get_db)
 ):
-    # 🛠️ NEW SECURITY CHECK: Check if Poll is already published
+    # Check if Poll is already published
     poll = db.query(Poll).filter(Poll.poll_id == poll_id).first()
     if poll and poll.is_published:
         raise HTTPException(status_code=400, detail="Cannot register candidates. This poll is already published and locked.")
 
-    # 🛠️ VALIDATION: Prevent duplicate candidates for the same Party and Position
+    # Prevent duplicate candidates
     if party_name.lower() != "independent":
         existing = db.query(Candidate).filter(
             Candidate.poll_id == poll_id,
@@ -58,13 +58,14 @@ def add_candidate(
         party_name=party_name,
         course_year=course_year,
         description_platform=description_platform,
-        photo_url=file_path
+        photo_url=file_path,
+        is_withdrawn=False # Initialize as active
     )
     db.add(new_candidate)
     db.commit()
-    db.refresh(new_candidate) # Get the new candidate_id for the QAs
+    db.refresh(new_candidate)
 
-    # 🛠️ Q&A SAVING LOGIC
+    # Q&A SAVING LOGIC
     if qa_data:
         try:
             qa_list = json.loads(qa_data)
@@ -87,7 +88,6 @@ def get_candidates(poll_id: int, db: Session = Depends(get_db)):
     results = []
     
     for c in cands:
-        # Fetch associated QAs safely
         qas = db.query(CandidateQA).filter(CandidateQA.candidate_id == c.candidate_id).all()
         
         results.append({
@@ -102,7 +102,8 @@ def get_candidates(poll_id: int, db: Session = Depends(get_db)):
             "course_year": c.course_year,
             "description_platform": c.description_platform,
             "photo_url": c.photo_url,
-            "qas": [{"question": qa.question, "answer": qa.answer} for qa in qas] # 🛠️ Include QAs for the Edit Modal
+            "is_withdrawn": getattr(c, 'is_withdrawn', False), # 🛠️ Tells Flutter to hide them from the ballot
+            "qas": [{"question": qa.question, "answer": qa.answer} for qa in qas]
         })
         
     return results
@@ -118,7 +119,8 @@ def update_candidate(
     party_name: str = Form("Independent"),
     course_year: str = Form(...),
     description_platform: str = Form(""),
-    qa_data: str = Form(None), # 🛠️ Receives Q&A JSON string
+    qa_data: str = Form(None), 
+    is_withdrawn: str = Form("false"), # 🛠️ FIX: Accept exactly as a string from Flutter
     photo: UploadFile = File(None),
     db: Session = Depends(get_db)
 ):
@@ -126,12 +128,18 @@ def update_candidate(
     if not db_cand:
         raise HTTPException(status_code=404, detail="Candidate not found")
         
-    # 🛠️ NEW SECURITY CHECK: Check if Poll is already published
     poll = db.query(Poll).filter(Poll.poll_id == poll_id).first()
+    
+    # 🛠️ FIX: Manually and safely convert the text string to a Python Boolean
+    withdrawn_status = str(is_withdrawn).lower() in ['true', '1', 'yes', 'on']
+    
+    # 🛠️ WITHDRAWAL BYPASS: If poll is published, STRICTLY only allow withdrawal update.
     if poll and poll.is_published:
-        raise HTTPException(status_code=400, detail="Cannot update candidates. This poll is already published and locked.")
+        db_cand.is_withdrawn = withdrawn_status
+        db.commit()
+        return {"message": "Poll is published. Core details locked, but withdrawal status was successfully updated."}
 
-    # 🛠️ VALIDATION: Check for duplicates (ignoring the current candidate being edited)
+    # If NOT published, allow full normal updates
     if party_name.lower() != "independent":
         existing = db.query(Candidate).filter(
             Candidate.poll_id == poll_id,
@@ -139,14 +147,9 @@ def update_candidate(
             Candidate.position == position,
             Candidate.candidate_id != candidate_id 
         ).first()
-        
         if existing:
-            raise HTTPException(
-                status_code=400, 
-                detail="A candidate is already registered for this party and position."
-            )
+            raise HTTPException(status_code=400, detail="A candidate is already registered for this party and position.")
             
-    # Update core fields
     db_cand.poll_id = poll_id
     db_cand.first_name = first_name
     db_cand.middle_name = middle_name
@@ -155,6 +158,7 @@ def update_candidate(
     db_cand.party_name = party_name
     db_cand.course_year = course_year
     db_cand.description_platform = description_platform
+    db_cand.is_withdrawn = withdrawn_status # Save the boolean
 
     if photo and photo.filename:
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
@@ -164,21 +168,12 @@ def update_candidate(
             shutil.copyfileobj(photo.file, buffer)
         db_cand.photo_url = file_path
 
-    # 🛠️ Q&A SAVING LOGIC (Delete old, insert new)
     if qa_data:
         try:
             qa_list = json.loads(qa_data)
-            
-            # Wipe existing QAs for this candidate
             db.query(CandidateQA).filter(CandidateQA.candidate_id == candidate_id).delete()
-            
-            # Insert the newly updated QAs
             for qa in qa_list:
-                new_qa = CandidateQA(
-                    candidate_id=candidate_id,
-                    question=qa["question"],
-                    answer=qa["answer"]
-                )
+                new_qa = CandidateQA(candidate_id=candidate_id, question=qa["question"], answer=qa["answer"])
                 db.add(new_qa)
         except Exception as e:
             print("Error parsing Q&A Data:", e)
@@ -192,12 +187,15 @@ def delete_candidate(candidate_id: int, db: Session = Depends(get_db)):
     if not db_cand:
         raise HTTPException(status_code=404, detail="Candidate not found")
         
-    # 🛠️ NEW SECURITY CHECK: Check if Poll is already published
     poll = db.query(Poll).filter(Poll.poll_id == db_cand.poll_id).first()
+    
+    # 🛠️ WITHDRAWAL BYPASS: If admin deletes during an active poll, soft-delete instead!
     if poll and poll.is_published:
-        raise HTTPException(status_code=400, detail="Cannot delete candidates. This poll is already published and locked.")
+        db_cand.is_withdrawn = True
+        db.commit()
+        return {"message": "Poll is active. Candidate has been withdrawn (soft-deleted) to preserve existing vote data."}
         
-    # Standard delete (SQLAlchemy CASCADE will handle associated QAs if configured in models.py)
+    # If not published, hard delete normally
     db.delete(db_cand)
     db.commit()
     return {"message": "Candidate deleted successfully"}

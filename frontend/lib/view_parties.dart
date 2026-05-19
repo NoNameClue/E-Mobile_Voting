@@ -33,7 +33,6 @@ class _ViewPartiesState extends State<ViewParties> {
         if (pollResponse.statusCode == 200) {
           final List<dynamic> allPolls = jsonDecode(pollResponse.body);
           
-          // 🛠️ CHANGED: Removed the is_archived condition so archived polls ALSO show up!
           _polls = allPolls.where((p) => 
             (p['is_published'] == 1 || p['is_published'] == true) 
           ).toList();
@@ -78,6 +77,10 @@ class _ViewPartiesState extends State<ViewParties> {
       }
 
       for (var c in candidates) {
+        // 🛠️ FIX: Completely ignore withdrawn candidates so they don't appear in party lineups
+        bool isWithdrawn = c['is_withdrawn'] == 1 || c['is_withdrawn'] == true;
+        if (isWithdrawn) continue;
+
         String party = c['party_name'] ?? 'Independent';
         if (!grouped.containsKey(party)) {
           grouped[party] = [];
@@ -243,8 +246,6 @@ class _ViewPartiesState extends State<ViewParties> {
                     requestFocusOnTap: false, 
                     onSelected: _onPollChanged,
                     dropdownMenuEntries: _polls.map((poll) {
-                      
-                      // 🛠️ ADDED: Visual indicator for Archived polls
                       final bool isArchived = poll['is_archived'] == 1 || poll['is_archived'] == true;
                       final String rawTitle = poll["title"] ?? "Election";
                       final String displayTitle = isArchived ? "$rawTitle (Archived)" : rawTitle;

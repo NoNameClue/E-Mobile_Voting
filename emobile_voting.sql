@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: May 11, 2026 at 04:23 PM
+-- Generation Time: May 18, 2026 at 09:41 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -117,8 +117,8 @@ INSERT INTO `candidates` (`candidate_id`, `poll_id`, `first_name`, `middle_name`
 (394, 12, 'Rosa', 'K.', 'Cruz', 'Treasurer', 'Kappa Knights', 'Bachelor of Special Needs Education - 4th Year', 'Vote Rosa for Treasurer!', NULL),
 (395, 12, 'Roberto', 'S.', 'Ramos', 'Auditor', 'Kappa Knights', 'Bachelor of Physical Education - 3rd Year', 'Vote Roberto for Auditor!', NULL),
 (396, 12, 'Antonio', 'D.', 'Castro', 'PIO', 'Kappa Knights', 'Bachelor of Arts in English Language - 3rd Year', 'Vote Antonio for PIO!', NULL),
-(397, 13, 'Maria', 'V.', 'Rivera', 'President', 'Independent', 'Bachelor of Music in Music Education - 1st Year', 'Vote Maria for President!', NULL),
-(398, 13, 'Rafael', 'S.', 'Cordero', 'Vice President', 'Independent', 'Bachelor of Science in Information Technology - 2nd Year', 'Vote Rafael for Vice President!', NULL),
+(397, 13, 'Maria', 'V.', 'Rivera', 'President', 'Independent', 'Bachelor of Science in Information Technology - 1st Year', 'Vote Maria for President!', 'uploads/20260513132339_15.jpg'),
+(398, 13, 'Rafael', 'S.', 'Cordero', 'Vice President', 'Independent', 'Bachelor of Science in Information Technology - 2nd Year', 'Vote Rafael for Vice President!', 'uploads/20260513132359_3.jpg'),
 (399, 13, 'Daniela', 'G.', 'Mendoza', 'Secretary', 'Independent', 'Bachelor of Music in Music Education - 2nd Year', 'Vote Daniela for Secretary!', NULL),
 (400, 13, 'Sofia', 'Q.', 'Villanueva', 'Treasurer', 'Independent', 'Bachelor of Elementary Education - 3rd Year', 'Vote Sofia for Treasurer!', NULL),
 (401, 13, 'Luis', 'B.', 'Torres', 'Auditor', 'Independent', 'Bachelor of Arts in English Language - 4th Year', 'Vote Luis for Auditor!', NULL),
@@ -316,10 +316,6 @@ INSERT INTO `candidate_qa` (`qa_id`, `candidate_id`, `question`, `answer`) VALUE
 (360, 395, 'Why do you believe you are the best fit for this position?', 'As your next Auditor, i plan to implement a digital suggestion box and hold monthly town halls.'),
 (361, 396, 'How will you ensure transparency in the council\'s budget?', 'I plan to implement a digital suggestion box and hold monthly town halls.'),
 (362, 396, 'How will you balance your academic studies with your council duties?', 'My track record shows a commitment to integrity and hard work for the student body.'),
-(363, 397, 'What is your strategy for improving student engagement?', 'As your next President, i plan to implement a digital suggestion box and hold monthly town halls.'),
-(364, 397, 'How will you balance your academic studies with your council duties?', 'My track record shows a commitment to integrity and hard work for the student body.'),
-(365, 398, 'What makes your political party different from the others?', 'As your next Vice President, i plan to implement a digital suggestion box and hold monthly town halls.'),
-(366, 398, 'What is your strategy for improving student engagement?', 'As your next Vice President, i plan to implement a digital suggestion box and hold monthly town halls.'),
 (367, 399, 'How will you ensure transparency in the council\'s budget?', 'My focus will be on open communication and immediate action on student feedback.'),
 (368, 399, 'How will you balance your academic studies with your council duties?', 'As your next Secretary, my track record shows a commitment to integrity and hard work for the student body.'),
 (369, 400, 'Why do you believe you are the best fit for this position?', 'I aim to create inclusive programs that cater to all degree programs and year levels.'),
@@ -387,7 +383,11 @@ INSERT INTO `candidate_qa` (`qa_id`, `candidate_id`, `question`, `answer`) VALUE
 (431, 431, 'How will you balance your academic studies with your council duties?', 'As your next Auditor, we will prioritize budget allocation towards facility maintenance and student orgs.'),
 (432, 431, 'What makes your political party different from the others?', 'We will push for digitalization of student services to make transactions faster.'),
 (433, 432, 'How will you ensure transparency in the council\'s budget?', 'As your next PIO, i aim to create inclusive programs that cater to all degree programs and year levels.'),
-(434, 432, 'Why do you believe you are the best fit for this position?', 'My focus will be on open communication and immediate action on student feedback.');
+(434, 432, 'Why do you believe you are the best fit for this position?', 'My focus will be on open communication and immediate action on student feedback.'),
+(435, 397, 'What is your strategy for improving student engagement?', 'As your next President, i plan to implement a digital suggestion box and hold monthly town halls.'),
+(436, 397, 'How will you balance your academic studies with your council duties?', 'My track record shows a commitment to integrity and hard work for the student body.'),
+(437, 398, 'What makes your political party different from the others?', 'As your next Vice President, i plan to implement a digital suggestion box and hold monthly town halls.'),
+(438, 398, 'What is your strategy for improving student engagement?', 'As your next Vice President, i plan to implement a digital suggestion box and hold monthly town halls.');
 
 -- --------------------------------------------------------
 
@@ -449,7 +449,7 @@ CREATE TABLE `polls` (
 INSERT INTO `polls` (`poll_id`, `title`, `start_time`, `end_time`, `status`, `is_published`, `is_archived`) VALUES
 (11, '2025 Special Elections', '2026-02-05 12:00:00', '2026-02-15 12:00:00', 'Ended', 1, 1),
 (12, '2026 Spring SSC Election', '2026-03-27 12:00:00', '2026-04-06 12:00:00', 'Ended', 1, 0),
-(13, '2026 Main General Election', '2026-05-04 12:00:00', '2026-05-11 12:00:00', 'Active', 1, 0);
+(13, '2026 Main General Election', '2026-05-04 12:00:00', '2026-05-15 12:00:00', 'Active', 1, 0);
 
 -- --------------------------------------------------------
 
@@ -469,7 +469,6 @@ CREATE TABLE `question_bank` (
 INSERT INTO `question_bank` (`question_id`, `question_text`) VALUES
 (1, 'How do you plan to address student concerns?'),
 (3, 'How will you ensure transparency in your role?'),
-(4, 'What specific project will you prioritize?'),
 (2, 'Why are you the best fit for this position?');
 
 -- --------------------------------------------------------
@@ -485,7 +484,7 @@ CREATE TABLE `users` (
   `middle_name` varchar(50) DEFAULT '',
   `last_name` varchar(50) NOT NULL,
   `email` varchar(100) NOT NULL,
-  `course` varchar(50) NOT NULL,
+  `course` varchar(100) NOT NULL,
   `password_hash` varchar(255) NOT NULL,
   `role` enum('Admin','Student','Staff') DEFAULT 'Student',
   `is_active` tinyint(1) DEFAULT 1,
@@ -8538,7 +8537,9 @@ INSERT INTO `users` (`user_id`, `student_number`, `first_name`, `middle_name`, `
 (24221, '2007996', 'Pedro', 'A.', 'Gutierrez', 'pedro.gutierrez7996@lnu.edu.ph', 'Bachelor of Arts in Political Science', '$2b$12$w793ABsHWakMZdeXK4jrb.bW7Y7qHmQaErvlv8KoTI.rebMaFbSva', 'Student', 1, '2026-05-06 04:00:00', NULL, '[]'),
 (24222, '2007997', 'Miguel', 'M.', 'Aquino', 'miguel.aquino7997@lnu.edu.ph', 'Bachelor of Music in Music Education', '$2b$12$w793ABsHWakMZdeXK4jrb.bW7Y7qHmQaErvlv8KoTI.rebMaFbSva', 'Student', 1, '2026-05-06 04:00:00', NULL, '[]'),
 (24223, '2007998', 'Victor', 'H.', 'Castro', 'victor.castro7998@lnu.edu.ph', 'Bachelor of Arts in Communication', '$2b$12$w793ABsHWakMZdeXK4jrb.bW7Y7qHmQaErvlv8KoTI.rebMaFbSva', 'Student', 1, '2026-05-06 04:00:00', NULL, '[]'),
-(24224, '3452257', 'John', 'T.', 'Doe2', 'john2@lnu.edu.ph', 'Bachelor of Entrepreneurship', '$2b$12$qB6IRZPyUPJiO.g/1ok3wevkQFXNqOVRPjUDxVHUYEzXwdfMCZph.', 'Student', 1, '2026-05-09 21:58:50', NULL, '[]');
+(24224, '3452257', 'John', 'T.', 'Doe2', 'john2@lnu.edu.ph', 'Bachelor of Entrepreneurship', '$2b$12$qB6IRZPyUPJiO.g/1ok3wevkQFXNqOVRPjUDxVHUYEzXwdfMCZph.', 'Student', 1, '2026-05-09 21:58:50', NULL, '[]'),
+(24225, '2303034', 'Carl David', 'T.', 'Pura', '2303034@lnu.edu.ph', 'Bachelor of Science in Information Technology', '$2b$12$Z7qFRNa2QuEGE/LJemQlM.fvrgqBg6U4tDZmx6qHr3d0EV2PkVcj6', 'Student', 1, '2026-05-12 21:25:33', 'uploads/carl_user.jpg', '[]'),
+(24226, '5788654', 'Juan 123', '', 'dela cruz', 'juandelacruz@lnu.edu.ph', 'Bachelor of Entrepreneurship', '$2b$12$tE9HeFoo3Jrv7oAyYF6WZexHK91yDdsxvCymbgSkK6maLBQP7lxn2', 'Student', 1, '2026-05-12 23:56:57', NULL, '[]');
 
 -- --------------------------------------------------------
 
@@ -152687,7 +152688,8 @@ INSERT INTO `votes` (`vote_id`, `user_id`, `poll_id`, `candidate_id`, `cast_at`)
 (435591, 24220, 13, 402, '2026-05-06 06:53:37'),
 (435592, 24221, 13, 402, '2026-05-06 06:53:37'),
 (435593, 24222, 13, 408, '2026-05-06 06:53:37'),
-(435594, 24223, 13, 432, '2026-05-06 06:53:37');
+(435594, 24223, 13, 432, '2026-05-06 06:53:37'),
+(435595, 24225, 13, 403, '2026-05-13 08:03:32');
 
 --
 -- Indexes for dumped tables
@@ -152735,7 +152737,8 @@ ALTER TABLE `question_bank`
 ALTER TABLE `users`
   ADD PRIMARY KEY (`user_id`),
   ADD UNIQUE KEY `student_number` (`student_number`),
-  ADD UNIQUE KEY `email` (`email`);
+  ADD UNIQUE KEY `email` (`email`),
+  ADD KEY `idx_users_last_name` (`last_name`);
 
 --
 -- Indexes for table `votes`
@@ -152760,7 +152763,7 @@ ALTER TABLE `candidates`
 -- AUTO_INCREMENT for table `candidate_qa`
 --
 ALTER TABLE `candidate_qa`
-  MODIFY `qa_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=435;
+  MODIFY `qa_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=439;
 
 --
 -- AUTO_INCREMENT for table `parties`
@@ -152778,19 +152781,19 @@ ALTER TABLE `polls`
 -- AUTO_INCREMENT for table `question_bank`
 --
 ALTER TABLE `question_bank`
-  MODIFY `question_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `question_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=24225;
+  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=24227;
 
 --
 -- AUTO_INCREMENT for table `votes`
 --
 ALTER TABLE `votes`
-  MODIFY `vote_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=435595;
+  MODIFY `vote_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=435596;
 
 --
 -- Constraints for dumped tables

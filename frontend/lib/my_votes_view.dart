@@ -313,7 +313,19 @@ class _MyVotesViewState extends State<MyVotesView> {
                           children: [
                             Text(candidate["position"] ?? "Position", style: TextStyle(fontWeight: FontWeight.bold, color: primaryColor, fontSize: 12)),
                             const SizedBox(height: 2),
-                            Text(candidate["name"] ?? "Unknown", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                            // 🛠️ FIX: Shows badge if withdrawn
+                            Row(
+                              children: [
+                                Flexible(child: Text(candidate["name"] ?? "Unknown", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16), overflow: TextOverflow.ellipsis)),
+                                if (candidate['is_withdrawn'] == 1 || candidate['is_withdrawn'] == true)
+                                  Container(
+                                    margin: const EdgeInsets.only(left: 8),
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(color: Colors.red.shade100, borderRadius: BorderRadius.circular(8)),
+                                    child: Text("WITHDRAWN", style: TextStyle(color: Colors.red.shade800, fontSize: 10, fontWeight: FontWeight.bold)),
+                                  )
+                              ],
+                            ),
                             Text(candidate["party"] ?? "Independent", style: const TextStyle(color: Colors.grey, fontSize: 13)),
                           ],
                         ),
@@ -347,14 +359,13 @@ class _MyVotesViewState extends State<MyVotesView> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text("My Votes", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white)),
-              // 🛠️ CHANGED: Material 3 DropdownMenu replacing old DropdownButton
               if (_polls.isNotEmpty)
                 SizedBox(
                   width: 250,
                   child: DropdownMenu<Map<String, dynamic>>(
                     expandedInsets: EdgeInsets.zero,
                     initialSelection: _selectedPoll,
-                    requestFocusOnTap: false, // Prevents typing/keyboard
+                    requestFocusOnTap: false, 
                     onSelected: _onPollChanged,
                     dropdownMenuEntries: _polls.map((poll) {
                       String displayTitle = poll["title"] ?? "Election";
@@ -445,11 +456,27 @@ class _MyVotesViewState extends State<MyVotesView> {
             ),
             const SizedBox(height: 20),
 
-            Text(
-              candidate['name'] ?? 'Unknown Name',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22, color: primaryColor),
-              textAlign: TextAlign.center,
+            // 🛠️ FIX: Adds the Withdrawn badge to the detail panel
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Flexible(
+                  child: Text(
+                    candidate['name'] ?? 'Unknown Name',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22, color: primaryColor),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                if (candidate['is_withdrawn'] == 1 || candidate['is_withdrawn'] == true)
+                  Container(
+                    margin: const EdgeInsets.only(left: 10),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(color: Colors.red.shade100, borderRadius: BorderRadius.circular(8)),
+                    child: Text("WITHDRAWN", style: TextStyle(color: Colors.red.shade800, fontSize: 12, fontWeight: FontWeight.bold)),
+                  )
+              ],
             ),
+            
             const SizedBox(height: 5),
             Text((candidate['position'] ?? 'POSITION').toUpperCase(), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey)),
             Text(candidate['party'] ?? 'Independent', style: const TextStyle(fontSize: 14, color: Colors.grey)),

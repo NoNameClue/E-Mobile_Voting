@@ -49,14 +49,14 @@ def get_my_votes(db: Session = Depends(get_db), current_user: User = Depends(get
         
         candidate = db.query(Candidate).filter(Candidate.candidate_id == vote.candidate_id).first()
         if candidate:
-            # 🛠️ FIX 1: Combine name parts securely
             full_name = f"{candidate.first_name} {candidate.middle_name} {candidate.last_name}".replace("  ", " ").strip()
             poll_groups[vote.poll_id].append({
                 "candidate_id": candidate.candidate_id,
                 "name": full_name,
                 "position": candidate.position,
                 "party": candidate.party_name,
-                "photo": candidate.photo_url
+                "photo": candidate.photo_url,
+                "is_withdrawn": getattr(candidate, 'is_withdrawn', False) # 🛠️ FIX: Now sends this flag
             })
 
     result = [{"poll_id": pid, "candidates": cands} for pid, cands in poll_groups.items()]
@@ -79,7 +79,6 @@ def get_poll_results(poll_id: int, db: Session = Depends(get_db)):
         total_for_pos = pos_map.get(c.position, 0)
         percentage = (votes / total_for_pos * 100) if total_for_pos > 0 else 0.0
         
-        # 🛠️ FIX 2: Combine name parts securely for the Results endpoint
         full_name = f"{c.first_name} {c.middle_name} {c.last_name}".replace("  ", " ").strip()
         
         results.append({
@@ -89,7 +88,8 @@ def get_poll_results(poll_id: int, db: Session = Depends(get_db)):
             "party_name": c.party_name,
             "photo_url": c.photo_url,
             "votes": votes,
-            "percentage": round(percentage, 2)
+            "percentage": round(percentage, 2),
+            "is_withdrawn": getattr(c, 'is_withdrawn', False)
         })
     return results
 
@@ -118,14 +118,14 @@ def get_poll_report(poll_id: int, db: Session = Depends(get_db)):
         
         votes = db.query(Vote).filter(Vote.candidate_id == c.candidate_id).count()
         
-        # 🛠️ FIX 3: Combine name parts securely for the Report endpoint
         full_name = f"{c.first_name} {c.middle_name} {c.last_name}".replace("  ", " ").strip()
         
         positions[c.position].append({
             "candidate_id": c.candidate_id,
             "name": full_name,
             "party_name": c.party_name or "Independent",
-            "votes": votes
+            "votes": votes,
+            "is_withdrawn": getattr(c, 'is_withdrawn', False)
         })
         
     results = []
@@ -137,15 +137,12 @@ def get_poll_report(poll_id: int, db: Session = Depends(get_db)):
         for i, c in enumerate(cands):
             pct = round((c["votes"] / total_votes_pos * 100), 2) if total_votes_pos > 0 else 0.0
             
-            # 🛠️ TICKET 9 FIX: Advanced Margin Calculation (Includes 0.0% Ties)
             margin = 0.0
             if len(cands) > 1:
                 if i == 0:
-                    # Winner's margin against 2nd place
                     next_pct = round((cands[1]["votes"] / total_votes_pos * 100), 2) if total_votes_pos > 0 else 0.0
                     margin = round(pct - next_pct, 2)
                 else:
-                    # Losers' margins against the Leader
                     lead_pct = round((cands[0]["votes"] / total_votes_pos * 100), 2) if total_votes_pos > 0 else 0.0
                     margin = round(pct - lead_pct, 2) 
 
@@ -156,7 +153,8 @@ def get_poll_report(poll_id: int, db: Session = Depends(get_db)):
                 "votes": c["votes"],
                 "percentage": pct,
                 "margin": margin,
-                "is_winner": (i == 0 and c["votes"] > 0)
+                "is_winner": (i == 0 and c["votes"] > 0) and not c["is_withdrawn"],
+                "is_withdrawn": c["is_withdrawn"]
             })
             
         results.append({

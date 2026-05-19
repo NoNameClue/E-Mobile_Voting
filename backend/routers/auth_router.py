@@ -74,11 +74,15 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
         data={"sub": db_user.email, "role": db_user.role},
         expires_delta=timedelta(hours=24)
     )
+    
     return {
         "access_token": access_token, 
         "token_type": "bearer", 
-        "role": db_user.role,
-        "permissions": db_user.permissions
+        "user": {
+            "role": db_user.role,
+            "is_student_officer": getattr(db_user, 'is_student_officer', False),
+            "permissions": getattr(db_user, 'permissions', [])
+        }
     }
 
 @router.get("/api/users/me")

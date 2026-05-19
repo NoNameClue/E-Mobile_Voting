@@ -108,6 +108,11 @@ class _VotingPageState extends State<VotingPage> {
       List rawCandidates = await ApiService.fetchCandidates(_activePollId!);
       Map<String, List<dynamic>> grouped = {};
       for (var candidate in rawCandidates) {
+        
+        // Completely ignore withdrawn candidates so they don't appear on the ballot
+        bool isWithdrawn = candidate['is_withdrawn'] == 1 || candidate['is_withdrawn'] == true;
+        if (isWithdrawn) continue;
+
         String position = candidate["position"];
         if (!grouped.containsKey(position)) grouped[position] = [];
         grouped[position]!.add(candidate);
@@ -116,6 +121,12 @@ class _VotingPageState extends State<VotingPage> {
       setState(() {
         _candidatesByPosition = grouped;
         _positionNames = grouped.keys.toList();
+        
+        // 🛠️ IMPLEMENTED: Auto-default every position to ABSTAIN on load
+        for (String pos in _positionNames) {
+          _selectedCandidates[pos] = ABSTAIN_ID;
+        }
+
         _isLoading = false;
       });
     } catch (e) {
@@ -128,6 +139,7 @@ class _VotingPageState extends State<VotingPage> {
     try {
       Map<String, int> finalValidVotes = {};
       _selectedCandidates.forEach((position, candidateId) {
+        // Drops the Abstain ID safely, meaning no vote is cast for that position
         if (candidateId != null && candidateId != ABSTAIN_ID) {
           finalValidVotes[position] = candidateId;
         }

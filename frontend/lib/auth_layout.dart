@@ -160,14 +160,18 @@ class AuthLayout extends StatelessWidget {
     return SingleChildScrollView(
       child: Column(
         children: [
+          // -----------------------------------------------------
+          // MOBILE HEADER: SLIMMED DOWN
+          // -----------------------------------------------------
           Container(
             color: const Color(0xFF000B6B),
-            padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
+            // CHANGED: Reduced vertical padding from 15 to 4
+            padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 4), 
             child: Row(
               children: [
                 Container(
                   width: 60,
-                  height: 60,
+                  height: 60, // Logo height untouched
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(8),
                     image: const DecorationImage(
@@ -248,18 +252,22 @@ class AuthLayout extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            // Header
+            // -----------------------------------------------------
+            // WEB HEADER: SLIMMED DOWN
+            // -----------------------------------------------------
             Container(
               color: const Color(0xFF000B6B), 
-              padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+              // CHANGED: Reduced vertical padding from 15 to 4. 
+              // Note: If you want it even slimmer, change 'vertical: 4' to 'vertical: 0'.
+              padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 4), 
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Row(
                     children: [
                       Container(
-                        width: 85,
-                        height: 85,
+                        width: 85, // Logo width untouched
+                        height: 85, // Logo height untouched
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(8),
                           image: const DecorationImage(
@@ -272,8 +280,8 @@ class AuthLayout extends StatelessWidget {
                       const Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Leyte Normal University', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
-                          Text('(eMobile Voting)', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                          Text('Leyte Normal University', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)), // Text size untouched
+                          Text('(eMobile Voting)', style: TextStyle(color: Colors.white70, fontSize: 14)), // Text size untouched
                         ],
                       )
                     ],

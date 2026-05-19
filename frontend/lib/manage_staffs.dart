@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // 🛠️ Added for input limits
+import 'package:flutter/services.dart'; 
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'dart:convert';
@@ -95,7 +95,6 @@ class _ManageStaffsState extends State<ManageStaffs> {
     bool obscureConfirm = true;
     bool isSaving = false;
 
-    // 🛠️ State variables for password strength inside the dialog
     int passwordStrength = 0;
     List<String> missingRequirements = [
       "12+ characters", "uppercase", "lowercase", "number", "special character (.,?!@#\$%)"
@@ -122,7 +121,6 @@ class _ManageStaffsState extends State<ManageStaffs> {
       builder: (context) => StatefulBuilder(
         builder: (context, setModalState) {
 
-          // 🛠️ Function to evaluate strength real-time
           void evaluatePasswordStrength(String password) {
             List<String> missing = [];
             int metConditions = 0;
@@ -145,7 +143,6 @@ class _ManageStaffsState extends State<ManageStaffs> {
             });
           }
 
-          // 🛠️ Widget to display the strength bars and missing requirements
           Widget buildPasswordIndicator() {
             if (passCtrl.text.isEmpty) return const SizedBox.shrink();
 
@@ -210,7 +207,6 @@ class _ManageStaffsState extends State<ManageStaffs> {
                     const Text("Tap to upload photo", style: TextStyle(fontSize: 12, color: Colors.grey)),
                     const SizedBox(height: 20),
 
-                    // 🛠️ Applied input limiters to Name fields
                     Row(
                       children: [
                         Expanded(
@@ -238,7 +234,6 @@ class _ManageStaffsState extends State<ManageStaffs> {
                     ),
                     const SizedBox(height: 10),
                     
-                    // 🛠️ Applied input limiter to Email field
                     TextFormField(
                       controller: emailCtrl, 
                       inputFormatters: [LengthLimitingTextInputFormatter(100)],
@@ -255,7 +250,7 @@ class _ManageStaffsState extends State<ManageStaffs> {
                     TextFormField(
                       controller: passCtrl,
                       obscureText: obscurePassword,
-                      onChanged: (val) => evaluatePasswordStrength(val), // 🛠️ Trigger strength evaluation
+                      onChanged: (val) => evaluatePasswordStrength(val), 
                       decoration: InputDecoration(
                         labelText: isEditing ? "New Password (Optional)" : "Password",
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
@@ -266,7 +261,7 @@ class _ManageStaffsState extends State<ManageStaffs> {
                       ),
                     ),
                     
-                    buildPasswordIndicator(), // 🛠️ Show indicator below password
+                    buildPasswordIndicator(), 
 
                     const SizedBox(height: 5),
 
@@ -296,7 +291,6 @@ class _ManageStaffsState extends State<ManageStaffs> {
                     return;
                   }
                   
-                  // 🛠️ Validating password rules
                   if (!isEditing && passCtrl.text.isEmpty) {
                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Password is required for new staff!")));
                     return;
@@ -458,21 +452,44 @@ class _ManageStaffsState extends State<ManageStaffs> {
                       var staff = _staffList[index];
                       String displayName = staff['full_name'] ?? "${staff['first_name'] ?? ''} ${staff['last_name'] ?? ''}".trim();
                       if (displayName.isEmpty) displayName = "Unknown Staff";
+                      
+                      // 🛠️ Determine if Student Officer
+                      bool isStudentOfficer = staff['is_student_officer'] == 1 || staff['is_student_officer'] == true;
 
                       return ListTile(
                         contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                         leading: CircleAvatar(
                           radius: 25,
-                          backgroundColor: Colors.grey[300], 
+                          backgroundColor: isStudentOfficer ? Colors.amber : const Color(0xFF000B6B),
                           backgroundImage: staff['profile_pic_url'] != null 
                               ? NetworkImage('${ApiConfig.baseUrl}/${staff['profile_pic_url']}')
                               : null,
                           child: staff['profile_pic_url'] == null 
-                              ? const Icon(Icons.security, color: Colors.white, size: 30)
+                              ? Icon(isStudentOfficer ? Icons.school : Icons.admin_panel_settings, color: Colors.white, size: 24)
                               : null,
                         ),
-                        title: Text(displayName, style: const TextStyle(fontWeight: FontWeight.bold)),
-                        subtitle: Text(staff['email'] ?? 'No email'),
+                        // 🛠️ Updated Title and Subtitle implementation
+                        title: Text(
+                          displayName, 
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 4),
+                            Text(
+                              isStudentOfficer ? "Student Officer" : "Officer",
+                              style: TextStyle(
+                                fontSize: 13, 
+                                color: isStudentOfficer ? Colors.orange.shade800 : Colors.blue.shade800, 
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(staff['email'] ?? 'No email', style: const TextStyle(fontSize: 12)),
+                          ],
+                        ),
                         
                         trailing: PopupMenuButton<String>(
                           icon: const Icon(Icons.more_vert),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:image_picker/image_picker.dart';
@@ -27,11 +28,23 @@ class _ManageCandidatesState extends State<ManageCandidates> {
   ];
 
   final List<String> _courses = [
-    'Bachelor of Science in Information Technology',
-    'Bachelor of Elementary Education',
-    'Bachelor of Secondary Education',
-    'Bachelor of Arts in Communication',
+    'Bachelor of Science in Tourism Management',
     'Bachelor of Science in Hospitality Management',
+    'Bachelor of Entrepreneurship',
+    'Bachelor of Arts in Communication',
+    'Bachelor of Arts in Political Science',
+    'Bachelor of Arts in English Language',
+    'Bachelor of Science in Social Work',
+    'Bachelor of Science in Biology',
+    'Bachelor of Science in Information Technology',
+    'Bachelor of Library and Information Science',
+    'Bachelor of Music in Music Education',
+    'Bachelor of Early Childhood Education',
+    'Bachelor of Elementary Education',
+    'Bachelor of Special Needs Education',
+    'Bachelor of Physical Education',
+    'Bachelor of Technology and Livelihood Education',
+    'Bachelor of Secondary Education'
   ];
   final List<String> _years = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
 
@@ -44,15 +57,19 @@ class _ManageCandidatesState extends State<ManageCandidates> {
     _fetchQuestions(); 
   }
 
-  bool _isPollLocked() {
+  // 🛠️ SPLIT LOCK LOGIC: Differentiates between "Published" and "Ended"
+  bool _isPollEnded() {
     if (_selectedPollId == null || _polls.isEmpty) return false;
     final poll = _polls.firstWhere((p) => p['poll_id'] == _selectedPollId, orElse: () => null);
     if (poll == null) return false;
+    return poll['status'] == 'Ended' || poll['status'] == 'Expired';
+  }
 
-    bool isEnded = poll['status'] == 'Ended' || poll['status'] == 'Expired';
-    bool isPublished = poll['is_published'] == true || poll['is_published'] == 1;
-
-    return isEnded || isPublished;
+  bool _isPollPublished() {
+    if (_selectedPollId == null || _polls.isEmpty) return false;
+    final poll = _polls.firstWhere((p) => p['poll_id'] == _selectedPollId, orElse: () => null);
+    if (poll == null) return false;
+    return poll['is_published'] == true || poll['is_published'] == 1;
   }
 
   Future<void> _fetchQuestions() async {
@@ -278,6 +295,7 @@ class _ManageCandidatesState extends State<ManageCandidates> {
 
   void _showCandidateDialog({Map<String, dynamic>? candidate}) {
     final bool isEdit = candidate != null;
+    final bool isPublished = _isPollPublished(); // 🛠️ Check if published to lock down inputs
 
     final firstNameCtrl = TextEditingController(text: candidate?['first_name'] ?? '');
     final middleNameCtrl = TextEditingController(text: candidate?['middle_name'] ?? '');
@@ -294,6 +312,9 @@ class _ManageCandidatesState extends State<ManageCandidates> {
 
     String? selectedPosition = isEdit ? candidate['position'] : _selectedPosition;
     String? selectedParty = isEdit ? candidate['party_name'] : 'Independent';
+    
+    // Track withdrawal status
+    bool isWithdrawn = isEdit && (candidate['is_withdrawn'] == 1 || candidate['is_withdrawn'] == true);
 
     List<String> uniqueParties = ['Independent'];
     for (var p in _parties) {
@@ -358,7 +379,12 @@ class _ManageCandidatesState extends State<ManageCandidates> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(isEdit ? 'Edit Candidate Details' : 'Register New Candidate', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                          Text(
+                            isEdit 
+                              ? (isPublished ? 'Withdraw Candidate' : 'Edit Candidate Details') 
+                              : 'Register New Candidate', 
+                            style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)
+                          ),
                           IconButton(icon: const Icon(Icons.close, color: Colors.white), onPressed: () => Navigator.pop(context))
                         ],
                       ),
@@ -370,13 +396,47 @@ class _ManageCandidatesState extends State<ManageCandidates> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
+                            if (isPublished) ...[
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                margin: const EdgeInsets.only(bottom: 20.0),
+                                decoration: BoxDecoration(color: Colors.orange.shade50, border: Border.all(color: Colors.orange), borderRadius: BorderRadius.circular(8)),
+                                child: const Row(
+                                  children: [
+                                    Icon(Icons.lock, color: Colors.orange),
+                                    SizedBox(width: 10),
+                                    Expanded(child: Text("This poll is published. Personal details and Q&A are locked. You may only modify their withdrawal status.", style: TextStyle(color: Colors.orange))),
+                                  ],
+                                ),
+                              ),
+                            ],
+
+                            // 🛠️ ONLY SHOW WITHDRAWAL SLIDER IF POLL IS PUBLISHED AND WE ARE EDITING
+                            if (isEdit && isPublished) ...[
+                              SwitchListTile(
+                                title: const Text("Withdraw Candidate", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red, fontSize: 18)),
+                                subtitle: const Text("Flags candidate as withdrawn. Removes them from the ballot but preserves existing vote data."),
+                                activeColor: Colors.red,
+                                contentPadding: EdgeInsets.zero,
+                                value: isWithdrawn,
+                                onChanged: (bool value) {
+                                  setStateDialog(() {
+                                    isWithdrawn = value;
+                                  });
+                                },
+                              ),
+                              const SizedBox(height: 20),
+                              const Divider(),
+                              const SizedBox(height: 20),
+                            ],
+
                             const Text("1. Personal Details", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
                             const Divider(),
                             const SizedBox(height: 10),
 
                             Center(
                               child: GestureDetector(
-                                onTap: () async {
+                                onTap: isPublished ? null : () async {
                                   final pickedFile = await ImagePicker().pickImage(source: ImageSource.gallery);
                                   if (pickedFile != null) {
                                     final bytes = await pickedFile.readAsBytes();
@@ -395,10 +455,11 @@ class _ManageCandidatesState extends State<ManageCandidates> {
                                           ? const Icon(Icons.add_a_photo, color: Colors.grey, size: 30)
                                           : null,
                                     ),
-                                    Positioned(
-                                      bottom: 0, right: 0,
-                                      child: Container(padding: const EdgeInsets.all(5), decoration: const BoxDecoration(color: Colors.blue, shape: BoxShape.circle), child: const Icon(Icons.edit, color: Colors.white, size: 15)),
-                                    )
+                                    if (!isPublished)
+                                      Positioned(
+                                        bottom: 0, right: 0,
+                                        child: Container(padding: const EdgeInsets.all(5), decoration: const BoxDecoration(color: Colors.blue, shape: BoxShape.circle), child: const Icon(Icons.edit, color: Colors.white, size: 15)),
+                                      )
                                   ],
                                 ),
                               ),
@@ -407,11 +468,11 @@ class _ManageCandidatesState extends State<ManageCandidates> {
 
                             Row(
                               children: [
-                                Expanded(flex: 3, child: TextField(controller: firstNameCtrl, decoration: InputDecoration(labelText: 'First Name', border: OutlineInputBorder(borderRadius: BorderRadius.circular(16))))),
+                                Expanded(flex: 3, child: TextField(controller: firstNameCtrl, enabled: !isPublished, decoration: InputDecoration(labelText: 'First Name', border: OutlineInputBorder(borderRadius: BorderRadius.circular(16))))),
                                 const SizedBox(width: 10),
-                                Expanded(flex: 2, child: TextField(controller: middleNameCtrl, decoration: InputDecoration(labelText: 'M.I.', border: OutlineInputBorder(borderRadius: BorderRadius.circular(16))))),
+                                Expanded(flex: 2, child: TextField(controller: middleNameCtrl, enabled: !isPublished, decoration: InputDecoration(labelText: 'M.I.', border: OutlineInputBorder(borderRadius: BorderRadius.circular(16))))),
                                 const SizedBox(width: 10),
-                                Expanded(flex: 3, child: TextField(controller: lastNameCtrl, decoration: InputDecoration(labelText: 'Last Name', border: OutlineInputBorder(borderRadius: BorderRadius.circular(16))))),
+                                Expanded(flex: 3, child: TextField(controller: lastNameCtrl, enabled: !isPublished, decoration: InputDecoration(labelText: 'Last Name', border: OutlineInputBorder(borderRadius: BorderRadius.circular(16))))),
                               ],
                             ),
                             const SizedBox(height: 15),
@@ -421,9 +482,10 @@ class _ManageCandidatesState extends State<ManageCandidates> {
                                 Expanded(
                                   flex: 2, 
                                   child: DropdownMenu<String>(
+                                    enabled: !isPublished,
                                     expandedInsets: EdgeInsets.zero,
                                     initialSelection: selectedCourse,
-                                    requestFocusOnTap: false, // Prevents typing
+                                    requestFocusOnTap: false, 
                                     label: const Text('Course'),
                                     onSelected: (val) => setStateDialog(() => selectedCourse = val),
                                     dropdownMenuEntries: _courses.map((c) => DropdownMenuEntry(value: c, label: c)).toList(),
@@ -434,9 +496,10 @@ class _ManageCandidatesState extends State<ManageCandidates> {
                                 Expanded(
                                   flex: 1, 
                                   child: DropdownMenu<String>(
+                                    enabled: !isPublished,
                                     expandedInsets: EdgeInsets.zero,
                                     initialSelection: selectedYear,
-                                    requestFocusOnTap: false, // Prevents typing
+                                    requestFocusOnTap: false, 
                                     label: const Text('Year'),
                                     onSelected: (val) => setStateDialog(() => selectedYear = val),
                                     dropdownMenuEntries: _years.map((y) => DropdownMenuEntry(value: y, label: y)).toList(),
@@ -445,7 +508,7 @@ class _ManageCandidatesState extends State<ManageCandidates> {
                                 ),
                               ],
                             ),
-                            
+
                             const SizedBox(height: 30),
                             const Text("2. Election & Platform", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
                             const Divider(),
@@ -455,9 +518,10 @@ class _ManageCandidatesState extends State<ManageCandidates> {
                               children: [
                                 Expanded(
                                   child: DropdownMenu<String>(
+                                    enabled: !isPublished,
                                     expandedInsets: EdgeInsets.zero,
                                     initialSelection: selectedPosition,
-                                    requestFocusOnTap: false, // Prevents typing
+                                    requestFocusOnTap: false, 
                                     label: const Text('Running For'),
                                     onSelected: (val) => setStateDialog(() => selectedPosition = val),
                                     dropdownMenuEntries: _positions.map((p) => DropdownMenuEntry(value: p, label: p)).toList(),
@@ -467,9 +531,10 @@ class _ManageCandidatesState extends State<ManageCandidates> {
                                 const SizedBox(width: 10),
                                 Expanded(
                                   child: DropdownMenu<String>(
+                                    enabled: !isPublished,
                                     expandedInsets: EdgeInsets.zero,
                                     initialSelection: selectedParty,
-                                    requestFocusOnTap: false, // Prevents typing
+                                    requestFocusOnTap: false, 
                                     label: const Text('Party Affiliation'),
                                     onSelected: (val) => setStateDialog(() => selectedParty = val),
                                     dropdownMenuEntries: uniqueParties.map((p) => DropdownMenuEntry(value: p, label: p)).toList(),
@@ -480,7 +545,7 @@ class _ManageCandidatesState extends State<ManageCandidates> {
                             ),
                             const SizedBox(height: 15),
                             
-                            TextField(controller: platformCtrl, decoration: InputDecoration(labelText: 'General Platform / Bio', border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)), alignLabelWithHint: true), maxLines: 3),
+                            TextField(controller: platformCtrl, enabled: !isPublished, decoration: InputDecoration(labelText: 'General Platform / Bio', border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)), alignLabelWithHint: true), maxLines: 3),
 
                             const SizedBox(height: 30),
                             
@@ -495,7 +560,7 @@ class _ManageCandidatesState extends State<ManageCandidates> {
                                   ],
                                 ),
                                 TextButton.icon(
-                                  onPressed: () {
+                                  onPressed: isPublished ? null : () {
                                     _showManageQuestionsDialog();
                                     Future.delayed(const Duration(milliseconds: 500), () {
                                       if (mounted) setStateDialog(() {});
@@ -509,11 +574,11 @@ class _ManageCandidatesState extends State<ManageCandidates> {
                             const Divider(),
                             const SizedBox(height: 10),
 
-                            _buildQASection(1, q1, a1Ctrl, customQ1Ctrl, (val) => setStateDialog(() => q1 = val)),
+                            _buildQASection(1, q1, a1Ctrl, customQ1Ctrl, (val) => setStateDialog(() => q1 = val), !isPublished),
                             const SizedBox(height: 15),
-                            _buildQASection(2, q2, a2Ctrl, customQ2Ctrl, (val) => setStateDialog(() => q2 = val)),
+                            _buildQASection(2, q2, a2Ctrl, customQ2Ctrl, (val) => setStateDialog(() => q2 = val), !isPublished),
                             const SizedBox(height: 15),
-                            _buildQASection(3, q3, a3Ctrl, customQ3Ctrl, (val) => setStateDialog(() => q3 = val)),
+                            _buildQASection(3, q3, a3Ctrl, customQ3Ctrl, (val) => setStateDialog(() => q3 = val), !isPublished),
 
                           ],
                         ),
@@ -566,6 +631,7 @@ class _ManageCandidatesState extends State<ManageCandidates> {
                               req.fields['course_year'] = "$selectedCourse - $selectedYear";
                               req.fields['description_platform'] = platformCtrl.text;
                               req.fields['qa_data'] = jsonEncode(qaData); 
+                              req.fields['is_withdrawn'] = isWithdrawn.toString(); // Include withdrawal status
 
                               if (newImage != null && newImageBytes != null) {
                                 req.files.add(http.MultipartFile.fromBytes('photo', newImageBytes!, filename: newImage!.name));
@@ -584,7 +650,7 @@ class _ManageCandidatesState extends State<ManageCandidates> {
                                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error['detail'] ?? 'Operation failed'), backgroundColor: Colors.red));
                               }
                             },
-                            child: Text(isEdit ? 'Update Candidate' : 'Register Candidate', style: const TextStyle(fontWeight: FontWeight.bold)),
+                            child: Text(isEdit ? (isPublished ? 'Save Withdrawal Status' : 'Update Candidate') : 'Register Candidate', style: const TextStyle(fontWeight: FontWeight.bold)),
                           ),
                         ],
                       ),
@@ -599,7 +665,7 @@ class _ManageCandidatesState extends State<ManageCandidates> {
     );
   }
 
-  Widget _buildQASection(int index, String? selectedQ, TextEditingController answerCtrl, TextEditingController customCtrl, Function(String?) onChanged) {
+  Widget _buildQASection(int index, String? selectedQ, TextEditingController answerCtrl, TextEditingController customCtrl, Function(String?) onChanged, bool isEnabled) {
     bool isCustom = selectedQ == "Write a one-time custom question...";
 
     List<String> dynamicItems = _questionBank.map((q) => q['question_text'] as String).toList();
@@ -617,9 +683,10 @@ class _ManageCandidatesState extends State<ManageCandidates> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           DropdownMenu<String>(
+            enabled: isEnabled,
             expandedInsets: EdgeInsets.zero,
             initialSelection: selectedQ,
-            requestFocusOnTap: false, // Prevents typing
+            requestFocusOnTap: false, 
             label: Text('Question $index'),
             onSelected: onChanged,
             dropdownMenuEntries: dynamicItems.map((q) {
@@ -637,7 +704,7 @@ class _ManageCandidatesState extends State<ManageCandidates> {
             }).toList(),
             inputDecorationTheme: InputDecorationTheme(
               filled: true,
-              fillColor: Colors.white,
+              fillColor: isEnabled ? Colors.white : Colors.grey.shade200,
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(16))
             ),
           ),
@@ -646,14 +713,16 @@ class _ManageCandidatesState extends State<ManageCandidates> {
             const SizedBox(height: 10),
             TextField(
               controller: customCtrl,
-              decoration: InputDecoration(labelText: 'Type your custom question here', filled: true, fillColor: Colors.white, border: OutlineInputBorder(borderRadius: BorderRadius.circular(16))),
+              enabled: isEnabled,
+              decoration: InputDecoration(labelText: 'Type your custom question here', filled: true, fillColor: isEnabled ? Colors.white : Colors.grey.shade200, border: OutlineInputBorder(borderRadius: BorderRadius.circular(16))),
             ),
           ],
           
           const SizedBox(height: 10),
           TextField(
             controller: answerCtrl,
-            decoration: InputDecoration(labelText: 'Candidate Answer', filled: true, fillColor: Colors.white, border: OutlineInputBorder(borderRadius: BorderRadius.circular(16))),
+            enabled: isEnabled,
+            decoration: InputDecoration(labelText: 'Candidate Answer', filled: true, fillColor: isEnabled ? Colors.white : Colors.grey.shade200, border: OutlineInputBorder(borderRadius: BorderRadius.circular(16))),
             maxLines: 2,
           )
         ],
@@ -666,7 +735,11 @@ class _ManageCandidatesState extends State<ManageCandidates> {
     final filteredCandidates = _candidates.where((c) => c['position'] == _selectedPosition).toList();
     bool isMobile = MediaQuery.of(context).size.width < 700;
     
-    bool isLocked = _isPollLocked(); 
+    // 🛠️ APPLY STATUS CHECKS
+    bool isEnded = _isPollEnded(); 
+    bool isPublished = _isPollPublished();
+    
+    bool canRegister = !isPublished && !isEnded;
 
     return Padding(
       padding: const EdgeInsets.all(20),
@@ -686,7 +759,7 @@ class _ManageCandidatesState extends State<ManageCandidates> {
                   if (_polls.isNotEmpty)
                     DropdownMenu<int>(
                       initialSelection: _selectedPollId,
-                      requestFocusOnTap: false, // Prevents typing
+                      requestFocusOnTap: false, 
                       onSelected: (int? newValue) {
                         if (newValue != null) {
                           setState(() {
@@ -715,17 +788,17 @@ class _ManageCandidatesState extends State<ManageCandidates> {
                     ),
                   
                   Tooltip(
-                    message: isLocked ? "Poll is published or ended. Cannot modify." : "Register a new candidate",
+                    message: isEnded ? "Poll has ended." : isPublished ? "Poll is published. Cannot add new candidates." : "Register a new candidate",
                     child: ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: isLocked ? Colors.grey : Colors.amber, 
+                        backgroundColor: canRegister ? Colors.amber : Colors.grey, 
                         foregroundColor: const Color(0xFF000B6B), 
                         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18), 
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))
                       ),
                       icon: const Icon(Icons.person_add),
                       label: const Text("Register New Candidate", style: TextStyle(fontWeight: FontWeight.bold)),
-                      onPressed: isLocked ? null : () => _showCandidateDialog(),
+                      onPressed: canRegister ? () => _showCandidateDialog() : null,
                     ),
                   )
                 ],
@@ -735,13 +808,15 @@ class _ManageCandidatesState extends State<ManageCandidates> {
           const SizedBox(height: 10),
           
           Text(
-            isLocked 
-              ? "This election is published or ended. Registration and editing are permanently locked." 
-              : "Register, edit, or remove candidates for the selected poll.", 
+            isEnded 
+              ? "This election has ended. All candidate records are permanently locked." 
+              : isPublished 
+                ? "This election is active. You may only modify withdrawal status."
+                : "Register, edit, or remove candidates for the selected poll.", 
             style: TextStyle(
-              color: isLocked ? Colors.redAccent : Colors.grey, 
+              color: isEnded ? Colors.redAccent : isPublished ? Colors.orangeAccent : Colors.grey, 
               fontSize: 16, 
-              fontWeight: isLocked ? FontWeight.bold : FontWeight.normal
+              fontWeight: (isEnded || isPublished) ? FontWeight.bold : FontWeight.normal
             )
           ),
           const SizedBox(height: 20),
@@ -809,22 +884,34 @@ class _ManageCandidatesState extends State<ManageCandidates> {
                                           child: candidate['photo_url'] == null ? const Icon(Icons.person, color: Colors.grey) : null,
                                         ),
                                         title: Text(candidate['name'] ?? 'Unknown', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                                        subtitle: Text('${candidate['party_name']} • ${candidate['course_year']}'),
+                                        subtitle: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text('${candidate['party_name']} • ${candidate['course_year']}'),
+                                            if (candidate['is_withdrawn'] == 1 || candidate['is_withdrawn'] == true)
+                                              Container(
+                                                margin: const EdgeInsets.only(top: 5),
+                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                                decoration: BoxDecoration(color: Colors.red.shade100, borderRadius: BorderRadius.circular(8)),
+                                                child: Text("WITHDRAWN", style: TextStyle(color: Colors.red.shade800, fontSize: 10, fontWeight: FontWeight.bold)),
+                                              )
+                                          ],
+                                        ),
                                         trailing: Row(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
                                             Tooltip(
-                                              message: isLocked ? "Poll is published or ended. Cannot modify." : "Edit Candidate", 
+                                              message: isEnded ? "Poll has ended. Cannot modify." : isPublished ? "Withdraw Candidate" : "Edit Candidate", 
                                               child: IconButton(
-                                                icon: Icon(Icons.edit, color: isLocked ? Colors.grey : Colors.blue), 
-                                                onPressed: isLocked ? null : () => _showCandidateDialog(candidate: candidate)
+                                                icon: Icon(isPublished ? Icons.block : Icons.edit, color: isEnded ? Colors.grey : isPublished ? Colors.orange : Colors.blue), 
+                                                onPressed: isEnded ? null : () => _showCandidateDialog(candidate: candidate)
                                               )
                                             ),
                                             Tooltip(
-                                              message: isLocked ? "Poll is published or ended. Cannot modify." : "Delete Candidate", 
+                                              message: isEnded ? "Poll has ended." : isPublished ? "Use Edit to withdraw candidate." : "Delete Candidate", 
                                               child: IconButton(
-                                                icon: Icon(Icons.delete, color: isLocked ? Colors.grey : Colors.red), 
-                                                onPressed: isLocked ? null : () => _deleteCandidate(candidate['candidate_id'])
+                                                icon: Icon(Icons.delete, color: (isPublished || isEnded) ? Colors.grey : Colors.red), 
+                                                onPressed: (isPublished || isEnded) ? null : () => _deleteCandidate(candidate['candidate_id'])
                                               )
                                             ),
                                           ],

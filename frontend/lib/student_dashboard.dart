@@ -408,10 +408,14 @@ class _CandidatePlatformsViewState extends State<CandidatePlatformsView> {
         throw Exception("Failed to fetch candidates");
       }
 
-      final List<dynamic> candidates = jsonDecode(response.body);
+      final List<dynamic> allCandidates = jsonDecode(response.body);
       Map<String, List<dynamic>> grouped = {};
 
-      for (var c in candidates) {
+      for (var c in allCandidates) {
+        // 🛠️ FIX: Filter out any candidate who has the 'is_withdrawn' flag
+        bool isWithdrawn = c['is_withdrawn'] == 1 || c['is_withdrawn'] == true;
+        if (isWithdrawn) continue; // Skip this candidate, they will not be shown on the platform/ballot
+
         String pos = c['position'] ?? 'Unknown Position';
         grouped.putIfAbsent(pos, () => []).add(c);
       }
