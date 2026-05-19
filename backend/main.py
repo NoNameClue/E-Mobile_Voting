@@ -3,10 +3,10 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from database import Base, engine
-from routers import auth_router, users_router, staffs_router, parties_router, polls_router, candidates_router, voting_router, questions_router
+from routers import auth_router, users_router, staffs_router, parties_router, polls_router, candidates_router, voting_router, questions_router, staff_applications_router
 
 # Import all routers
-from routers import auth_router, users_router, staffs_router, parties_router, polls_router, candidates_router, voting_router
+from routers import auth_router, users_router, staffs_router, parties_router, polls_router, candidates_router, voting_router, staff_applications_router
 
 # Create database tables safely
 try:
@@ -39,3 +39,4 @@ app.include_router(polls_router.router)
 app.include_router(candidates_router.router)
 app.include_router(voting_router.router)
 app.include_router(questions_router.router)
+app.include_router(staff_applications_router.router)

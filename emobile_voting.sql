@@ -4,6 +4,8 @@
 --
 -- Host: 127.0.0.1
 -- Generation Time: May 18, 2026 at 09:41 AM
+-- Generation Time: May 18, 2026 at 10:54 AM
+
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -470,6 +472,24 @@ INSERT INTO `question_bank` (`question_id`, `question_text`) VALUES
 (1, 'How do you plan to address student concerns?'),
 (3, 'How will you ensure transparency in your role?'),
 (2, 'Why are you the best fit for this position?');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `staff_applications`
+--
+
+CREATE TABLE `staff_applications` (
+  `application_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `full_name` varchar(255) DEFAULT NULL,
+  `student_number` varchar(100) DEFAULT NULL,
+  `course` varchar(100) DEFAULT NULL,
+  `intent` text DEFAULT NULL,
+  `qualifications` text DEFAULT NULL,
+  `status` varchar(50) DEFAULT 'Pending',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -152732,6 +152752,13 @@ ALTER TABLE `question_bank`
   ADD KEY `ix_question_bank_question_id` (`question_id`);
 
 --
+-- Indexes for table `staff_applications`
+--
+ALTER TABLE `staff_applications`
+  ADD PRIMARY KEY (`application_id`),
+  ADD KEY `user_id` (`user_id`);
+
+--
 -- Indexes for table `users`
 --
 ALTER TABLE `users`
@@ -152784,6 +152811,12 @@ ALTER TABLE `question_bank`
   MODIFY `question_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
+-- AUTO_INCREMENT for table `staff_applications`
+--
+ALTER TABLE `staff_applications`
+  MODIFY `application_id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
@@ -152816,6 +152849,12 @@ ALTER TABLE `candidate_qa`
 --
 ALTER TABLE `parties`
   ADD CONSTRAINT `parties_ibfk_1` FOREIGN KEY (`poll_id`) REFERENCES `polls` (`poll_id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `staff_applications`
+--
+ALTER TABLE `staff_applications`
+  ADD CONSTRAINT `staff_applications_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`);
 
 --
 -- Constraints for table `votes`

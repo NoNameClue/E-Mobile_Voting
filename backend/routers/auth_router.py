@@ -64,18 +64,39 @@ def register_user(
 @router.post("/api/login")
 def login(user: UserLogin, db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.email == user.email).first()
+
     if not db_user or not pwd_context.verify(user.password, db_user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid email or password")
-    
+
     if not db_user.is_active:
         raise HTTPException(status_code=403, detail="Account is disabled")
 
+    # Handle roles if stored as comma-separated string
+    roles = []
+    if isinstance(db_user.role, str):
+        roles = [r.strip() for r in db_user.role.split(",")]
+    elif db_user.role:
+        roles = [db_user.role]
+    else:
+        roles = ["Student"]
+
+    # Generate initial token for primary role
+    selected_role = roles[0]
+
     access_token = create_access_token(
-        data={"sub": db_user.email, "role": db_user.role},
+        data={
+            "sub": db_user.email,
+            "role": selected_role
+        },
         expires_delta=timedelta(hours=24)
     )
     
+    # Combined Return Payload: 
+    # Satisfies both the new multi-role logic and the Flutter app's 'is_student_officer' dependency
     return {
+        "multi_role": len(roles) > 1,
+        "roles": roles,
+        "email": db_user.email,
         "access_token": access_token, 
         "token_type": "bearer", 
         "user": {
@@ -83,6 +104,45 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
             "is_student_officer": getattr(db_user, 'is_student_officer', False),
             "permissions": getattr(db_user, 'permissions', [])
         }
+    }
+
+@router.post("/api/select-role")
+def select_role(data: dict, db: Session = Depends(get_db)):
+    email = data.get("email")
+    selected_role = data.get("role")
+
+    db_user = db.query(User).filter(User.email == email).first()
+
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    roles = []
+    if isinstance(db_user.role, str):
+        roles = [r.strip() for r in db_user.role.split(",")]
+    elif db_user.role:
+        roles = [db_user.role]
+
+    # Temporarily grant authorization if they have the is_student_officer flag
+    if getattr(db_user, 'is_student_officer', False):
+        if "Staff" not in roles: roles.append("Staff")
+        if "Student" not in roles: roles.append("Student")
+
+    if selected_role not in roles:
+        raise HTTPException(status_code=403, detail="Invalid role")
+
+    access_token = create_access_token(
+        data={
+            "sub": db_user.email,
+            "role": selected_role
+        },
+        expires_delta=timedelta(hours=24)
+    )
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "role": selected_role,
+        "permissions": getattr(db_user, 'permissions', [])
     }
 
 @router.get("/api/users/me")

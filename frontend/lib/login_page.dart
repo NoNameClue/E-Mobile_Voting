@@ -23,10 +23,10 @@ class _LoginPageState extends State<LoginPage> {
 
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
-    
-    setState(() { 
-      _isLoading = true; 
-      _errorMessage = ''; 
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = '';
     });
 
     http.Response response;
@@ -58,6 +58,7 @@ class _LoginPageState extends State<LoginPage> {
         await prefs.setString('jwt_token', data['access_token']);
         
         bool isStudentOfficer = false;
+        bool isMultiRole = data['multi_role'] == true;
         String role = 'Student';
         List<String> perms = [];
 
@@ -68,7 +69,7 @@ class _LoginPageState extends State<LoginPage> {
         role = userData['role'] ?? 'Student';
         
         // 🛠️ FIX: Bulletproof list casting. Converts List<dynamic> to strictly List<String>
-        var rawPerms = userData['permissions'];
+        var rawPerms = userData['permissions'] ?? data['permissions'];
         if (rawPerms != null) {
           if (rawPerms is String) {
             try {
@@ -83,7 +84,7 @@ class _LoginPageState extends State<LoginPage> {
         }
         
         // Proceed with Navigation
-        if (role == 'Student' && isStudentOfficer) {
+        if ((role == 'Student' && isStudentOfficer) || isMultiRole) {
           if (!mounted) return;
           _showRoleSelectionDialog(data, prefs, perms);
         } else {

@@ -43,6 +43,9 @@ class _MyVotesViewState extends State<MyVotesView> {
           (p['is_published'] == 1 || p['is_published'] == true)
         ).toList();
 
+        // ✅ INCOMING BRANCH FEATURE: DESCENDING ORDER (NEWEST FIRST)
+        _polls.sort((a, b) => (b['poll_id']).compareTo(a['poll_id']));
+
         if (_polls.isNotEmpty) {
           _selectedPoll = _polls.firstWhere((p) => p['status'] != 'Ended' && p['is_archived'] != 1, orElse: () => _polls.first);
         }
@@ -271,7 +274,6 @@ class _MyVotesViewState extends State<MyVotesView> {
           return InkWell(
             onTap: () {
               setState(() {
-                // If on mobile and clicking the currently expanded card, collapse it
                 if (isMobile && isDisplaying) {
                   _displayingCandidate = null;
                 } else {
@@ -313,7 +315,6 @@ class _MyVotesViewState extends State<MyVotesView> {
                           children: [
                             Text(candidate["position"] ?? "Position", style: TextStyle(fontWeight: FontWeight.bold, color: primaryColor, fontSize: 12)),
                             const SizedBox(height: 2),
-                            // 🛠️ FIX: Shows badge if withdrawn
                             Row(
                               children: [
                                 Flexible(child: Text(candidate["name"] ?? "Unknown", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16), overflow: TextOverflow.ellipsis)),
@@ -330,7 +331,6 @@ class _MyVotesViewState extends State<MyVotesView> {
                           ],
                         ),
                       ),
-                      // Dropdown indicator for mobile
                       if (isMobile)
                         Icon(
                           isDisplaying ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
@@ -338,7 +338,6 @@ class _MyVotesViewState extends State<MyVotesView> {
                         )
                     ],
                   ),
-                  // Inline Mobile Metrics Expansion
                   if (isMobile && isDisplaying)
                     _buildMobileExpandedMetrics(candidate)
                 ],
@@ -456,7 +455,6 @@ class _MyVotesViewState extends State<MyVotesView> {
             ),
             const SizedBox(height: 20),
 
-            // 🛠️ FIX: Adds the Withdrawn badge to the detail panel
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
