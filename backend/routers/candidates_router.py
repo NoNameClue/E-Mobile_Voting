@@ -22,7 +22,6 @@ def add_candidate(
     photo: UploadFile = File(None),
     db: Session = Depends(get_db)
 ):
-    # Check if Poll is already published
     poll = db.query(Poll).filter(Poll.poll_id == poll_id).first()
     if poll and poll.is_published:
         raise HTTPException(status_code=400, detail="Cannot register candidates. This poll is already published and locked.")
@@ -59,7 +58,7 @@ def add_candidate(
         course_year=course_year,
         description_platform=description_platform,
         photo_url=file_path,
-        is_withdrawn=False # Initialize as active
+        is_withdrawn=False
     )
     db.add(new_candidate)
     db.commit()
@@ -120,7 +119,7 @@ def update_candidate(
     course_year: str = Form(...),
     description_platform: str = Form(""),
     qa_data: str = Form(None), 
-    is_withdrawn: str = Form("false"), # 🛠️ FIX: Accept exactly as a string from Flutter
+    is_withdrawn: str = Form("false"), #Accept exactly as a string from Flutter
     photo: UploadFile = File(None),
     db: Session = Depends(get_db)
 ):
@@ -130,10 +129,13 @@ def update_candidate(
         
     poll = db.query(Poll).filter(Poll.poll_id == poll_id).first()
     
-    # 🛠️ FIX: Manually and safely convert the text string to a Python Boolean
+    if poll and poll.is_published:
+        raise HTTPException(status_code=400, detail="Poll is published.")
+    
+    #Manually and safely convert the text string to a Python Boolean
     withdrawn_status = str(is_withdrawn).lower() in ['true', '1', 'yes', 'on']
     
-    # 🛠️ WITHDRAWAL BYPASS: If poll is published, STRICTLY only allow withdrawal update.
+    # WITHDRAWAL BYPASS: If poll is published, STRICTLY only allow withdrawal update.
     if poll and poll.is_published:
         db_cand.is_withdrawn = withdrawn_status
         db.commit()
@@ -189,7 +191,10 @@ def delete_candidate(candidate_id: int, db: Session = Depends(get_db)):
         
     poll = db.query(Poll).filter(Poll.poll_id == db_cand.poll_id).first()
     
-    # 🛠️ WITHDRAWAL BYPASS: If admin deletes during an active poll, soft-delete instead!
+    if poll and poll.is_published:
+        raise HTTPException(status_code=400, detail="Poll is published.")
+    
+    # WITHDRAWAL BYPASS: If admin deletes during an active poll, soft-delete instead!
     if poll and poll.is_published:
         db_cand.is_withdrawn = True
         db.commit()

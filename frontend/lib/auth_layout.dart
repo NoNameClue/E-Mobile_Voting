@@ -153,16 +153,13 @@ class AuthLayout extends StatelessWidget {
     );
   }
 
-  // ==========================================
   // MOBILE / ANDROID LAYOUT
-  // ==========================================
   Widget _buildMobileLayout(BuildContext context) {
     return SingleChildScrollView(
       child: Column(
         children: [
-          // -----------------------------------------------------
+
           // MOBILE HEADER: SLIMMED DOWN
-          // -----------------------------------------------------
           Container(
             color: const Color(0xFF000B6B),
             // CHANGED: Reduced vertical padding from 15 to 4
@@ -242,9 +239,8 @@ class AuthLayout extends StatelessWidget {
     );
   }
 
-  // ==========================================
   // WEB / CHROME LAYOUT 
-  // ==========================================
+ 
   Widget _buildWebLayout(BuildContext context) {
     return SingleChildScrollView(
       child: Container(
@@ -252,9 +248,7 @@ class AuthLayout extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            // -----------------------------------------------------
-            // WEB HEADER: SLIMMED DOWN
-            // -----------------------------------------------------
+
             Container(
               color: const Color(0xFF000B6B), 
               // CHANGED: Reduced vertical padding from 15 to 4. 

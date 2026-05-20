@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from datetime import datetime, timezone # <-- Added timezone here
+from datetime import datetime, timezone 
 from database import get_db
 from models import Poll
 from schemas import PollCreate, PollUpdate
@@ -9,7 +9,7 @@ router = APIRouter(tags=["Polls"])
 
 @router.post("/api/polls")
 def create_poll(poll: PollCreate, db: Session = Depends(get_db)):
-    # 🛠️ FIX 1: Pydantic v2 replaces .dict() with .model_dump()
+    # Pydantic v2 replaces .dict() with .model_dump()
     new_poll = Poll(**poll.model_dump())
     db.add(new_poll)
     db.commit()
@@ -18,7 +18,7 @@ def create_poll(poll: PollCreate, db: Session = Depends(get_db)):
 @router.get("/api/polls")
 def get_polls(db: Session = Depends(get_db)):
     polls = db.query(Poll).all()
-    # 🛠️ FIX 2: Updated to the modern timezone-aware UTC datetime
+    # Updated to the modern timezone-aware UTC datetime
     now = datetime.now(timezone.utc).replace(tzinfo=None) # Keep naive to match DB
     result = []
     for p in polls:
@@ -48,7 +48,7 @@ def update_poll(poll_id: int, poll: PollUpdate, db: Session = Depends(get_db)):
     if not db_poll:
         raise HTTPException(status_code=404, detail="Poll not found")
     
-    # 🛠️ FIX 1: Pydantic v2 replaces .dict() with .model_dump()
+    # Pydantic v2 replaces .dict() with .model_dump()
     for key, value in poll.model_dump().items():
         setattr(db_poll, key, value)
     db.commit()

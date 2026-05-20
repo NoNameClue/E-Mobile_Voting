@@ -5,8 +5,6 @@ import 'api_config.dart'; // Using your dynamic config
 
 class ApiService {
 
-  // static const String baseUrl = "http://127.0.0.1:8000";
-
   // 1. NEW: Check if user already voted
   static Future<bool> checkVoteStatus(int pollId) async {
     final prefs = await SharedPreferences.getInstance();

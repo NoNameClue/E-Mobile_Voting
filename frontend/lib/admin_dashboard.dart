@@ -406,7 +406,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   ],
                 ),
                 const Padding(padding: EdgeInsets.symmetric(vertical: 20), child: Divider()),
-                // 🛠️ CHANGED: Text color changed to black
+                // Text color changed to black
                 const Text("Elected Officials Overview", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
                 const SizedBox(height: 15),
                 Wrap(
@@ -579,7 +579,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
               const SizedBox(height: 5),
               FittedBox(
                 fit: BoxFit.scaleDown,
-                // 🛠️ CHANGED: Text color changed to black
+                // CHANGED: Text color changed to black
                 child: Text(title, textAlign: TextAlign.center, style: const TextStyle(color: Colors.black, fontSize: 11, fontWeight: FontWeight.w600)),
               ),
             ],
@@ -596,7 +596,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // 🛠️ CHANGED: Text color changed to black
+                    // CHANGED: Text color changed to black
                     Text(title, style: const TextStyle(color: Colors.black, fontSize: 13, fontWeight: FontWeight.w600)),
                     const SizedBox(height: 5),
                     _isLoadingStats 

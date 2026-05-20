@@ -2,9 +2,8 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:io' show Platform;
 
 class ApiConfig {
-  // Your laptop's actual Wi-Fi IP (You mentioned earlier it was 192.168.1.16)
-  // You only need this when testing on your REAL, physical phone.
-  static const String physicalPhoneIp = '192.168.1.16';
+
+  static const String physicalPhoneIp = '10.10.216.1';
 
   static String get baseUrl {
     // 1. CHROME / WEB TESTING

@@ -55,7 +55,6 @@ class CandidateUpdate(BaseModel):
 class StatusUpdate(BaseModel):
     is_active: bool
 
-# ADDED AS REQUESTED
 class UserResponse(BaseModel):
     user_id: int
     email: str

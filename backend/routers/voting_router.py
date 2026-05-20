@@ -56,7 +56,7 @@ def get_my_votes(db: Session = Depends(get_db), current_user: User = Depends(get
                 "position": candidate.position,
                 "party": candidate.party_name,
                 "photo": candidate.photo_url,
-                "is_withdrawn": getattr(candidate, 'is_withdrawn', False) # 🛠️ FIX: Now sends this flag
+                "is_withdrawn": getattr(candidate, 'is_withdrawn', False) # FIX: Now sends this flag
             })
 
     result = [{"poll_id": pid, "candidates": cands} for pid, cands in poll_groups.items()]

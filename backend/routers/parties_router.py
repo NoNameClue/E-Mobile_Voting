@@ -25,9 +25,8 @@ class ApplicationApproveData(BaseModel):
     party_name: str
     candidates: List[dict]
 
-# ==========================================
 # 1. STANDARD PARTY ENDPOINTS
-# ==========================================
+
 @router.get("/api/parties/lineups")
 def get_party_lineups(db: Session = Depends(get_db)):
     candidates = db.query(Candidate).all()
@@ -67,7 +66,7 @@ def create_party(party: PartyCreate, db: Session = Depends(get_db)):
     new_party = Party(poll_id=party.poll_id, name=party.name, platform_bio=party.platform_bio)
     db.add(new_party)
     db.commit()
-    return new_party
+    return {"party_id": new_party.party_id, "name": new_party.name, "platform_bio": new_party.platform_bio}
 
 @router.put("/api/parties/{party_id}")
 def update_party(party_id: int, party_data: PartyUpdate, db: Session = Depends(get_db)):
@@ -99,10 +98,8 @@ def delete_party(party_id: int, db: Session = Depends(get_db)):
     db.commit()
     return {"message": "Party deleted"}
 
+# 2. PARTY APPLICATION ENDPOINTS
 
-# ==========================================
-# 2. PARTY APPLICATION ENDPOINTS (NEW)
-# ==========================================
 @router.post("/api/parties/apply")
 def submit_party_application(
     poll_id: int = Form(...),

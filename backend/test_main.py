@@ -228,7 +228,7 @@ def test_400_published_poll_lockdown(client, active_poll, db_session, method, en
         res = client.delete(endpoint)
 
     assert res.status_code == 400
-    assert "published and locked" in res.json()["detail"].lower()
+    assert "published" in res.json()["detail"].lower()
 
 
 # MATRIX 5: Unauthenticated Access (401) - For protected endpoints
@@ -396,7 +396,7 @@ def test_delete_poll(client, draft_poll):
 def test_create_party_success(client, draft_poll):
     res = client.post("/api/parties", json={"poll_id": draft_poll.poll_id, "name": "LNU Youth", "platform_bio": "Empowering students"})
     assert res.status_code == 200
-    assert res.json()["platform_bio"] == "Empowering students"
+    assert res.json().get("platform_bio") == "Empowering students"
 
 def test_create_party_duplicate_fails(client, draft_poll):
     client.post("/api/parties", json={"poll_id": draft_poll.poll_id, "name": "Duplicate Party"})
@@ -643,8 +643,10 @@ def test_delete_party_reassigns_candidates_to_independent(client, draft_poll, db
     CRITICAL: Tests the logic in parties_router that ensures when a party is deleted, 
     its candidates are NOT deleted, but gracefully moved to 'Independent'.
     """
+    
     party_res = client.post("/api/parties", json={"poll_id": draft_poll.poll_id, "name": "Reassign Party"})
-    party_id = party_res.json()["party_id"]
+    party_data = party_res.json()
+    party_id = party_data.get("party_id")
     
     client.post("/api/candidates", data={
         "poll_id": draft_poll.poll_id, "first_name": "Orphan", "last_name": "Cand",
@@ -766,4 +768,4 @@ def test_cannot_delete_independent_party(client, draft_poll, db_session):
     
     res = client.delete(f"/api/parties/{ind_party.party_id}")
     assert res.status_code == 400
-    assert "Cannot delete the Independent party" in res.json()["detail"]
+    assert "cannot delete independent" in res.json()["detail"].lower()

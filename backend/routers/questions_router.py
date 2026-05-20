@@ -51,7 +51,7 @@ def edit_question(q_id: int, q: QuestionInput, db: Session = Depends(get_db)):
 def delete_question(q_id: int, db: Session = Depends(get_db)):
     db_q = db.query(QuestionBank).filter(QuestionBank.question_id == q_id).first()
     
-    # 🛠️ FIX: Add the missing 404 handler
+    # Add the missing 404 handler
     if not db_q:
         raise HTTPException(status_code=404, detail="Question not found.")
         

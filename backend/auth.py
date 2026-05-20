@@ -7,7 +7,7 @@ from passlib.context import CryptContext
 from database import get_db
 from models import User
 
-# 🛠️ FIX 1: Made the secret key slightly longer (32 bytes) to stop the InsecureKeyLengthWarning
+# Made the secret key slightly longer (32 bytes) to stop the InsecureKeyLengthWarning
 SECRET_KEY = "your_super_secret_jwt_key_here_for_lnu_voting"
 ALGORITHM = "HS256"
 
@@ -16,7 +16,7 @@ security = HTTPBearer()
 
 def create_access_token(data: dict, expires_delta: timedelta):
     to_encode = data.copy()
-    # 🛠️ FIX 2: Updated to the modern timezone-aware UTC datetime
+    # Updated to the modern timezone-aware UTC datetime
     expire = datetime.now(timezone.utc) + expires_delta
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)

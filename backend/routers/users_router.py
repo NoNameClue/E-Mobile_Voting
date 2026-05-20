@@ -4,14 +4,14 @@ from sqlalchemy import or_
 from database import get_db
 from models import User
 
-# 🛠️ ADDED IMPORTS for the new update endpoint
+# ADDED IMPORTS for the new update endpoint
 from pydantic import BaseModel
 from typing import Optional, List
 from auth import pwd_context 
 
 router = APIRouter(tags=["Users"])
 
-# 🛠️ ADDED SCHEMA: Defined here so you don't have to touch schemas.py
+# ADDED SCHEMA: Defined here so you don't have to touch schemas.py
 class UserAdminUpdate(BaseModel):
     course: Optional[str] = None
     password: Optional[str] = None
@@ -97,7 +97,7 @@ async def toggle_student_status(user_id: int, request: Request, db: Session = De
     return {"message": f"Status updated successfully to {student.is_active}"}
 
 
-# 🛠️ NEW ENDPOINT: This fixes your 404 error when saving from the Edit Modal
+# This fixes your 404 error when saving from the Edit Modal
 @router.put("/api/admin/users/{user_id}")
 def update_user_admin(user_id: int, update_data: UserAdminUpdate, db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.user_id == user_id).first()
