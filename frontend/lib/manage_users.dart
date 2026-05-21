@@ -5,8 +5,8 @@ import 'dart:async';
 import 'package:flutter/foundation.dart'; 
 import 'package:cached_network_image/cached_network_image.dart'; 
 import 'package:shimmer/shimmer.dart'; 
-import 'dart:math' as math; 
 import 'api_config.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ManageUsers extends StatefulWidget {
   const ManageUsers({super.key});
@@ -28,11 +28,9 @@ class _ManageUsersState extends State<ManageUsers> {
   bool _isAscending = false;       
   
   bool _isLoading = true;
-
   int _rowsPerPage = 20; 
   int _currentPage = 0;
 
-  // 🛠️ ADDED: Accessible tabs available for Student Officers
   final List<String> availablePanels = [
     "Dashboard", 
     "Users / Account Control", 
@@ -46,11 +44,7 @@ class _ManageUsersState extends State<ManageUsers> {
   List<dynamic> _getPaginatedStudents() {
     int start = _currentPage * _rowsPerPage;
     int end = start + _rowsPerPage;
-
-    if (end > _filteredStudents.length) {
-      end = _filteredStudents.length;
-    }
-
+    if (end > _filteredStudents.length) end = _filteredStudents.length;
     return _filteredStudents.sublist(start, end);
   }
 
@@ -93,7 +87,6 @@ class _ManageUsersState extends State<ManageUsers> {
       final response = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/admin/students?limit=100000'));
       if (response.statusCode == 200) {
         final parsedData = await compute(jsonDecode, response.body);
-        
         if (!mounted) return; 
         
         setState(() {
@@ -108,9 +101,7 @@ class _ManageUsersState extends State<ManageUsers> {
       }
     } catch (e) {
       setState(() => _isLoading = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to load users')));
-      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to load users')));
     }
   }
 
@@ -126,26 +117,13 @@ class _ManageUsersState extends State<ManageUsers> {
       if (response.statusCode == 200) {
         setState(() {
           final indexAll = _allStudents.indexWhere((s) => s['user_id'] == userId);
-          if (indexAll != -1) {
-            _allStudents[indexAll]['is_active'] = newStatus;
-          }
+          if (indexAll != -1) _allStudents[indexAll]['is_active'] = newStatus;
           final indexFiltered = _filteredStudents.indexWhere((s) => s['user_id'] == userId);
-          if (indexFiltered != -1) {
-            _filteredStudents[indexFiltered]['is_active'] = newStatus;
-          }
+          if (indexFiltered != -1) _filteredStudents[indexFiltered]['is_active'] = newStatus;
         });
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('User account ${newStatus ? 'activated' : 'deactivated'}.')),
-          );
-        }
-      } else {
-        throw Exception("Failed");
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to update status')));
-      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to update status')));
     }
   }
 
@@ -154,25 +132,19 @@ class _ManageUsersState extends State<ManageUsers> {
     try {
       final d = DateTime.parse(isoDate).toLocal();
       return "${d.month}/${d.day}/${d.year}";
-    } catch (e) {
-      return isoDate;
-    }
+    } catch (e) { return isoDate; }
   }
 
   void _sortData() {
     _filteredStudents.sort((a, b) {
       int cmp = 0;
       if (_sortBy == 'Name') {
-        String nameA = (a['full_name'] ?? '').toString().toLowerCase();
-        String nameB = (b['full_name'] ?? '').toString().toLowerCase();
-        cmp = nameA.compareTo(nameB);
+        cmp = (a['full_name'] ?? '').toString().toLowerCase().compareTo((b['full_name'] ?? '').toString().toLowerCase());
       } else if (_sortBy == 'Student ID') {
-        String idA = (a['student_number'] ?? '').toString().toLowerCase();
-        String idB = (b['student_number'] ?? '').toString().toLowerCase();
-        cmp = idA.compareTo(idB);
+        cmp = (a['student_number'] ?? '').toString().toLowerCase().compareTo((b['student_number'] ?? '').toString().toLowerCase());
       } else if (_sortBy == 'Date Created') {
-        DateTime dateA = a['created_at'] != null ? DateTime.tryParse(a['created_at']) ?? DateTime(2000) : DateTime(2000);
-        DateTime dateB = b['created_at'] != null ? DateTime.tryParse(b['created_at']) ?? DateTime(2000) : DateTime(2000);
+        DateTime dateA = DateTime.tryParse(a['created_at'] ?? '') ?? DateTime(2000);
+        DateTime dateB = DateTime.tryParse(b['created_at'] ?? '') ?? DateTime(2000);
         cmp = dateA.compareTo(dateB);
       }
       return _isAscending ? cmp : -cmp;
@@ -181,7 +153,6 @@ class _ManageUsersState extends State<ManageUsers> {
 
   void _applyFilters() {
     final query = _searchController.text.toLowerCase();
-
     setState(() {
       _currentPage = 0; 
       _filteredStudents = _allStudents.where((student) {
@@ -189,49 +160,432 @@ class _ManageUsersState extends State<ManageUsers> {
         final studentId = (student['student_number'] ?? '').toString().toLowerCase();
         final isActive = student['is_active'] == true || student['is_active'] == 1;
 
-        final parts = fullName.split(" ");
-        final firstName = parts.isNotEmpty ? parts.first : '';
-        final lastName = parts.length > 1 ? parts.last : '';
-
-        bool matchesSearch = false;
-
-        if (query.isEmpty) {
-          matchesSearch = true;
-        } else {
-          switch (_searchCriteria) {
-            case 'First Name':
-              matchesSearch = firstName.contains(query);
-              break;
-            case 'Last Name':
-              matchesSearch = lastName.contains(query);
-              break;
-            case 'Student ID':
-              matchesSearch = studentId.contains(query);
-              break;
-            case 'None':
-            default:
-              matchesSearch = fullName.contains(query) || studentId.contains(query);
-              break;
-          }
-        }
-
-        final matchesStatus =
-            _statusFilter == "all" ||
-            (_statusFilter == "active" && isActive) ||
-            (_statusFilter == "deactivated" && !isActive);
+        bool matchesSearch = query.isEmpty || fullName.contains(query) || studentId.contains(query);
+        bool matchesStatus = _statusFilter == "all" || (_statusFilter == "active" && isActive) || (_statusFilter == "deactivated" && !isActive);
 
         return matchesSearch && matchesStatus;
       }).toList();
-      
       _sortData();
     });
   }
 
   void _onSearchChanged(String query) {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
-    _debounce = Timer(const Duration(milliseconds: 500), () {
-      _applyFilters();
-    });
+    _debounce = Timer(const Duration(milliseconds: 500), () => _applyFilters());
+  }
+
+  Future<void> _openApplicationsModal() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('jwt_token') ?? '';
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: Container(
+            width: 600,
+            constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.8),
+            child: FutureBuilder(
+              future: http.get(Uri.parse('${ApiConfig.baseUrl}/api/admin/staff-applications'), headers: {'Authorization': 'Bearer $token'}),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError || !snapshot.hasData) {
+                  return const Center(child: Text("Error fetching applications."));
+                }
+
+                final response = snapshot.data as http.Response;
+                if (response.statusCode != 200) return const Center(child: Text("Failed to load"));
+
+                List<dynamic> applications = jsonDecode(response.body);
+
+                return Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: const BoxDecoration(color: Color(0xFF000B6B), borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text("Pending Staff Applications", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                          IconButton(icon: const Icon(Icons.close, color: Colors.white), onPressed: () => Navigator.pop(context)),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      child: applications.isEmpty
+                          ? const Center(child: Text("No pending applications right now.", style: TextStyle(color: Colors.grey)))
+                          : ListView.separated(
+                              padding: const EdgeInsets.all(15),
+                              itemCount: applications.length,
+                              separatorBuilder: (context, index) => const Divider(),
+                              itemBuilder: (context, index) {
+                                final app = applications[index];
+                                return Card(
+                                  elevation: 0,
+                                  color: Colors.grey.shade50,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(15.0),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            CircleAvatar(
+                                              backgroundColor: const Color(0xFF000B6B),
+                                              backgroundImage: app['profile_pic_url'] != null ? NetworkImage('${ApiConfig.baseUrl}/${app['profile_pic_url']}') : null,
+                                              child: app['profile_pic_url'] == null ? const Icon(Icons.person, color: Colors.white) : null,
+                                            ),
+                                            const SizedBox(width: 10),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(app['full_name'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                                  Text("${app['student_number']} • ${app['course']}", style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+                                                ],
+                                              ),
+                                            ),
+                                            Text(_formatDate(app['applied_at']), style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 15),
+                                        const Text("Intent Statement", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.blue)),
+                                        Text(app['intent_statement'], style: const TextStyle(fontSize: 14)),
+                                        const SizedBox(height: 10),
+                                        const Text("Relevant Experience", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.blue)),
+                                        Text(app['experience'], style: const TextStyle(fontSize: 14)),
+                                        const SizedBox(height: 10),
+                                        const Text("Availability", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.blue)),
+                                        Text(app['availability'], style: const TextStyle(fontSize: 14)),
+                                        const SizedBox(height: 15),
+                                        Row(
+                                          mainAxisAlignment: MainAxisAlignment.end,
+                                          children: [
+                                            TextButton(
+                                              onPressed: () => _reviewApplication(app['application_id'], "Rejected", context, token),
+                                              child: const Text("Reject", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                                            ),
+                                            const SizedBox(width: 10),
+                                            ElevatedButton(
+                                              style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
+                                              onPressed: () => _reviewApplication(app['application_id'], "Accepted", context, token),
+                                              child: const Text("Accept Application"),
+                                            ),
+                                          ],
+                                        )
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        );
+      }
+    );
+  }
+
+  Future<void> _reviewApplication(int appId, String status, BuildContext dialogContext, String token) async {
+    try {
+      final res = await http.put(
+        Uri.parse('${ApiConfig.baseUrl}/api/admin/staff-applications/$appId'),
+        headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
+        body: jsonEncode({"status": status}),
+      );
+      if (res.statusCode == 200) {
+        Navigator.pop(dialogContext); // close modal
+        _fetchStudents(); // refresh user list to show badge
+        _openApplicationsModal(); // reopen to refresh list
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Application $status', style: const TextStyle(color: Colors.white)), backgroundColor: status == 'Accepted' ? Colors.green : Colors.red));
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to update')));
+    }
+  }
+
+  void _showEditUserDialog(dynamic student) {
+    String? selectedCourse = student['course'];
+    if (selectedCourse != null && !_courses.contains(selectedCourse)) {
+      selectedCourse = null; 
+    }
+
+    final passwordController = TextEditingController();
+    final confirmPasswordController = TextEditingController();
+
+    bool obscure1 = true;
+    bool obscure2 = true;
+
+    int passwordStrength = 0;
+    List<String> missingRequirements = [
+      "12+ characters", "uppercase", "lowercase", "number", "special character (.,?!@#\$%)"
+    ];
+
+    bool isStudentOfficer = student['is_student_officer'] == 1 || student['is_student_officer'] == true;
+    List<String> selectedPermissions = [];
+    if (student['permissions'] != null) {
+      var perms = student['permissions'];
+      if (perms is String) {
+        selectedPermissions = List<String>.from(jsonDecode(perms));
+      } else if (perms is List) {
+        selectedPermissions = List<String>.from(perms);
+      }
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+
+            void evaluatePasswordStrength(String password) {
+              List<String> missing = [];
+              int metConditions = 0;
+
+              if (password.length >= 12) metConditions++; else missing.add("12+ characters");
+              if (RegExp(r'[A-Z]').hasMatch(password)) metConditions++; else missing.add("uppercase letter");
+              if (RegExp(r'[a-z]').hasMatch(password)) metConditions++; else missing.add("lowercase letter");
+              if (RegExp(r'[0-9]').hasMatch(password)) metConditions++; else missing.add("number");
+              if (RegExp(r'[.,?!@#\$%]').hasMatch(password)) metConditions++; else missing.add("special character (.,?!@#\$%)");
+
+              int strength = 0;
+              if (password.isEmpty) strength = 0;
+              else if (metConditions <= 2) strength = 1;
+              else if (metConditions <= 4) strength = 2;
+              else if (metConditions == 5) strength = 3;
+
+              setModalState(() {
+                passwordStrength = strength;
+                missingRequirements = missing;
+              });
+            }
+
+            Widget buildPasswordIndicator() {
+              if (passwordController.text.isEmpty) return const SizedBox.shrink();
+
+              Color strengthColor = Colors.grey;
+              String strengthLabel = "";
+
+              if (passwordStrength == 1) { strengthColor = Colors.redAccent; strengthLabel = "Weak"; }
+              else if (passwordStrength == 2) { strengthColor = Colors.orangeAccent; strengthLabel = "Fair"; }
+              else if (passwordStrength == 3) { strengthColor = Colors.greenAccent; strengthLabel = "Strong"; }
+
+              return Padding(
+                padding: const EdgeInsets.only(top: 5.0, bottom: 10.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(child: Container(height: 6, decoration: BoxDecoration(color: passwordStrength >= 1 ? strengthColor : Colors.grey.shade300, borderRadius: BorderRadius.circular(10)))),
+                        const SizedBox(width: 5),
+                        Expanded(child: Container(height: 6, decoration: BoxDecoration(color: passwordStrength >= 2 ? strengthColor : Colors.grey.shade300, borderRadius: BorderRadius.circular(10)))),
+                        const SizedBox(width: 5),
+                        Expanded(child: Container(height: 6, decoration: BoxDecoration(color: passwordStrength >= 3 ? strengthColor : Colors.grey.shade300, borderRadius: BorderRadius.circular(10)))),
+                        const SizedBox(width: 10),
+                        Text(strengthLabel, style: TextStyle(color: strengthColor, fontWeight: FontWeight.bold, fontSize: 12)),
+                      ],
+                    ),
+                    if (missingRequirements.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6.0),
+                        child: Text("Missing: ${missingRequirements.join(', ')}", style: TextStyle(color: Colors.orange.shade800, fontSize: 11, height: 1.3)),
+                      ),
+                  ],
+                ),
+              );
+            }
+
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: const Text("Edit Student Details", style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF000B6B))),
+              content: SingleChildScrollView(
+                child: SizedBox(
+                  width: 400, 
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      DropdownMenu<String>(
+                        expandedInsets: EdgeInsets.zero,
+                        initialSelection: selectedCourse,
+                        requestFocusOnTap: false,
+                        label: const Text("Course / Program"),
+                        onSelected: (String? newValue) {
+                          setModalState(() { selectedCourse = newValue; });
+                        },
+                        dropdownMenuEntries: _courses.map((String course) {
+                          return DropdownMenuEntry<String>(
+                            value: course,
+                            label: course,
+                            style: MenuItemButton.styleFrom(textStyle: const TextStyle(fontSize: 13)),
+                          );
+                        }).toList(),
+                        inputDecorationTheme: InputDecorationTheme(
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+
+                      TextField(
+                        controller: passwordController,
+                        obscureText: obscure1,
+                        onChanged: (val) => evaluatePasswordStrength(val), 
+                        decoration: InputDecoration(
+                          labelText: "New Password",
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
+                          suffixIcon: IconButton(
+                            icon: Icon(obscure1 ? Icons.visibility : Icons.visibility_off, color: Colors.grey),
+                            onPressed: () => setModalState(() => obscure1 = !obscure1),
+                          ),
+                        ),
+                      ),
+                      
+                      buildPasswordIndicator(), 
+
+                      const SizedBox(height: 5),
+
+                      TextField(
+                        controller: confirmPasswordController,
+                        obscureText: obscure2,
+                        decoration: InputDecoration(
+                          labelText: "Confirm Password",
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
+                          suffixIcon: IconButton(
+                            icon: Icon(obscure2 ? Icons.visibility : Icons.visibility_off, color: Colors.grey),
+                            onPressed: () => setModalState(() => obscure2 = !obscure2),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 20),
+                      const Divider(),
+                      SwitchListTile(
+                        title: const Text("Enable Student Officer Role", style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF000B6B))),
+                        subtitle: const Text("Grants this student access to the Staff Panel."),
+                        activeColor: Colors.amber,
+                        value: isStudentOfficer,
+                        onChanged: (bool value) {
+                          setModalState(() {
+                            isStudentOfficer = value;
+                            if (!isStudentOfficer) selectedPermissions.clear(); 
+                          });
+                        },
+                      ),
+                      if (isStudentOfficer)
+                        Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade300),
+                            borderRadius: BorderRadius.circular(8)
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text("Select Accessible Tabs:", style: TextStyle(fontWeight: FontWeight.bold)),
+                              const SizedBox(height: 10),
+                              ...availablePanels.map((panel) {
+                                return CheckboxListTile(
+                                  dense: true,
+                                  title: Text(panel, style: const TextStyle(fontSize: 14)),
+                                  value: selectedPermissions.contains(panel),
+                                  activeColor: const Color(0xFF000B6B),
+                                  onChanged: (bool? checked) {
+                                    setModalState(() {
+                                      if (checked == true) {
+                                        selectedPermissions.add(panel);
+                                      } else {
+                                        selectedPermissions.remove(panel);
+                                      }
+                                    });
+                                  },
+                                );
+                              }),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+              actionsPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+              actions: [
+                TextButton(
+                  child: const Text("Cancel", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+                  onPressed: () => Navigator.pop(context),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF000B6B),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  ),
+                  child: const Text("Save Changes", style: TextStyle(fontWeight: FontWeight.bold)),
+                  onPressed: () async {
+                    if (passwordController.text.isNotEmpty) {
+                      if (passwordStrength < 3) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text("Please meet all password requirements"), backgroundColor: Colors.red),
+                        );
+                        return;
+                      }
+                      if (passwordController.text != confirmPasswordController.text) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text("Passwords do not match"), backgroundColor: Colors.red),
+                        );
+                        return;
+                      }
+                    }
+
+                    try {
+                      await http.put(
+                        Uri.parse('${ApiConfig.baseUrl}/api/admin/users/${student['user_id']}'),
+                        headers: {"Content-Type": "application/json"},
+                        body: jsonEncode({
+                          "course": selectedCourse ?? student['course'],
+                          "password": passwordController.text.isNotEmpty
+                              ? passwordController.text
+                              : null,
+                          "is_student_officer": isStudentOfficer,
+                          "permissions": selectedPermissions
+                        }),
+                      );
+
+                      if (mounted) {
+                        Navigator.pop(context);
+                        _fetchStudents();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text("User updated successfully!", style: TextStyle(color: Colors.white)), backgroundColor: Colors.green),
+                        );
+                      }
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text("Update failed"), backgroundColor: Colors.red),
+                        );
+                      }
+                    }
+                  },
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   Widget _buildSearchCriteriaDropdown() {
@@ -415,7 +769,23 @@ class _ManageUsersState extends State<ManageUsers> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text("Users & Account Control", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white)),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text("Users & Account Control", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white)),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.amber, 
+                  foregroundColor: const Color(0xFF000B6B), 
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))
+                ),
+                icon: const Icon(Icons.assignment_ind),
+                label: const Text("Review Staff Applications", style: TextStyle(fontWeight: FontWeight.bold)),
+                onPressed: _openApplicationsModal,
+              )
+            ],
+          ),
           const SizedBox(height: 5),
           const Text("Manage student access and deactivate accounts if necessary.", style: TextStyle(color: Colors.white70, fontSize: 16)),
           const SizedBox(height: 20),
@@ -683,284 +1053,6 @@ class _ManageUsersState extends State<ManageUsers> {
         ], 
       ),
     ),
-    );
-  }
-
-  void _showEditUserDialog(dynamic student) {
-    String? selectedCourse = student['course'];
-    if (selectedCourse != null && !_courses.contains(selectedCourse)) {
-      selectedCourse = null; 
-    }
-
-    final passwordController = TextEditingController();
-    final confirmPasswordController = TextEditingController();
-
-    bool obscure1 = true;
-    bool obscure2 = true;
-
-    int passwordStrength = 0;
-    List<String> missingRequirements = [
-      "12+ characters", "uppercase", "lowercase", "number", "special character (.,?!@#\$%)"
-    ];
-
-    // 🛠️ ADDED: Initialize Student Officer toggles and permissions list
-    bool isStudentOfficer = student['is_student_officer'] == 1 || student['is_student_officer'] == true;
-    List<String> selectedPermissions = [];
-    if (student['permissions'] != null) {
-      var perms = student['permissions'];
-      if (perms is String) {
-        selectedPermissions = List<String>.from(jsonDecode(perms));
-      } else if (perms is List) {
-        selectedPermissions = List<String>.from(perms);
-      }
-    }
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-
-            void evaluatePasswordStrength(String password) {
-              List<String> missing = [];
-              int metConditions = 0;
-
-              if (password.length >= 12) metConditions++; else missing.add("12+ characters");
-              if (RegExp(r'[A-Z]').hasMatch(password)) metConditions++; else missing.add("uppercase letter");
-              if (RegExp(r'[a-z]').hasMatch(password)) metConditions++; else missing.add("lowercase letter");
-              if (RegExp(r'[0-9]').hasMatch(password)) metConditions++; else missing.add("number");
-              if (RegExp(r'[.,?!@#\$%]').hasMatch(password)) metConditions++; else missing.add("special character (.,?!@#\$%)");
-
-              int strength = 0;
-              if (password.isEmpty) strength = 0;
-              else if (metConditions <= 2) strength = 1;
-              else if (metConditions <= 4) strength = 2;
-              else if (metConditions == 5) strength = 3;
-
-              setModalState(() {
-                passwordStrength = strength;
-                missingRequirements = missing;
-              });
-            }
-
-            Widget buildPasswordIndicator() {
-              if (passwordController.text.isEmpty) return const SizedBox.shrink();
-
-              Color strengthColor = Colors.grey;
-              String strengthLabel = "";
-
-              if (passwordStrength == 1) { strengthColor = Colors.redAccent; strengthLabel = "Weak"; }
-              else if (passwordStrength == 2) { strengthColor = Colors.orangeAccent; strengthLabel = "Fair"; }
-              else if (passwordStrength == 3) { strengthColor = Colors.greenAccent; strengthLabel = "Strong"; }
-
-              return Padding(
-                padding: const EdgeInsets.only(top: 5.0, bottom: 10.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(child: Container(height: 6, decoration: BoxDecoration(color: passwordStrength >= 1 ? strengthColor : Colors.grey.shade300, borderRadius: BorderRadius.circular(10)))),
-                        const SizedBox(width: 5),
-                        Expanded(child: Container(height: 6, decoration: BoxDecoration(color: passwordStrength >= 2 ? strengthColor : Colors.grey.shade300, borderRadius: BorderRadius.circular(10)))),
-                        const SizedBox(width: 5),
-                        Expanded(child: Container(height: 6, decoration: BoxDecoration(color: passwordStrength >= 3 ? strengthColor : Colors.grey.shade300, borderRadius: BorderRadius.circular(10)))),
-                        const SizedBox(width: 10),
-                        Text(strengthLabel, style: TextStyle(color: strengthColor, fontWeight: FontWeight.bold, fontSize: 12)),
-                      ],
-                    ),
-                    if (missingRequirements.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 6.0),
-                        child: Text("Missing: ${missingRequirements.join(', ')}", style: TextStyle(color: Colors.orange.shade800, fontSize: 11, height: 1.3)),
-                      ),
-                  ],
-                ),
-              );
-            }
-
-            return AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              title: const Text("Edit Student Details", style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF000B6B))),
-              content: SingleChildScrollView(
-                child: SizedBox(
-                  width: 400, 
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      DropdownMenu<String>(
-                        expandedInsets: EdgeInsets.zero,
-                        initialSelection: selectedCourse,
-                        requestFocusOnTap: false,
-                        label: const Text("Course / Program"),
-                        onSelected: (String? newValue) {
-                          setModalState(() { selectedCourse = newValue; });
-                        },
-                        dropdownMenuEntries: _courses.map((String course) {
-                          return DropdownMenuEntry<String>(
-                            value: course,
-                            label: course,
-                            style: MenuItemButton.styleFrom(textStyle: const TextStyle(fontSize: 13)),
-                          );
-                        }).toList(),
-                        inputDecorationTheme: InputDecorationTheme(
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-
-                      TextField(
-                        controller: passwordController,
-                        obscureText: obscure1,
-                        onChanged: (val) => evaluatePasswordStrength(val), 
-                        decoration: InputDecoration(
-                          labelText: "New Password",
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
-                          suffixIcon: IconButton(
-                            icon: Icon(obscure1 ? Icons.visibility : Icons.visibility_off, color: Colors.grey),
-                            onPressed: () => setModalState(() => obscure1 = !obscure1),
-                          ),
-                        ),
-                      ),
-                      
-                      buildPasswordIndicator(), 
-
-                      const SizedBox(height: 5),
-
-                      TextField(
-                        controller: confirmPasswordController,
-                        obscureText: obscure2,
-                        decoration: InputDecoration(
-                          labelText: "Confirm Password",
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
-                          suffixIcon: IconButton(
-                            icon: Icon(obscure2 ? Icons.visibility : Icons.visibility_off, color: Colors.grey),
-                            onPressed: () => setModalState(() => obscure2 = !obscure2),
-                          ),
-                        ),
-                      ),
-
-                      // 🛠️ ADDED: Student Officer Toggle Switch and Permissions List
-                      const SizedBox(height: 20),
-                      const Divider(),
-                      SwitchListTile(
-                        title: const Text("Enable Student Officer Role", style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF000B6B))),
-                        subtitle: const Text("Grants this student access to the Staff Panel."),
-                        activeColor: Colors.amber,
-                        value: isStudentOfficer,
-                        onChanged: (bool value) {
-                          setModalState(() {
-                            isStudentOfficer = value;
-                            if (!isStudentOfficer) selectedPermissions.clear(); 
-                          });
-                        },
-                      ),
-                      if (isStudentOfficer)
-                        Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey.shade300),
-                            borderRadius: BorderRadius.circular(8)
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text("Select Accessible Tabs:", style: TextStyle(fontWeight: FontWeight.bold)),
-                              const SizedBox(height: 10),
-                              ...availablePanels.map((panel) {
-                                return CheckboxListTile(
-                                  dense: true,
-                                  title: Text(panel, style: const TextStyle(fontSize: 14)),
-                                  value: selectedPermissions.contains(panel),
-                                  activeColor: const Color(0xFF000B6B),
-                                  onChanged: (bool? checked) {
-                                    setModalState(() {
-                                      if (checked == true) {
-                                        selectedPermissions.add(panel);
-                                      } else {
-                                        selectedPermissions.remove(panel);
-                                      }
-                                    });
-                                  },
-                                );
-                              }),
-                            ],
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-              actionsPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-              actions: [
-                TextButton(
-                  child: const Text("Cancel", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
-                  onPressed: () => Navigator.pop(context),
-                ),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF000B6B),
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  ),
-                  child: const Text("Save Changes", style: TextStyle(fontWeight: FontWeight.bold)),
-                  onPressed: () async {
-                    if (passwordController.text.isNotEmpty) {
-                      if (passwordStrength < 3) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("Please meet all password requirements"), backgroundColor: Colors.red),
-                        );
-                        return;
-                      }
-                      if (passwordController.text != confirmPasswordController.text) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("Passwords do not match"), backgroundColor: Colors.red),
-                        );
-                        return;
-                      }
-                    }
-
-                    try {
-                      await http.put(
-                        Uri.parse('${ApiConfig.baseUrl}/api/admin/users/${student['user_id']}'),
-                        headers: {"Content-Type": "application/json"},
-                        body: jsonEncode({
-                          "course": selectedCourse ?? student['course'],
-                          "password": passwordController.text.isNotEmpty
-                              ? passwordController.text
-                              : null,
-                          "is_student_officer": isStudentOfficer,
-                          "permissions": selectedPermissions
-                        }),
-                      );
-
-                      if (mounted) {
-                        Navigator.pop(context);
-                        _fetchStudents();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("User updated successfully!", style: TextStyle(color: Colors.white)), backgroundColor: Colors.green),
-                        );
-                      }
-                    } catch (e) {
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("Update failed"), backgroundColor: Colors.red),
-                        );
-                      }
-                    }
-                  },
-                ),
-              ],
-            );
-          },
-        );
-      },
     );
   }
 

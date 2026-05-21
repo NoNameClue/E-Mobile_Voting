@@ -2,6 +2,7 @@ from sqlalchemy import Column, Integer, String, Boolean, DateTime, Enum as SQLEn
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from database import Base
+from datetime import datetime
 
 class User(Base):
     __tablename__ = "users"
@@ -84,3 +85,13 @@ class PartyApplication(Base):
     candidates_payload = Column(JSON) # Stores the locked Q&A and info
     status = Column(String(50), default="Pending") # Pending, Approved, Rejected
     submitted_at = Column(String(100))
+    
+class StaffApplication(Base):
+    __tablename__ = "staff_applications"
+    application_id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False)
+    intent_statement = Column(Text, nullable=False)
+    experience = Column(Text, nullable=False)
+    availability = Column(String(100), nullable=False)
+    status = Column(String(20), default="Pending") # Pending, Accepted, Rejected
+    applied_at = Column(DateTime, default=datetime.utcnow)

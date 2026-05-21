@@ -23,6 +23,7 @@ class AdminDashboard extends StatefulWidget {
 
 class _AdminDashboardState extends State<AdminDashboard> {
   String? _selectedMenuString = "Dashboard";
+  final Color sidebarBgColor = const Color(0xFF000B6B); // LNU Blue
 
   int _totalStudents = 0;
   int _activeStudents = 0;
@@ -39,16 +40,19 @@ class _AdminDashboardState extends State<AdminDashboard> {
   bool _isLoadingRecentPoll = true; 
   bool _hasActivePoll = false;
   bool _shownLoginSnack = false;
+  
+  // Sidebar State
+  bool _isSidebarExpanded = true;
 
   final List<String> _masterMenuItems = [
     "Dashboard",
-    "Users / Account Control",
-    "Manage Election Staff", 
+    "Live Scoreboard",
+    "Election Result",
     "Manage Polls",
     "Manage Candidates",
     "Manage Parties",
-    "Live Scoreboard",
-    "Election Result",
+    "Users / Account Control",
+    "Manage Election Staff", 
   ];
 
   List<String> displayMenuItems = [];
@@ -406,7 +410,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   ],
                 ),
                 const Padding(padding: EdgeInsets.symmetric(vertical: 20), child: Divider()),
-                // Text color changed to black
                 const Text("Elected Officials Overview", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
                 const SizedBox(height: 15),
                 Wrap(
@@ -449,106 +452,219 @@ class _AdminDashboardState extends State<AdminDashboard> {
       case "Users / Account Control": return Icons.people;
       case "Manage Election Staff": return Icons.admin_panel_settings; 
       case "Manage Polls": return Icons.how_to_vote;
-      case "Manage Candidates": return Icons.person_pin;
+      case "Manage Candidates": return Icons.folder; 
       case "Manage Parties": return Icons.flag;
-      case "Live Scoreboard": return Icons.bar_chart;
-      case "Election Result": return Icons.assignment_turned_in;
+      case "Live Scoreboard": return Icons.insert_chart; 
+      case "Election Result": return Icons.analytics;
       default: return Icons.circle;
     }
   }
 
-  Widget buildSidebar(bool isDesktop) {
-    double sidebarWidth = isDesktop ? 280.0 : 250.0;
-    double menuFontSize = isDesktop ? 15.0 : 13.0;
-    double menuIconSize = isDesktop ? 22.0 : 20.0;
+  String _getCategory(String menu) {
+    if (["Dashboard", "Live Scoreboard", "Election Result"].contains(menu)) return "Main Menu";
+    if (["Manage Polls", "Manage Candidates", "Manage Parties"].contains(menu)) return "Management";
+    if (["Users / Account Control", "Manage Election Staff"].contains(menu)) return "Account";
+    return "Menu";
+  }
 
-    return Container(
-      width: sidebarWidth,
-      color: const Color(0xFF000B6B),
-      child: Column(
-        children: [
-          const SizedBox(height: 20), 
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 5.0),
-            child: Row(
-              children: [
-                Container(
-                  width: 70, 
-                  height: 70, 
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16), 
-                    image: const DecorationImage(image: AssetImage('assets/images/lnu_logo.png'), fit: BoxFit.cover)
-                  )
-                ),
-                const SizedBox(width: 10),
+  Widget _buildCategoryHeader(String title) {
+    return _isSidebarExpanded
+        ? Padding(
+            padding: const EdgeInsets.only(left: 20, top: 10, bottom: 2),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                title,
+                style: const TextStyle(color: Colors.white54, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+              ),
+            ),
+          )
+        : Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: Container(height: 1, width: 30, color: Colors.white24),
+          );
+  }
+
+  Widget _buildMenuItem(String title, IconData icon, bool isActive, VoidCallback onTap) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeInOut,
+          padding: EdgeInsets.symmetric(horizontal: _isSidebarExpanded ? 15 : 0, vertical: 10),
+          decoration: BoxDecoration(
+            color: isActive ? Colors.amber : Colors.transparent, 
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            mainAxisAlignment: _isSidebarExpanded ? MainAxisAlignment.start : MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 20,
+                color: isActive ? sidebarBgColor : Colors.white70,
+              ),
+              if (_isSidebarExpanded) ...[
+                const SizedBox(width: 15),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Leyte Normal University', style: TextStyle(color: Colors.white, fontSize: isDesktop ? 14 : 12, fontWeight: FontWeight.bold)),
-                      Text('(eMobile Voting)', style: TextStyle(color: Colors.white, fontSize: isDesktop ? 11 : 10)),
-                    ],
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      color: isActive ? sidebarBgColor : Colors.white,
+                      fontSize: 13,
+                      fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.clip,
                   ),
                 ),
-              ],
-            ),
+              ]
+            ],
           ),
-          const SizedBox(height: 20), 
-          Text(_userRole == "Staff" ? "STAFF PANEL" : "ADMIN PANEL", style: TextStyle(color: Colors.white, fontSize: isDesktop ? 20 : 18, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
-          const SizedBox(height: 20), 
-          Transform.scale(scale: isDesktop ? 0.90 : 0.80, child: const RealtimeClock(textColor: Colors.white, isCenterAligned: true)),
-          const SizedBox(height: 10),
-          const Divider(color: Colors.white24, height: 1),
-          Expanded(
-            child: SingleChildScrollView(
-              child: Column(
+        ),
+      ),
+    );
+  }
+
+  Widget buildSidebar(bool isDesktop) {
+    double currentWidth = _isSidebarExpanded ? 260.0 : 80.0;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+      width: isDesktop ? currentWidth : 260.0,
+      color: sidebarBgColor,
+      child: Column(
+        children: [
+          // 1. Logo & Toggle Header
+          InkWell(
+            onTap: isDesktop ? () => setState(() => _isSidebarExpanded = !_isSidebarExpanded) : null,
+            child: Container(
+              height: 70,
+              padding: const EdgeInsets.symmetric(horizontal: 15),
+              child: Row(
+                mainAxisAlignment: _isSidebarExpanded ? MainAxisAlignment.start : MainAxisAlignment.center,
                 children: [
-                  const SizedBox(height: 10),
-                  for (int i = 0; i < displayMenuItems.length; i++)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 15), 
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: _selectedMenuString == displayMenuItems[i] ? Colors.amber : Colors.transparent, 
-                          borderRadius: BorderRadius.circular(16)
-                        ),
-                        child: ListTile(
-                          dense: true, 
-                          visualDensity: const VisualDensity(horizontal: 0, vertical: -2), 
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 0),
-                          leading: Icon(
-                            _getMenuIcon(displayMenuItems[i]), 
-                            size: menuIconSize, 
-                            color: _selectedMenuString == displayMenuItems[i] ? const Color(0xFF000B6B) : Colors.white70
-                          ),
-                          title: Text(
-                            displayMenuItems[i], 
-                            style: TextStyle(
-                              fontSize: menuFontSize, 
-                              color: _selectedMenuString == displayMenuItems[i] ? const Color(0xFF000B6B) : Colors.white, 
-                              fontWeight: _selectedMenuString == displayMenuItems[i] ? FontWeight.bold : FontWeight.w500
-                            )
-                          ),
-                          onTap: () {
-                            setState(() => _selectedMenuString = displayMenuItems[i]);
-                            if (!isDesktop) Navigator.pop(context);
-                          },
-                        ),
+                  Container(
+                    width: 35,
+                    height: 35,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      image: const DecorationImage(
+                        image: AssetImage('assets/images/lnu_logo.png'),
+                        fit: BoxFit.cover,
                       ),
                     ),
+                  ),
+                  if (_isSidebarExpanded) ...[
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Text(
+                        "LNU Admin",
+                        style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                        maxLines: 1,
+                        overflow: TextOverflow.clip,
+                      ),
+                    ),
+                  ]
                 ],
               ),
             ),
           ),
-          const Divider(color: Colors.white24, height: 1),
-          ListTile(
-            dense: true, 
-            visualDensity: const VisualDensity(horizontal: 0, vertical: -4), 
-            leading: Icon(Icons.logout, color: Colors.white, size: menuIconSize), 
-            title: Text("Logout", style: TextStyle(color: Colors.white, fontSize: menuFontSize)),
-            onTap: logout,
+          const Divider(color: Colors.white12, height: 1),
+
+          // 2. Menu Items
+          Expanded(
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  const SizedBox(height: 5),
+                  ...() {
+                    List<Widget> widgets = [];
+                    String currentCategory = "";
+
+                    for (int i = 0; i < displayMenuItems.length; i++) {
+                      String category = _getCategory(displayMenuItems[i]);
+                      if (category != currentCategory) {
+                        widgets.add(_buildCategoryHeader(category));
+                        currentCategory = category;
+                      }
+                      widgets.add(_buildMenuItem(
+                        displayMenuItems[i],
+                        _getMenuIcon(displayMenuItems[i]),
+                        _selectedMenuString == displayMenuItems[i],
+                        () {
+                          setState(() => _selectedMenuString = displayMenuItems[i]);
+                          if (!isDesktop) Navigator.pop(context);
+                        },
+                      ));
+                    }
+                    
+                    // Add System/Logout category at end
+                    widgets.add(_buildCategoryHeader("System"));
+                    widgets.add(_buildMenuItem("Logout", Icons.logout, false, logout));
+                    
+                    return widgets;
+                  }(),
+                  const SizedBox(height: 10),
+                ],
+              ),
+            ),
           ),
-          const SizedBox(height: 10),
+
+          // 3. Profile Bottom Box
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            margin: const EdgeInsets.all(12),
+            padding: EdgeInsets.all(_isSidebarExpanded ? 10 : 5),
+            decoration: BoxDecoration(
+              color: _isSidebarExpanded ? Colors.white.withOpacity(0.1) : Colors.transparent,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              mainAxisAlignment: _isSidebarExpanded ? MainAxisAlignment.start : MainAxisAlignment.center,
+              children: [
+                CircleAvatar(
+                  radius: _isSidebarExpanded ? 18 : 20,
+                  backgroundColor: _isSidebarExpanded ? Colors.white24 : Colors.white24,
+                  backgroundImage: _profilePicUrl != null ? NetworkImage('${ApiConfig.baseUrl}/$_profilePicUrl') : null,
+                  child: _profilePicUrl == null ? Icon(Icons.person, size: 20, color: Colors.white) : null,
+                ),
+                if (_isSidebarExpanded) ...[
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _userName,
+                          style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          _userRole == "Staff" ? "Staff Member" : "Administrator",
+                          style: TextStyle(color: Colors.white70, fontSize: 11),
+                        ),
+                      ],
+                    ),
+                  ),
+                ]
+              ],
+            ),
+          ),
+          if (_isSidebarExpanded)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 15),
+              child: Transform.scale(
+                scale: 0.8,
+                child: const RealtimeClock(textColor: Colors.white54, isCenterAligned: true),
+              ),
+            )
         ],
       ),
     );
@@ -579,7 +695,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
               const SizedBox(height: 5),
               FittedBox(
                 fit: BoxFit.scaleDown,
-                // CHANGED: Text color changed to black
                 child: Text(title, textAlign: TextAlign.center, style: const TextStyle(color: Colors.black, fontSize: 11, fontWeight: FontWeight.w600)),
               ),
             ],
@@ -596,7 +711,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // CHANGED: Text color changed to black
                     Text(title, style: const TextStyle(color: Colors.black, fontSize: 13, fontWeight: FontWeight.w600)),
                     const SizedBox(height: 5),
                     _isLoadingStats 
@@ -775,7 +889,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       appBar: isDesktop 
         ? null 
         : AppBar(
-            backgroundColor: const Color(0xFF000B6B), 
+            backgroundColor: sidebarBgColor, 
             foregroundColor: Colors.white, 
             title: const Text("Admin Panel", style: TextStyle(color: Colors.white))
           ),
