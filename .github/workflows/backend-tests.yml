@@ -2,9 +2,9 @@ name: Backend Automated Tests
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "Fix-System" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "Fix-System" ]
 
 jobs:
   test-backend:
